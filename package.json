@@ -1,0 +1,15 @@
+{
+  "name": "community-platform",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "app",
+    "worker"
+  ],
+  "scripts": {
+    "dev:app": "cd app && npm run dev",
+    "dev:worker": "cd worker && npm run dev",
+    "build:app": "cd app && npm run build",
+    "build:worker": "cd worker && npm run build"
+  }
+}
