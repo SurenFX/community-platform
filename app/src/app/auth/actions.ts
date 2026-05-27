@@ -12,13 +12,11 @@ export async function signOut() {
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
   if (!user) redirect('/login')
 
   const username = formData.get('username') as string
   const bio      = formData.get('bio') as string
 
-  // Validaciones
   if (!username || username.length < 3 || username.length > 30) {
     return { error: 'El username debe tener entre 3 y 30 caracteres' }
   }
@@ -26,7 +24,6 @@ export async function updateProfile(formData: FormData) {
     return { error: 'El username solo puede contener letras, números y _' }
   }
 
-  // Verificar que el username no esté tomado por otro usuario
   const { data: existing } = await supabase
     .from('profiles')
     .select('id')
@@ -38,9 +35,10 @@ export async function updateProfile(formData: FormData) {
     return { error: 'Ese username ya está en uso' }
   }
 
+  // Usar cast explícito para evitar el error de tipos
   const { error } = await supabase
     .from('profiles')
-    .update({ username, bio })
+    .update({ username, bio: bio || null } as any)
     .eq('id', user.id)
 
   if (error) {
