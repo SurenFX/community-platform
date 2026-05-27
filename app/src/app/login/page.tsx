@@ -18,7 +18,7 @@ function LoginContent() {
         provider: 'discord',
         options: {
           scopes: 'identify email guilds guilds.members.read',
-          redirectTo: 'http://localhost:3000/auth/callback',
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       })
     } catch (err) {
