@@ -45,3 +45,6 @@ export async function updateProfile(formData: FormData) {
 
   return { success: true }
 }
+
+// Alias para compatibilidad con componentes que importan updateProfileAction
+export const updateProfileAction = updateProfile
