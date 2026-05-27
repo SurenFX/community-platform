@@ -2,6 +2,9 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import type { Database } from '@/types/database'
+
+type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient()
@@ -9,7 +12,7 @@ export async function updateProfile(formData: FormData) {
   if (!user) redirect('/login')
 
   const username = formData.get('username') as string
-  const bio      = formData.get('bio') as string
+  const bio      = (formData.get('bio') as string) || null
 
   if (!username || username.length < 3 || username.length > 30) {
     return { error: 'El username debe tener entre 3 y 30 caracteres' }
@@ -29,14 +32,11 @@ export async function updateProfile(formData: FormData) {
     return { error: 'Ese username ya está en uso' }
   }
 
-  const updateData: Record<string, string | null> = {
-    username,
-    bio: bio || null,
-  }
+  const updateData: ProfileUpdate = { username, bio }
 
   const { error } = await supabase
     .from('profiles')
-    .update(updateData as any)
+    .update(updateData)
     .eq('id', user.id)
 
   if (error) {
