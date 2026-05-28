@@ -67,80 +67,71 @@ export default function DashboardClient({
   }, [])
 
   useEffect(() => {
+    // Suscripción SIN filtro — filtramos en el cliente
+    // El filtro server-side no funciona con service_role en plan free
     const channel = supabase
       .channel(`dashboard:${userId}`)
 
-      // ── Reputación: actualizar stats en tiempo real ──────
       .on(
         'postgres_changes',
         {
           event:  'UPDATE',
           schema: 'public',
           table:  'user_reputation',
-          filter: `user_id=eq.${userId}`,
         },
         (payload) => {
           const newRep = payload.new as UserReputation
+          // Filtrar en el cliente
+          if (newRep.user_id !== userId) return
           setProfile(prev => prev ? { ...prev, user_reputation: newRep } : prev)
         }
       )
 
-      // ── XP events: toast por cada XP ganado ─────────────
       .on(
         'postgres_changes',
         {
           event:  'INSERT',
           schema: 'public',
           table:  'xp_events',
-          filter: `user_id=eq.${userId}`,
         },
         (payload) => {
           const newEvent = payload.new as XpEvent
+          if (newEvent.user_id !== userId) return
           setEvents(prev => [newEvent, ...prev].slice(0, 10))
           addToast(newEvent.xp_awarded, newEvent.event_type)
         }
       )
 
-      // ── Level ups: fuente de verdad para el modal ────────
-      // INSERT en user_level_ups ocurre exactamente UNA vez por nivel
-      // gracias al UNIQUE(user_id, level) + ON CONFLICT DO NOTHING en award_xp
-      // No importa cuántas pestañas estén abiertas ni cuántos retries haya
       .on(
         'postgres_changes',
         {
           event:  'INSERT',
           schema: 'public',
           table:  'user_level_ups',
-          filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          const levelUp = payload.new as { level: number; xp_bonus: number }
-
-          // El nivel anterior es el nuevo menos 1
-          // (puede haber saltado más de un nivel de golpe en casos extremos)
+          const levelUp = payload.new as { user_id: string; level: number; xp_bonus: number }
+          if (levelUp.user_id !== userId) return
           setLevelUpData({
             oldLevel: levelUp.level - 1,
             newLevel: levelUp.level,
           })
-
-          // Si hay XP bonus, mostrar toast adicional
           if (levelUp.xp_bonus > 0) {
             addToast(levelUp.xp_bonus, 'ADMIN_MANUAL_GRANT')
           }
         }
       )
 
-      // ── Misiones: actualizar progreso ────────────────────
       .on(
         'postgres_changes',
         {
           event:  'UPDATE',
           schema: 'public',
           table:  'user_missions',
-          filter: `user_id=eq.${userId}`,
         },
         async (payload) => {
           const updated = payload.new as UserMission
+          if (updated.user_id !== userId) return
           if (updated.is_completed) {
             const { data } = await supabase
               .from('user_missions')

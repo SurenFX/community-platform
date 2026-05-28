@@ -8,20 +8,21 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log'],
   })
 
-  // Aceptar requests solo desde Next.js y el bot interno
   app.enableCors({
     origin: [
       'http://localhost:3000',
-      process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000',
+      'https://community-platform-app.vercel.app',
     ],
     credentials: true,
   })
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }))
 
-  const port = process.env.PORT ?? 3001
-  await app.listen(port)
-  console.log(`Worker corriendo en http://localhost:${port}`)
+  // Escuchar en 0.0.0.0 es requerido por Fly.io
+  // El puerto viene de la variable de entorno (Fly setea PORT=8080 por defecto)
+  const port = parseInt(process.env.PORT ?? '8080')
+  await app.listen(port, '0.0.0.0')
+  console.log(`Worker corriendo en puerto ${port}`)
 }
 
 bootstrap()
