@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import StatsGrid from '@/components/profile/StatsGrid'
 import RecentActivity from '@/components/profile/RecentActivity'
@@ -58,6 +58,10 @@ export default function DashboardClient({
   const [toasts,      setToasts]      = useState<XpToastData[]>([])
   const [levelUpData, setLevelUpData] = useState<{ oldLevel: number; newLevel: number } | null>(null)
 
+  const lastXpRef    = useRef(initialProfile?.user_reputation?.total_xp ?? 0)
+  const lastLevelRef = useRef(initialProfile?.user_reputation?.level ?? 1)
+  const lastEventRef = useRef(initialEvents[0]?.id ?? '')
+
   const supabase = createClient()
 
   const addToast = useCallback((xp: number, eventType: string) => {
@@ -66,42 +70,77 @@ export default function DashboardClient({
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000)
   }, [])
 
+  // ── Polling cada 8 segundos ───────────────────────────────
   useEffect(() => {
-    // Suscripción SIN filtro — filtramos en el cliente
-    // El filtro server-side no funciona con service_role en plan free
+    async function poll() {
+      try {
+        // 1. Reputación
+        const { data: rep } = await supabase
+          .from('user_reputation')
+          .select('*')
+          .eq('user_id', userId)
+          .single()
+
+        if (rep) {
+          const newXp    = rep.total_xp
+          const newLevel = rep.level
+
+          // Detectar level up
+          if (newLevel > lastLevelRef.current) {
+            setLevelUpData({
+              oldLevel: lastLevelRef.current,
+              newLevel,
+            })
+            lastLevelRef.current = newLevel
+          }
+
+          // Actualizar stats si cambió el XP
+          if (newXp !== lastXpRef.current) {
+            lastXpRef.current = newXp
+            setProfile(prev => prev ? { ...prev, user_reputation: rep } : prev)
+          }
+        }
+
+        // 2. Eventos recientes — buscar nuevos desde el último conocido
+        const { data: newEvents } = await supabase
+          .from('xp_events')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(5)
+
+        if (newEvents?.length) {
+          const latestId = newEvents[0].id
+
+          if (latestId !== lastEventRef.current) {
+            // Hay eventos nuevos — mostrar toasts
+            const previousIdx = newEvents.findIndex(e => e.id === lastEventRef.current)
+            const newOnes = previousIdx === -1 ? newEvents.slice(0, 1) : newEvents.slice(0, previousIdx)
+
+            newOnes.reverse().forEach(event => {
+              addToast(event.xp_awarded, event.event_type)
+            })
+
+            lastEventRef.current = latestId
+            setEvents(newEvents)
+          }
+        }
+
+      } catch (err) {
+        // Silenciar errores de polling — no queremos crashes
+      }
+    }
+
+    // Poll inmediato al montar y después cada 8 segundos
+    poll()
+    const interval = setInterval(poll, 8000)
+    return () => clearInterval(interval)
+  }, [userId])
+
+  // ── Realtime para level ups (INSERT — funciona bien) ──────
+  useEffect(() => {
     const channel = supabase
-      .channel(`dashboard:${userId}`)
-
-      .on(
-        'postgres_changes',
-        {
-          event:  'UPDATE',
-          schema: 'public',
-          table:  'user_reputation',
-        },
-        (payload) => {
-          const newRep = payload.new as UserReputation
-          // Filtrar en el cliente
-          if (newRep.user_id !== userId) return
-          setProfile(prev => prev ? { ...prev, user_reputation: newRep } : prev)
-        }
-      )
-
-      .on(
-        'postgres_changes',
-        {
-          event:  'INSERT',
-          schema: 'public',
-          table:  'xp_events',
-        },
-        (payload) => {
-          const newEvent = payload.new as XpEvent
-          if (newEvent.user_id !== userId) return
-          setEvents(prev => [newEvent, ...prev].slice(0, 10))
-          addToast(newEvent.xp_awarded, newEvent.event_type)
-        }
-      )
-
+      .channel(`levelups:${userId}`)
       .on(
         'postgres_changes',
         {
@@ -121,33 +160,6 @@ export default function DashboardClient({
           }
         }
       )
-
-      .on(
-        'postgres_changes',
-        {
-          event:  'UPDATE',
-          schema: 'public',
-          table:  'user_missions',
-        },
-        async (payload) => {
-          const updated = payload.new as UserMission
-          if (updated.user_id !== userId) return
-          if (updated.is_completed) {
-            const { data } = await supabase
-              .from('user_missions')
-              .select('*, missions(*)')
-              .eq('user_id', userId)
-              .eq('is_completed', false)
-              .limit(3)
-            if (data) setMissions(data as MissionWithData[])
-          } else {
-            setMissions(prev =>
-              prev.map(m => m.id === updated.id ? { ...m, ...updated } : m)
-            )
-          }
-        }
-      )
-
       .subscribe((status) => {
         console.log('[Realtime] status:', status)
       })
