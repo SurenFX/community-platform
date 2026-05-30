@@ -52,7 +52,7 @@ const PLATFORMS: Platform[] = [
   {
     id: 'twitch', name: 'Twitch', provider: 'twitch', dbPlatform: 'TWITCH',
     color: 'text-[#9146FF]', bgColor: 'bg-[#9146FF]/10', borderColor: 'border-[#9146FF]/30',
-    scopes: 'user:read:email user:read:follows', redirectTo: '/dashboard/settings',
+    scopes: 'user:read:email user:read:follows', redirectTo: '/auth/twitch',
     description: 'Ganá XP por chatear, raids y subs durante el stream',
     xpItems: ['Chat en stream: +8 XP', 'Bloque 10 min: +10 XP', 'Raid: +50 XP', 'Sub: +500 XP', 'Follow: +100 XP'],
     icon: (

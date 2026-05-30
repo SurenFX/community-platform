@@ -9,6 +9,7 @@ import { DiscordBotModule } from './modules/discord-bot/discord-bot.module'
 import { MissionsModule } from './modules/missions/missions.module'
 import { SchedulerModule } from './modules/scheduler/scheduler.module'
 import { YoutubeModule } from './modules/youtube/youtube.module'
+import { TwitchModule } from './modules/twitch/twitch.module'
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { YoutubeModule } from './modules/youtube/youtube.module'
     MissionsModule,
     SchedulerModule,
     YoutubeModule,
+    TwitchModule,
   ],
 })
 export class AppModule {}
