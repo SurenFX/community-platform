@@ -13,14 +13,12 @@ export class RedisService implements OnModuleInit {
     const token = this.config.get<string>('UPSTASH_REDIS_REST_TOKEN')
 
     if (!url || !token) {
-      throw new Error('Faltan UPSTASH_REDIS_REST_URL o UPSTASH_REDIS_REST_TOKEN en el .env')
+      throw new Error('Faltan UPSTASH_REDIS_REST_URL o UPSTASH_REDIS_REST_TOKEN')
     }
 
     this.client = new Redis({ url, token })
     console.log('✓ Upstash Redis conectado')
   }
-
-  // ── Helpers tipados ────────────────────────────────────
 
   async get(key: string): Promise<string | null> {
     const val = await this.client.get<string>(key)
@@ -33,6 +31,19 @@ export class RedisService implements OnModuleInit {
     } else {
       await this.client.set(key, value)
     }
+  }
+
+  /**
+   * SET NX EX — atómico
+   * Retorna true si obtuvo el lock, false si ya existía
+   * Úsalo para distributed locks entre múltiples instancias
+   */
+  async setNX(key: string, value: string, exSeconds: number): Promise<boolean> {
+    const result = await this.client.set(key, value, {
+      nx: true,   // solo setear si NO existe
+      ex: exSeconds,
+    })
+    return result === 'OK'
   }
 
   async incr(key: string): Promise<number> {
@@ -52,7 +63,6 @@ export class RedisService implements OnModuleInit {
     return result === 1
   }
 
-  // Para leaderboard con sorted sets
   async zadd(key: string, score: number, member: string): Promise<void> {
     await this.client.zadd(key, { score, member })
   }

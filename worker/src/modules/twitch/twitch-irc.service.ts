@@ -13,9 +13,6 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
   private isLive = false
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private pingTimer: ReturnType<typeof setInterval> | null = null
-
-  // Trackear usuarios activos en el chat durante el stream
-  // Map<twitchUsername, lastMessageTimestamp>
   private activeViewers = new Map<string, number>()
 
   constructor(
@@ -46,13 +43,11 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     this.client = new net.Socket()
 
     this.client.connect(6667, 'irc.chat.twitch.tv', () => {
-      this.logger.log('Conectando al IRC de Twitch...')
       this.send(`PASS ${token}`)
       this.send(`NICK ${username}`)
       this.send(`JOIN #${channel}`)
       this.send('CAP REQ :twitch.tv/commands twitch.tv/tags')
 
-      // Ping cada 4 minutos para mantener la conexión viva
       this.pingTimer = setInterval(() => {
         this.send('PING :tmi.twitch.tv')
       }, 4 * 60 * 1000)
@@ -87,30 +82,29 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async handleLine(line: string) {
-    // Responder al PING del servidor
     if (line.startsWith('PING')) {
       this.send('PONG :tmi.twitch.tv')
       return
     }
 
-    // Parsear mensajes PRIVMSG (mensajes del chat)
-    // Formato: @tags :user!user@user.tmi.twitch.tv PRIVMSG #channel :mensaje
     if (!line.includes('PRIVMSG')) return
-    if (!this.isLive) return  // solo dar XP cuando el streamer está en vivo
 
     const usernameMatch = line.match(/:(\w+)!\w+@\w+\.tmi\.twitch\.tv PRIVMSG/)
     const messageMatch  = line.match(/PRIVMSG #\w+ :(.+)/)
-
     if (!usernameMatch || !messageMatch) return
 
     const twitchUsername = usernameMatch[1].toLowerCase()
-    const messageContent = messageMatch[1]
+    const messageContent = messageMatch[1].trim()
 
-    // Ignorar mensajes del bot mismo
     const botUsername = this.config.get<string>('TWITCH_BOT_USERNAME')?.toLowerCase()
     if (twitchUsername === botUsername) return
 
-    // Buscar usuario registrado en la plataforma por su Twitch username
+    // ── Verificar si hay un sorteo activo y si el mensaje es la keyword ──
+    await this.checkRaffleKeyword(twitchUsername, messageContent)
+
+    // ── XP por chat durante stream en vivo ────────────────
+    if (!this.isLive) return
+
     const { data: socialLink } = await this.supabase.db
       .from('user_social_links')
       .select('user_id, profiles!inner(discord_id)')
@@ -118,28 +112,67 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
       .ilike('username', twitchUsername)
       .single()
 
-    if (!socialLink) return // usuario no registrado en la plataforma
+    if (!socialLink) return
 
     const discordId = (socialLink as any).profiles?.discord_id
     if (!discordId) return
 
-    // XP por mensaje en chat durante el stream
     await this.reputation.processXpEvent({
       discordId,
       eventType:   'TWITCH_CHAT_MESSAGE',
       platform:    'TWITCH',
-      externalRef: `twitch_chat_${Date.now()}`,
+      externalRef: `twitch_chat_${twitchUsername}_${Date.now()}`,
       metadata: {
         twitch_username: twitchUsername,
         content:         messageContent.slice(0, 200),
       },
     })
 
-    // Trackear como viewer activo para el bloque de watch time
     this.activeViewers.set(twitchUsername, Date.now())
   }
 
-  // ── Verificar si el stream está en vivo cada 2 minutos ──
+  // ── Detectar keyword del sorteo ────────────────────────
+  private async checkRaffleKeyword(twitchUsername: string, message: string) {
+    try {
+      // Buscar sorteo activo
+      const { data: raffle } = await this.supabase.db
+        .from('twitch_raffles')
+        .select('id, keyword')
+        .eq('status', 'active')
+        .single()
+
+      if (!raffle) return
+
+      // Verificar que el mensaje coincide con la keyword (case insensitive)
+      if (message.toLowerCase().trim() !== raffle.keyword.toLowerCase().trim()) return
+
+      // Verificar que el usuario está registrado en la plataforma
+      const { data: socialLink } = await this.supabase.db
+        .from('user_social_links')
+        .select('user_id')
+        .eq('platform', 'TWITCH')
+        .ilike('username', twitchUsername)
+        .single()
+
+      if (!socialLink) return // no registrado — ignorar
+
+      // Insertar entrada — ON CONFLICT DO NOTHING garantiza una sola vez por usuario
+      const { error } = await this.supabase.db
+        .from('twitch_raffle_entries')
+        .insert({
+          raffle_id:       raffle.id,
+          user_id:         socialLink.user_id,
+          twitch_username: twitchUsername,
+        })
+
+      if (!error) {
+        this.logger.log(`Raffle entry: ${twitchUsername} → ${raffle.id}`)
+      }
+    } catch (err) {
+      // Silenciar errores — el unique constraint ya maneja duplicados
+    }
+  }
+
   @Cron('*/2 * * * *')
   async checkStreamStatus() {
     try {
@@ -150,43 +183,32 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         this.isLive = true
         this.activeViewers.clear()
 
-        // Registrar nueva sesión de stream en la DB
         await this.supabase.db
           .from('stream_sessions')
-          .insert({
-            title: info.title,
-            game:  info.game,
-          })
+          .insert({ title: info.title, game: info.game })
 
-        // Actualizar config de la plataforma
-        await this.supabase.db
-          .from('platform_config')
-          .upsert([
-            { key: 'stream_is_live',    value: 'true' },
-            { key: 'stream_title',      value: info.title },
-            { key: 'stream_game',       value: info.game },
-            { key: 'stream_started_at', value: info.startedAt ?? '' },
-          ])
+        await this.supabase.db.from('platform_config').upsert([
+          { key: 'stream_is_live',    value: 'true' },
+          { key: 'stream_title',      value: info.title },
+          { key: 'stream_game',       value: info.game },
+          { key: 'stream_started_at', value: info.startedAt ?? '' },
+        ])
 
       } else if (!info.isLive && this.isLive) {
         this.logger.log('Stream terminado')
         this.isLive = false
         this.activeViewers.clear()
 
-        await this.supabase.db
-          .from('platform_config')
-          .upsert([
-            { key: 'stream_is_live', value: 'false' },
-            { key: 'stream_title',   value: '' },
-          ])
+        await this.supabase.db.from('platform_config').upsert([
+          { key: 'stream_is_live', value: 'false' },
+          { key: 'stream_title',   value: '' },
+        ])
       }
     } catch (err) {
       this.logger.warn(`checkStreamStatus error: ${err}`)
     }
   }
 
-  // ── Otorgar XP por watch time cada 10 minutos ──────────
-  // Solo a viewers que hayan enviado al menos 1 mensaje en los últimos 10 min
   @Cron('*/10 * * * *')
   async rewardWatchTime() {
     if (!this.isLive) return
@@ -198,8 +220,6 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
 
     if (!activeInLastBlock.length) return
 
-    this.logger.log(`Rewarding watch time para ${activeInLastBlock.length} viewers`)
-
     for (const twitchUsername of activeInLastBlock) {
       const { data: socialLink } = await this.supabase.db
         .from('user_social_links')
@@ -209,7 +229,6 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         .single()
 
       if (!socialLink) continue
-
       const discordId = (socialLink as any).profiles?.discord_id
       if (!discordId) continue
 
@@ -217,7 +236,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         discordId,
         eventType:   'TWITCH_WATCH_TIME',
         platform:    'TWITCH',
-        externalRef: `watch_${twitchUsername}_${Date.now()}`,
+        externalRef: `watch_${twitchUsername}_${Math.floor(Date.now() / 600000)}`,
         metadata:    { twitch_username: twitchUsername },
       })
     }

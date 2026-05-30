@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
+import { RedisService } from '../../infrastructure/redis/redis.service'
 import { AntiSpamService } from './anti-spam.service'
 import { XpCalculatorService, XpEventType, SocialPlatform } from './xp-calculator.service'
 
@@ -26,6 +27,7 @@ export class ReputationService {
 
   constructor(
     private supabase:     SupabaseService,
+    private redis:        RedisService,
     private antiSpam:     AntiSpamService,
     private xpCalc:       XpCalculatorService,
     private eventEmitter: EventEmitter2,
@@ -33,6 +35,20 @@ export class ReputationService {
 
   async processXpEvent(event: IncomingXpEvent): Promise<XpResult> {
     try {
+      // ── Distributed lock ──────────────────────────────────
+      // Evita que múltiples instancias procesen el mismo evento
+      // Solo aplica cuando hay externalRef (mensaje de Discord, Twitch, etc.)
+      if (event.externalRef) {
+        const lockKey = `lock:xp:${event.externalRef}`
+
+        // SET NX EX — atómico, solo una máquina lo obtiene
+        const acquired = await this.redis.setNX(lockKey, '1', 30)
+        if (!acquired) {
+          this.logger.debug(`Lock no obtenido — evento ya procesado: ${event.externalRef}`)
+          return { success: false, reason: 'DUPLICATE' }
+        }
+      }
+
       // 1. Buscar perfil
       const { data: profile, error: profileError } = await this.supabase.db
         .from('profiles')
@@ -84,7 +100,7 @@ export class ReputationService {
         metadata:     event.metadata,
       })
 
-      // 6. Acreditar XP — función atómica en Postgres
+      // 6. Acreditar XP
       const { data: result, error: rpcError } = await this.supabase.db
         .rpc('award_xp', {
           p_user_id:    profile.id,
