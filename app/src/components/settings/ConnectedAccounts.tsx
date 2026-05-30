@@ -24,13 +24,13 @@ interface Platform {
   id:          string
   name:        string
   provider:    string
-  dbPlatform?: string  // nombre en user_social_links (si es distinto al id)
+  dbPlatform?: string
   color:       string
   bgColor:     string
   borderColor: string
   icon:        React.ReactNode
   scopes:      string
-  redirectTo:  string
+  redirectPath: string  // path al que redirige después del OAuth
   description: string
   comingSoon?: boolean
   xpItems:     string[]
@@ -40,7 +40,7 @@ const PLATFORMS: Platform[] = [
   {
     id: 'discord', name: 'Discord', provider: 'discord', dbPlatform: 'DISCORD',
     color: 'text-[#5865F2]', bgColor: 'bg-[#5865F2]/10', borderColor: 'border-[#5865F2]/30',
-    scopes: 'identify email guilds', redirectTo: '/dashboard/settings',
+    scopes: 'identify email guilds', redirectPath: '/dashboard/settings',
     description: 'Cuenta principal — siempre conectada',
     xpItems: ['Mensaje: +5 XP', 'Reacción recibida: +3 XP', 'Ayudar: +25 XP'],
     icon: (
@@ -52,7 +52,8 @@ const PLATFORMS: Platform[] = [
   {
     id: 'twitch', name: 'Twitch', provider: 'twitch', dbPlatform: 'TWITCH',
     color: 'text-[#9146FF]', bgColor: 'bg-[#9146FF]/10', borderColor: 'border-[#9146FF]/30',
-    scopes: 'user:read:email user:read:follows', redirectTo: '/auth/twitch',
+    scopes: 'user:read:email user:read:follows',
+    redirectPath: '/auth/twitch',
     description: 'Ganá XP por chatear, raids y subs durante el stream',
     xpItems: ['Chat en stream: +8 XP', 'Bloque 10 min: +10 XP', 'Raid: +50 XP', 'Sub: +500 XP', 'Follow: +100 XP'],
     icon: (
@@ -65,7 +66,7 @@ const PLATFORMS: Platform[] = [
     id: 'youtube', name: 'YouTube', provider: 'google', dbPlatform: 'YOUTUBE',
     color: 'text-[#FF0000]', bgColor: 'bg-[#FF0000]/10', borderColor: 'border-[#FF0000]/30',
     scopes: 'https://www.googleapis.com/auth/youtube.readonly',
-    redirectTo: '/auth/youtube',
+    redirectPath: '/auth/youtube',
     description: 'Ganá XP por suscribirte y comentar en videos del canal',
     xpItems: ['Suscribirse: +200 XP', 'Comentar video: +15 XP'],
     icon: (
@@ -77,7 +78,7 @@ const PLATFORMS: Platform[] = [
   {
     id: 'twitter', name: 'Twitter / X', provider: 'twitter', dbPlatform: 'TWITTER',
     color: 'text-foreground', bgColor: 'bg-foreground/10', borderColor: 'border-foreground/20',
-    scopes: 'tweet.read users.read', redirectTo: '/dashboard/settings',
+    scopes: 'tweet.read users.read', redirectPath: '/dashboard/settings',
     description: 'Ganá XP por compartir contenido',
     comingSoon: true,
     xpItems: ['Compartir contenido: +20 XP'],
@@ -92,15 +93,11 @@ const PLATFORMS: Platform[] = [
 export default function ConnectedAccounts({
   userId, profile, socialLinks, identities, successMessage, errorMessage,
 }: ConnectedAccountsProps) {
-  // Estado local de socialLinks para que el disconnect refleje
-  // inmediatamente sin recargar la página
   const [localLinks, setLocalLinks] = useState<UserSocialLink[]>(socialLinks)
   const [loading,    setLoading]    = useState<string | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   const supabase = createClient()
 
-  // Fuente de verdad: user_social_links para plataformas conectables
-  // Discord siempre conectado (es la cuenta principal)
   function isConnected(platform: Platform): boolean {
     if (platform.id === 'discord') return true
     return localLinks.some(l => l.platform === platform.dbPlatform)
@@ -118,11 +115,13 @@ export default function ConnectedAccounts({
       setLoading(platform.id)
       setLocalError(null)
 
+      const redirectTo = `${window.location.origin}${platform.redirectPath}`
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: platform.provider as any,
         options: {
           scopes:     platform.scopes,
-          redirectTo: `${window.location.origin}${platform.redirectTo}`,
+          redirectTo,
           queryParams: platform.id === 'youtube' ? {
             access_type: 'offline',
             prompt:      'consent',
@@ -150,10 +149,8 @@ export default function ConnectedAccounts({
 
       if (error) throw error
 
-      // Actualizar estado local inmediatamente — sin recargar
       setLocalLinks(prev => prev.filter(l => l.platform !== platform.dbPlatform))
       setLoading(null)
-
     } catch (err: any) {
       setLocalError(err.message ?? 'Error al desconectar')
       setLoading(null)
