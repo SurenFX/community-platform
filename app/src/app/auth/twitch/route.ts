@@ -3,9 +3,19 @@ import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
-  const { origin } = new URL(request.url)
-  const cookieStore = await cookies()
+  const { origin, searchParams } = new URL(request.url)
+  const code  = searchParams.get('code')
+  const error = searchParams.get('error')
 
+  if (error) {
+    return NextResponse.redirect(`${origin}/dashboard/settings?error=twitch_denied`)
+  }
+
+  if (!code) {
+    return NextResponse.redirect(`${origin}/dashboard/settings?error=no_code`)
+  }
+
+  const cookieStore = await cookies()
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -25,44 +35,58 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.redirect(`${origin}/login`)
 
   try {
-    const { data: { session } } = await supabase.auth.getSession()
-    const providerToken = session?.provider_token
+    // Intercambiar el code por un access token de Twitch directamente
+    const tokenRes = await fetch('https://id.twitch.tv/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id:     process.env.TWITCH_CLIENT_ID ?? '',
+        client_secret: process.env.TWITCH_CLIENT_SECRET ?? '',
+        code,
+        grant_type:    'authorization_code',
+        redirect_uri:  `${origin}/auth/twitch`,
+      }),
+    })
 
-    if (!providerToken) {
-      return NextResponse.redirect(`${origin}/dashboard/settings?error=no_token`)
+    const tokenData = await tokenRes.json()
+
+    if (!tokenData.access_token) {
+      console.error('Token error:', tokenData)
+      return NextResponse.redirect(`${origin}/dashboard/settings?error=token_error`)
     }
 
-    // Obtener info del usuario de Twitch con el token
-    const twitchRes = await fetch('https://api.twitch.tv/helix/users', {
+    // Obtener info del usuario de Twitch
+    const userRes = await fetch('https://api.twitch.tv/helix/users', {
       headers: {
-        'Authorization': `Bearer ${providerToken}`,
+        'Authorization': `Bearer ${tokenData.access_token}`,
         'Client-Id':     process.env.TWITCH_CLIENT_ID ?? '',
       },
     })
-    const twitchData = await twitchRes.json()
-    const twitchUser = twitchData.data?.[0]
+
+    const userData = await userRes.json()
+    const twitchUser = userData.data?.[0]
 
     if (!twitchUser) {
       return NextResponse.redirect(`${origin}/dashboard/settings?error=twitch_api`)
     }
 
-    const twitchId       = twitchUser.id
-    const twitchUsername = twitchUser.login  // username en minúsculas
+    // Guardar en user_social_links usando admin client
+    const { createClient } = await import('@supabase/supabase-js')
+    const adminClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
 
-    // Guardar en user_social_links
-    const { error } = await supabase
+    await adminClient
       .from('user_social_links')
       .upsert({
         user_id:     user.id,
         platform:    'TWITCH',
-        external_id: twitchId,
-        username:    twitchUsername,
+        external_id: twitchUser.id,
+        username:    twitchUser.login,
         is_verified: true,
       }, { onConflict: 'user_id,platform' })
-
-    if (error) {
-      return NextResponse.redirect(`${origin}/dashboard/settings?error=db_error`)
-    }
 
     return NextResponse.redirect(`${origin}/dashboard/settings?connected=twitch`)
 
