@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
-import { Sword, Trophy, Shield, Zap, AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, Loader2 } from 'lucide-react'
 
 function LoginContent() {
   const searchParams = useSearchParams()
@@ -17,7 +17,7 @@ function LoginContent() {
       await supabase.auth.signInWithOAuth({
         provider: 'discord',
         options: {
-          scopes: 'identify email guilds guilds.members.read',
+          scopes:     'identify email guilds guilds.members.read',
           redirectTo: `${window.location.origin}/auth/callback`,
         },
       })
@@ -31,44 +31,49 @@ function LoginContent() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
 
+        {/* Logo / Header */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30 mb-5 level-glow">
-            <Sword className="w-8 h-8 text-primary" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-5"
+            style={{ background: 'linear-gradient(135deg, #00D4E8, #FFD700)', padding: '2px' }}>
+            <div className="w-full h-full rounded-3xl bg-background flex items-center justify-center">
+              <span className="text-3xl">🌭</span>
+            </div>
           </div>
-          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">
-            Community Platform
+          <h1 className="text-4xl font-extrabold tracking-tight"
+            style={{ background: 'linear-gradient(90deg, #00D4E8, #FFD700)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            SalchiNeta
           </h1>
           <p className="text-muted-foreground mt-2 text-sm">
-            Tu hub de reputación y engagement gaming
+            Community Platform — Ganá XP, subí de nivel, dominá el ranking
           </p>
         </div>
 
+        {/* Features */}
         <div className="grid grid-cols-3 gap-3 mb-8">
           {[
-            { icon: Trophy, label: 'Rankings',   color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-            { icon: Shield, label: 'Reputación', color: 'text-blue-400',   bg: 'bg-blue-400/10'   },
-            { icon: Zap,    label: 'Misiones',   color: 'text-purple-400', bg: 'bg-purple-400/10' },
-          ].map(({ icon: Icon, label, color, bg }) => (
-            <div key={label} className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card border border-border">
-              <div className={`p-2 rounded-lg ${bg}`}>
-                <Icon className={`w-4 h-4 ${color}`} />
-              </div>
+            { emoji: '⚡', label: 'XP & Niveles',  color: 'from-cyan-400/20 to-cyan-400/5',   border: 'border-cyan-400/30'   },
+            { emoji: '🏆', label: 'Rankings',       color: 'from-yellow-400/20 to-yellow-400/5',border: 'border-yellow-400/30' },
+            { emoji: '🎯', label: 'Misiones',       color: 'from-red-400/20 to-red-400/5',     border: 'border-red-400/30'    },
+          ].map(({ emoji, label, color, border }) => (
+            <div key={label} className={`flex flex-col items-center gap-2 p-4 rounded-2xl bg-gradient-to-b ${color} border ${border}`}>
+              <span className="text-2xl">{emoji}</span>
               <span className="text-xs text-muted-foreground font-medium">{label}</span>
             </div>
           ))}
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-8">
+        {/* Card */}
+        <div className="bg-card border border-border rounded-2xl p-8"
+          style={{ boxShadow: '0 0 40px hsl(185 100% 45% / 0.08)' }}>
           <h2 className="text-lg font-bold text-foreground mb-1">
             Entrar a la comunidad
           </h2>
           <p className="text-sm text-muted-foreground mb-6">
-            Conectá tu Discord para empezar a ganar XP, subir de nivel
-            y participar en los rankings.
+            Conectá tu Discord y empezá a ganar XP por tu actividad en Discord, Twitch y YouTube.
           </p>
 
           {errorMessage && (
-            <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 text-destructive rounded-lg px-4 py-3 mb-5 text-sm">
+            <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 text-destructive rounded-xl px-4 py-3 mb-5 text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />
               {decodeURIComponent(errorMessage)}
             </div>
@@ -77,7 +82,8 @@ function LoginContent() {
           <button
             onClick={handleDiscordLogin}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 bg-[#5865F2] hover:bg-[#4752c4] disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 px-6 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-3 font-bold py-3.5 px-6 rounded-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
+            style={{ background: 'linear-gradient(135deg, #5865F2, #4752c4)', color: 'white' }}
           >
             {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -92,24 +98,6 @@ function LoginContent() {
           <p className="text-xs text-muted-foreground text-center mt-4">
             Al continuar aceptás los términos de uso y política de privacidad
           </p>
-        </div>
-
-        <div className="mt-4 bg-card/50 border border-border/50 rounded-xl p-4">
-          <p className="text-xs font-medium text-muted-foreground mb-2">
-            Permisos que solicitamos:
-          </p>
-          <ul className="space-y-1">
-            {[
-              'Tu nombre de usuario y avatar',
-              'Tu dirección de email',
-              'Lista de servidores en los que estás',
-            ].map((perm) => (
-              <li key={perm} className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="text-green-400">✓</span>
-                {perm}
-              </li>
-            ))}
-          </ul>
         </div>
 
       </div>
