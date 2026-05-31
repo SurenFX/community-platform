@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Shield, Ban, ShieldOff, User, Search, Loader2 } from 'lucide-react'
 import { getLevelColor, getLevelTitle, formatNumber, timeAgo } from '@/lib/utils'
+import { setUserAdmin, setUserBanned } from '@/app/actions/social'
 
 interface UserRow {
   id:               string
@@ -33,7 +33,6 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
   const [search, setSearch] = useState('')
   const [isPending, startTransition] = useTransition()
   const [actionUserId, setActionUserId] = useState<string | null>(null)
-  const supabase = createClient()
 
   const filtered = users.filter(u =>
     u.username.toLowerCase().includes(search.toLowerCase()) ||
@@ -43,12 +42,8 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
   async function toggleAdmin(userId: string, currentValue: boolean) {
     setActionUserId(userId)
     startTransition(async () => {
-      const { error } = await supabase
-        .from('profiles')
-        .update(({ is_admin: !currentValue }) as unknown as never)
-        .eq('id', userId)
-
-      if (!error) {
+      const result = await setUserAdmin(userId, !currentValue)
+      if (!result.error) {
         setUsers(prev => prev.map(u =>
           u.id === userId ? { ...u, is_admin: !currentValue } : u
         ))
@@ -60,12 +55,8 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
   async function toggleBan(userId: string, currentValue: boolean) {
     setActionUserId(userId)
     startTransition(async () => {
-      const { error } = await supabase
-        .from('profiles')
-        .update(({ is_banned: !currentValue }) as unknown as never)
-        .eq('id', userId)
-
-      if (!error) {
+      const result = await setUserBanned(userId, !currentValue)
+      if (!result.error) {
         setUsers(prev => prev.map(u =>
           u.id === userId ? { ...u, is_banned: !currentValue } : u
         ))

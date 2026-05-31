@@ -29,3 +29,58 @@ export async function disconnectSocialLink(platform: string): Promise<{ error?: 
 
   return {}
 }
+
+export async function setUserAdmin(targetUserId: string, isAdmin: boolean): Promise<{ error?: string }> {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  // Verificar que el solicitante es admin
+  const { data: me } = await supabase
+    .from('profiles').select('is_admin').eq('id', user.id).single() as any
+  if (!me?.is_admin) return { error: 'Sin permisos' }
+
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  const { error } = await admin
+    .from('profiles')
+    .update({ is_admin: isAdmin })
+    .eq('id', targetUserId)
+
+  if (error) {
+    console.error('setUserAdmin error:', error.message)
+    return { error: 'No se pudo actualizar el rol' }
+  }
+  return {}
+}
+
+export async function setUserBanned(targetUserId: string, isBanned: boolean): Promise<{ error?: string }> {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { data: me } = await supabase
+    .from('profiles').select('is_admin').eq('id', user.id).single() as any
+  if (!me?.is_admin) return { error: 'Sin permisos' }
+
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  const { error } = await admin
+    .from('profiles')
+    .update({ is_banned: isBanned })
+    .eq('id', targetUserId)
+
+  if (error) {
+    console.error('setUserBanned error:', error.message)
+    return { error: 'No se pudo actualizar el estado' }
+  }
+  return {}
+}
