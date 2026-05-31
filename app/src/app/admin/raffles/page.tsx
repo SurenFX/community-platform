@@ -36,7 +36,7 @@ export default async function AdminRafflesPage() {
       <div>
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Sorteos en vivo</h2>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Link href="/dashboard/raffles/youtube"
+          <Link href="/admin/raffles/youtube"
             className="bg-card border border-red-400/20 hover:border-red-400/50 rounded-2xl p-6 transition-all space-y-4 block">
             <div className="w-12 h-12 rounded-xl bg-red-400/10 flex items-center justify-center">
               <Youtube className="w-6 h-6 text-red-400" />
@@ -47,7 +47,7 @@ export default async function AdminRafflesPage() {
             </div>
           </Link>
 
-          <Link href="/dashboard/raffles/twitch"
+          <Link href="/admin/raffles/twitch"
             className="bg-card border border-purple-400/20 hover:border-purple-400/50 rounded-2xl p-6 transition-all space-y-4 block">
             <div className="w-12 h-12 rounded-xl bg-purple-400/10 flex items-center justify-center">
               <Tv className="w-6 h-6 text-purple-400" />
