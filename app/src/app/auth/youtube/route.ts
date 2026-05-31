@@ -68,7 +68,14 @@ export async function GET(request: NextRequest) {
     const channelId = channel.id
     const username  = channel.snippet?.title ?? channelId
 
-    const { error: linkError } = await supabase
+    // Usar admin client para bypassear RLS — igual que en el route de Twitch
+    const { createClient: createAdmin } = await import('@supabase/supabase-js')
+    const adminClient = createAdmin(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+    const { error: linkError } = await adminClient
       .from('user_social_links')
       .upsert({
         user_id:     user.id,
