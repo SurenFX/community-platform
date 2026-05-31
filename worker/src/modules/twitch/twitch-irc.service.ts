@@ -81,6 +81,13 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     this.client?.write(`${message}\r\n`)
   }
 
+  // Enviar mensaje al chat del canal
+  sendChat(message: string) {
+    const channel = this.config.get<string>('TWITCH_CHANNEL') ?? ''
+    this.send(`PRIVMSG #${channel} :${message}`)
+    this.logger.log(`Chat → ${message}`)
+  }
+
   private async handleLine(line: string) {
     if (line.startsWith('PING')) {
       this.send('PONG :tmi.twitch.tv')
@@ -99,10 +106,8 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     const botUsername = this.config.get<string>('TWITCH_BOT_USERNAME')?.toLowerCase()
     if (twitchUsername === botUsername) return
 
-    // ── Verificar si hay un sorteo activo y si el mensaje es la keyword ──
     await this.checkRaffleKeyword(twitchUsername, messageContent)
 
-    // ── XP por chat durante stream en vivo ────────────────
     if (!this.isLive) return
 
     const { data: socialLink } = await this.supabase.db
@@ -122,19 +127,14 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
       eventType:   'TWITCH_CHAT_MESSAGE',
       platform:    'TWITCH',
       externalRef: `twitch_chat_${twitchUsername}_${Date.now()}`,
-      metadata: {
-        twitch_username: twitchUsername,
-        content:         messageContent.slice(0, 200),
-      },
+      metadata: { twitch_username: twitchUsername, content: messageContent.slice(0, 200) },
     })
 
     this.activeViewers.set(twitchUsername, Date.now())
   }
 
-  // ── Detectar keyword del sorteo ────────────────────────
   private async checkRaffleKeyword(twitchUsername: string, message: string) {
     try {
-      // Buscar sorteo activo
       const { data: raffle } = await this.supabase.db
         .from('twitch_raffles')
         .select('id, keyword')
@@ -142,11 +142,8 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         .single()
 
       if (!raffle) return
-
-      // Verificar que el mensaje coincide con la keyword (case insensitive)
       if (message.toLowerCase().trim() !== raffle.keyword.toLowerCase().trim()) return
 
-      // Verificar que el usuario está registrado en la plataforma
       const { data: socialLink } = await this.supabase.db
         .from('user_social_links')
         .select('user_id')
@@ -154,9 +151,8 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         .ilike('username', twitchUsername)
         .single()
 
-      if (!socialLink) return // no registrado — ignorar
+      if (!socialLink) return
 
-      // Insertar entrada — ON CONFLICT DO NOTHING garantiza una sola vez por usuario
       const { error } = await this.supabase.db
         .from('twitch_raffle_entries')
         .insert({
@@ -168,9 +164,19 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
       if (!error) {
         this.logger.log(`Raffle entry: ${twitchUsername} → ${raffle.id}`)
       }
-    } catch (err) {
-      // Silenciar errores — el unique constraint ya maneja duplicados
-    }
+    } catch (err) {}
+  }
+
+  // ── Llamados desde el frontend via endpoint ────────────
+  async announceRaffleStart(keyword: string) {
+    this.sendChat(`🎉 ¡Sorteo iniciado! Escribí "${keyword}" en el chat para participar. ¡Solo miembros registrados en la plataforma cuentan! community-platform-app.vercel.app`)
+  }
+
+  async announceRaffleWinner(winner: string) {
+    this.sendChat(`🏆 ¡Felicitaciones a @${winner}! ¡Sos el ganador del sorteo! 🎉`)
+    setTimeout(() => {
+      this.sendChat(`Gracias a todos los que participaron. ¡Hasta el próximo sorteo!`)
+    }, 3000)
   }
 
   @Cron('*/2 * * * *')
@@ -183,14 +189,11 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         this.isLive = true
         this.activeViewers.clear()
 
-        await this.supabase.db
-          .from('stream_sessions')
-          .insert({ title: info.title, game: info.game })
-
+        await this.supabase.db.from('stream_sessions').insert({ title: info.title, game: info.game })
         await this.supabase.db.from('platform_config').upsert([
-          { key: 'stream_is_live',    value: 'true' },
-          { key: 'stream_title',      value: info.title },
-          { key: 'stream_game',       value: info.game },
+          { key: 'stream_is_live',    value: 'true'           },
+          { key: 'stream_title',      value: info.title        },
+          { key: 'stream_game',       value: info.game         },
           { key: 'stream_started_at', value: info.startedAt ?? '' },
         ])
 
@@ -201,7 +204,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
 
         await this.supabase.db.from('platform_config').upsert([
           { key: 'stream_is_live', value: 'false' },
-          { key: 'stream_title',   value: '' },
+          { key: 'stream_title',   value: ''       },
         ])
       }
     } catch (err) {
@@ -214,13 +217,11 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     if (!this.isLive) return
 
     const tenMinutesAgo = Date.now() - 10 * 60 * 1000
-    const activeInLastBlock = [...this.activeViewers.entries()]
-      .filter(([, lastMsg]) => lastMsg >= tenMinutesAgo)
-      .map(([username]) => username)
+    const active = [...this.activeViewers.entries()]
+      .filter(([, t]) => t >= tenMinutesAgo)
+      .map(([u]) => u)
 
-    if (!activeInLastBlock.length) return
-
-    for (const twitchUsername of activeInLastBlock) {
+    for (const twitchUsername of active) {
       const { data: socialLink } = await this.supabase.db
         .from('user_social_links')
         .select('user_id, profiles!inner(discord_id)')

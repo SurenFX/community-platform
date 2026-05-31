@@ -116,6 +116,14 @@ export default function TwitchRaffle() {
       setRaffle(data)
       setEntries([])
       setStage('live')
+
+      // Anunciar en el chat de Twitch
+      fetch(`${process.env.NEXT_PUBLIC_WORKER_URL}/twitch/raffle/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-worker-secret': process.env.NEXT_PUBLIC_WORKER_SECRET ?? '' },
+        body: JSON.stringify({ keyword: keyword.trim() }),
+      }).catch(() => {})
+
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -157,7 +165,7 @@ export default function TwitchRaffle() {
         setWinner(picked)
         setSpinningName(picked.twitch_username)
 
-        // Guardar ganador en DB
+        // Guardar ganador en DB y anunciar en chat
         if (raffle) {
           supabase.from('twitch_raffles').update({
             status:               'drawn',
@@ -165,6 +173,12 @@ export default function TwitchRaffle() {
             winner_id:            picked.user_id,
             drawn_at:             new Date().toISOString(),
           }).eq('id', raffle.id)
+
+          fetch(`${process.env.NEXT_PUBLIC_WORKER_URL}/twitch/raffle/winner`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-worker-secret': process.env.NEXT_PUBLIC_WORKER_SECRET ?? '' },
+            body: JSON.stringify({ winner: picked.twitch_username }),
+          }).catch(() => {})
         }
 
         setTimeout(() => setStage('winner'), 400)
