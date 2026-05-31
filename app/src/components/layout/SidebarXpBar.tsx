@@ -6,41 +6,50 @@ import { getLevelColor, getLevelTitle } from '@/lib/utils'
 import type { UserReputation } from '@/types/database'
 
 interface SidebarXpBarProps {
-  userId:         string
-  initialRep:     UserReputation | null
-  username:       string
-  avatarUrl:      string | null
+  userId:     string
+  initialRep: UserReputation | null
+  username:   string
+  avatarUrl:  string | null
+  compact?:   boolean  // solo muestra la barra, sin avatar ni nombre
 }
 
-export default function SidebarXpBar({ userId, initialRep, username, avatarUrl }: SidebarXpBarProps) {
+export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, compact }: SidebarXpBarProps) {
   const [rep, setRep] = useState(initialRep)
   const supabase = createClient()
 
   useEffect(() => {
-    const channel = supabase
-      .channel(`sidebar:${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event:  'UPDATE',
-          schema: 'public',
-          table:  'user_reputation',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => setRep(payload.new as UserReputation)
-      )
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from('user_reputation')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+      if (data) setRep(data as UserReputation)
+    }, 8000)
+    return () => clearInterval(interval)
   }, [userId])
 
-  const level        = rep?.level ?? 1
-  const totalXp      = rep?.total_xp ?? 0
+  const level          = rep?.level ?? 1
+  const totalXp        = rep?.total_xp ?? 0
   const currentLevelXp = Math.pow(level - 1, 2) * 100
   const nextLevelXp    = Math.pow(level, 2) * 100
   const progressPct    = nextLevelXp > currentLevelXp
     ? Math.min(((totalXp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100, 100)
     : 100
+
+  if (compact) {
+    return (
+      <div className="space-y-1">
+        <div className="flex justify-between text-[10px] text-muted-foreground">
+          <span className={`font-medium ${getLevelColor(level)}`}>Nv. {level} — {getLevelTitle(level)}</span>
+          <span>{totalXp.toLocaleString('es-AR')} XP</span>
+        </div>
+        <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+          <div className="h-full xp-bar rounded-full transition-all duration-700" style={{ width: `${progressPct}%` }} />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -62,17 +71,13 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl }
           <p className={`text-xs font-medium ${getLevelColor(level)}`}>{getLevelTitle(level)}</p>
         </div>
       </div>
-
       <div className="space-y-1">
         <div className="flex justify-between text-[10px] text-muted-foreground">
           <span>{totalXp.toLocaleString('es-AR')} XP</span>
           <span>Nv. {level} → {level + 1}</span>
         </div>
         <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-          <div
-            className="h-full xp-bar rounded-full transition-all duration-700"
-            style={{ width: `${progressPct}%` }}
-          />
+          <div className="h-full xp-bar rounded-full transition-all duration-700" style={{ width: `${progressPct}%` }} />
         </div>
       </div>
     </div>

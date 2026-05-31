@@ -8,11 +8,11 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error')
 
   if (error) {
-    return NextResponse.redirect(`${origin}/dashboard/settings?error=twitch_denied`)
+    return NextResponse.redirect(`${origin}/dashboard/configuracion?error=twitch_denied`)
   }
 
   if (!code) {
-    return NextResponse.redirect(`${origin}/dashboard/settings?error=no_code`)
+    return NextResponse.redirect(`${origin}/dashboard/configuracion?error=no_code`)
   }
 
   const cookieStore = await cookies()
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     if (!tokenData.access_token) {
       console.error('Token error:', tokenData)
-      return NextResponse.redirect(`${origin}/dashboard/settings?error=token_error`)
+      return NextResponse.redirect(`${origin}/dashboard/configuracion?error=token_error`)
     }
 
     // Obtener info del usuario de Twitch
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     const twitchUser = userData.data?.[0]
 
     if (!twitchUser) {
-      return NextResponse.redirect(`${origin}/dashboard/settings?error=twitch_api`)
+      return NextResponse.redirect(`${origin}/dashboard/configuracion?error=twitch_api`)
     }
 
     // Guardar en user_social_links usando admin client
@@ -88,10 +88,10 @@ export async function GET(request: NextRequest) {
         is_verified: true,
       }, { onConflict: 'user_id,platform' })
 
-    return NextResponse.redirect(`${origin}/dashboard/settings?connected=twitch`)
+    return NextResponse.redirect(`${origin}/dashboard/configuracion?connected=twitch`)
 
   } catch (err) {
     console.error('Twitch auth error:', err)
-    return NextResponse.redirect(`${origin}/dashboard/settings?error=unknown`)
+    return NextResponse.redirect(`${origin}/dashboard/configuracion?error=unknown`)
   }
 }

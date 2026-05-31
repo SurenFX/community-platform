@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     if (!providerToken) {
       console.error('No provider token found')
-      return NextResponse.redirect(`${origin}/dashboard/settings?error=no_token`)
+      return NextResponse.redirect(`${origin}/dashboard/configuracion?error=no_token`)
     }
 
     // Llamar a la API de YouTube con el token del usuario
@@ -47,13 +47,13 @@ export async function GET(request: NextRequest) {
 
     if (ytData.error) {
       console.error('YouTube API error:', ytData.error.message)
-      return NextResponse.redirect(`${origin}/dashboard/settings?error=youtube_api`)
+      return NextResponse.redirect(`${origin}/dashboard/configuracion?error=youtube_api`)
     }
 
     const channel = ytData.items?.[0]
     if (!channel) {
       // El usuario no tiene canal de YouTube
-      return NextResponse.redirect(`${origin}/dashboard/settings?error=no_channel`)
+      return NextResponse.redirect(`${origin}/dashboard/configuracion?error=no_channel`)
     }
 
     const channelId = channel.id
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
 
     if (linkError) {
       console.error('Error saving YouTube link:', linkError.message)
-      return NextResponse.redirect(`${origin}/dashboard/settings?error=db_error`)
+      return NextResponse.redirect(`${origin}/dashboard/configuracion?error=db_error`)
     }
 
     // Notificar al worker para verificar suscripción
@@ -90,10 +90,10 @@ export async function GET(request: NextRequest) {
       }),
     }).catch(() => {}) // no bloquear si el worker no responde
 
-    return NextResponse.redirect(`${origin}/dashboard/settings?connected=youtube`)
+    return NextResponse.redirect(`${origin}/dashboard/configuracion?connected=youtube`)
 
   } catch (err) {
     console.error('YouTube auth error:', err)
-    return NextResponse.redirect(`${origin}/dashboard/settings?error=unknown`)
+    return NextResponse.redirect(`${origin}/dashboard/configuracion?error=unknown`)
   }
 }
