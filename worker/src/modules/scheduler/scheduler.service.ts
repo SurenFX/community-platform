@@ -1,12 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
+import { StreakService } from '../reputation/streak.service'
 
 @Injectable()
 export class SchedulerService {
   private readonly logger = new Logger(SchedulerService.name)
 
-  constructor(private supabase: SupabaseService) {}
+  constructor(
+    private supabase: SupabaseService,
+    private streak:   StreakService,
+  ) {}
 
   /**
    * Actualizar streaks — corre cada día a las 02:00 AM
@@ -14,33 +18,9 @@ export class SchedulerService {
    */
   @Cron('0 2 * * *')
   async updateDailyStreaks() {
-    this.logger.log('Cron: actualizando streaks diarios...')
-
-    try {
-      // Usuarios activos en las últimas 48h
-      const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
-
-      const { data: activeUsers } = await this.supabase.db
-        .from('xp_events')
-        .select('user_id')
-        .gte('created_at', cutoff)
-        .order('user_id')
-
-      if (!activeUsers?.length) return
-
-      // Deduplicar user_ids
-      const userIds = [...new Set(activeUsers.map(u => u.user_id))]
-      this.logger.log(`Procesando streaks para ${userIds.length} usuarios`)
-
-      // Llamar a la función SQL para cada usuario
-      for (const userId of userIds) {
-        await this.supabase.db.rpc('update_streak', { p_user_id: userId })
-      }
-
-      this.logger.log('✓ Streaks actualizados')
-    } catch (err) {
-      this.logger.error(`Error en updateDailyStreaks: ${err}`)
-    }
+    this.logger.log('Cron: reseteando streaks de usuarios inactivos...')
+    await this.streak.resetInactiveStreaks()
+    this.logger.log('✓ Streaks actualizados')
   }
 
   /**

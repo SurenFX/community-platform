@@ -4,6 +4,7 @@ import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
 import { RedisService } from '../../infrastructure/redis/redis.service'
 import { AntiSpamService } from './anti-spam.service'
 import { BadgeService } from './badge.service'
+import { StreakService } from './streak.service'
 import { XpCalculatorService, XpEventType, SocialPlatform } from './xp-calculator.service'
 
 export interface IncomingXpEvent {
@@ -33,6 +34,7 @@ export class ReputationService {
     private xpCalc:       XpCalculatorService,
     private eventEmitter: EventEmitter2,
     private badges:       BadgeService,
+    private streak:       StreakService,
   ) {}
 
   async processXpEvent(event: IncomingXpEvent): Promise<XpResult> {
@@ -143,8 +145,11 @@ export class ReputationService {
         userId: profile.id, eventType: event.eventType,
       })
 
-      // 8. Evaluar badges en background (no bloquea la respuesta)
-      this.checkBadgesAsync(profile.id, event.eventType, xpResult.new_level)
+      // 8. Actualizar streak del día
+      const streakResult = await this.streak.updateStreak(profile.id)
+
+      // 9. Evaluar badges en background (no bloquea la respuesta)
+      this.checkBadgesAsync(profile.id, event.eventType, xpResult.new_level, streakResult.currentStreak)
 
       return {
         success:   true,
@@ -159,7 +164,7 @@ export class ReputationService {
     }
   }
 
-  private async checkBadgesAsync(userId: string, eventType: string, newLevel: number) {
+  private async checkBadgesAsync(userId: string, eventType: string, newLevel: number, currentStreak = 0) {
     try {
       // Obtener datos necesarios para evaluar condiciones
       const { data: rep } = await this.supabase.db
