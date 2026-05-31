@@ -8,44 +8,40 @@ export class MissionsService {
 
   constructor(private supabase: SupabaseService) {}
 
-  /**
-   * Se dispara cada vez que se otorga XP.
-   * Actualiza el progreso de misiones activas del usuario
-   * que tengan el mismo objective_type que el evento.
-   */
+  // ── Se dispara en cada evento de XP exitoso ─────────────────────────────
   @OnEvent('xp.awarded')
-  async updateMissionProgress(payload: {
-    userId:    string
-    eventType: string
-  }) {
+  async updateMissionProgress(payload: { userId: string; eventType: string }) {
     try {
+      // 1. Asegurar que el usuario esté inscripto en misiones activas
+      await this.enrollUserInActiveMissions(payload.userId)
+
       const now = new Date().toISOString()
 
-      // Buscar misiones activas del usuario con ese objetivo
+      // 2. Buscar user_missions activas con objetivo = este tipo de evento
       const { data: userMissions } = await this.supabase.db
         .from('user_missions')
-        .select('id, progress, missions!inner(id, target_count, xp_reward, ticket_reward, objective_type, ends_at)')
-        .eq('user_id', payload.userId)
-        .eq('is_completed', false)
-        .eq('missions.objective_type', payload.eventType)
-        .eq('missions.is_active', true)
-        .gt('missions.ends_at', now)
+        .select('id, progress, missions!inner(id, target_count, xp_reward, ticket_reward, ends_at)')
+        .eq('user_id',                  payload.userId)
+        .eq('is_completed',             false)
+        .eq('missions.objective_type',  payload.eventType)
+        .eq('missions.is_active',       true)
+        .gt('missions.ends_at',         now)
 
       if (!userMissions?.length) return
 
-      for (const um of userMissions) {
-        const mission = (um as any).missions
+      for (const um of userMissions as any[]) {
+        const mission     = um.missions
         const newProgress = um.progress + 1
 
         if (newProgress >= mission.target_count) {
-          // ✅ Misión completada
           await this.completeMission(payload.userId, um.id, mission)
         } else {
-          // Actualizar progreso
           await this.supabase.db
             .from('user_missions')
             .update({ progress: newProgress })
             .eq('id', um.id)
+
+          this.logger.debug(`Mission progress: user=${payload.userId} +1 (${newProgress}/${mission.target_count})`)
         }
       }
     } catch (err) {
@@ -53,26 +49,23 @@ export class MissionsService {
     }
   }
 
+  // ── Completar misión + otorgar recompensas ──────────────────────────────
   private async completeMission(
-    userId: string,
+    userId:        string,
     userMissionId: string,
-    mission: { id: string; xp_reward: number; ticket_reward: number }
+    mission:       { id: string; xp_reward: number; ticket_reward: number; target_count: number }
   ) {
-    // Marcar como completada
+    // Marcar completada
     await this.supabase.db
       .from('user_missions')
-      .update({ is_completed: true, completed_at: new Date().toISOString() })
+      .update({
+        is_completed: true,
+        progress:     mission.target_count ?? 0,
+        completed_at: new Date().toISOString(),
+      })
       .eq('id', userMissionId)
 
-    // Otorgar recompensas
-    await this.supabase.db
-      .from('user_reputation')
-      .update({
-        total_xp:      this.supabase.db.rpc as any, // se hace via RPC
-        raffle_tickets: this.supabase.db.rpc as any,
-      })
-
-    // Usar RPC para atomicidad
+    // Otorgar XP de recompensa vía RPC
     if (mission.xp_reward > 0) {
       await this.supabase.db.rpc('award_xp', {
         p_user_id:    userId,
@@ -82,27 +75,33 @@ export class MissionsService {
         p_base_xp:    mission.xp_reward,
         p_multiplier: 1.0,
         p_quality:    1.0,
-        p_streak:     1.0,
+        p_streak:     0,
         p_ref:        mission.id,
         p_metadata:   { mission_id: mission.id },
       })
     }
 
-    // Otorgar tickets
+    // Otorgar tickets: fetch actual + increment
     if (mission.ticket_reward > 0) {
+      const { data: rep } = await this.supabase.db
+        .from('user_reputation')
+        .select('raffle_tickets')
+        .eq('user_id', userId)
+        .single()
+
+      const current = (rep as any)?.raffle_tickets ?? 0
       await this.supabase.db
         .from('user_reputation')
-        .update({ raffle_tickets: { increment: mission.ticket_reward } as any })
+        .update({ raffle_tickets: current + mission.ticket_reward })
         .eq('user_id', userId)
     }
 
-    this.logger.log(`Mission completed: user=${userId} mission=${mission.id} xp=${mission.xp_reward}`)
+    this.logger.log(
+      `✅ Misión completada: user=${userId} xp=+${mission.xp_reward} tickets=+${mission.ticket_reward}`
+    )
   }
 
-  /**
-   * Asegura que el usuario tenga registros en user_missions
-   * para todas las misiones activas (se llama al primer evento del día)
-   */
+  // ── Inscribir usuario en todas las misiones activas que no tenga aún ────
   async enrollUserInActiveMissions(userId: string) {
     const now = new Date().toISOString()
 
@@ -115,15 +114,20 @@ export class MissionsService {
 
     if (!activeMissions?.length) return
 
-    // Upsert — no falla si ya existe
-    const inserts = activeMissions.map(m => ({
-      user_id:    userId,
-      mission_id: m.id,
-      progress:   0,
-    }))
-
-    await this.supabase.db
+    // Obtener en qué misiones ya está inscripto
+    const { data: existing } = await this.supabase.db
       .from('user_missions')
-      .upsert(inserts, { onConflict: 'user_id,mission_id', ignoreDuplicates: true })
+      .select('mission_id')
+      .eq('user_id', userId)
+
+    const existingIds = new Set((existing ?? []).map((um: any) => um.mission_id))
+    const toInsert    = activeMissions
+      .filter((m: any) => !existingIds.has(m.id))
+      .map((m: any) => ({ user_id: userId, mission_id: m.id, progress: 0 }))
+
+    if (toInsert.length > 0) {
+      await this.supabase.db.from('user_missions').insert(toInsert)
+      this.logger.debug(`Enrolled user=${userId} in ${toInsert.length} missions`)
+    }
   }
 }
