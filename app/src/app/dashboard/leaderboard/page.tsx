@@ -7,11 +7,39 @@ export default async function LeaderboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Top 50 con todos los campos de XP
   const { data: entries } = await supabase
     .from('user_reputation')
     .select('user_id, total_xp, weekly_xp, monthly_xp, level, profiles!inner(username, avatar_url)')
     .order('total_xp', { ascending: false })
     .limit(50)
+
+  // Datos propios para calcular el rank
+  const { data: myRep } = await supabase
+    .from('user_reputation')
+    .select('total_xp, weekly_xp, monthly_xp')
+    .eq('user_id', user.id)
+    .single() as any as { data: { total_xp: number; weekly_xp: number; monthly_xp: number } | null }
+
+  let myRank = null
+
+  if (myRep) {
+    // Contar cuántos usuarios tienen más XP en cada período
+    const [rankTotal, rankWeekly, rankMonthly] = await Promise.all([
+      supabase.from('user_reputation').select('*', { count: 'exact', head: true }).gt('total_xp',   myRep.total_xp),
+      supabase.from('user_reputation').select('*', { count: 'exact', head: true }).gt('weekly_xp',  myRep.weekly_xp),
+      supabase.from('user_reputation').select('*', { count: 'exact', head: true }).gt('monthly_xp', myRep.monthly_xp),
+    ])
+
+    myRank = {
+      total_xp:    myRep.total_xp,
+      weekly_xp:   myRep.weekly_xp,
+      monthly_xp:  myRep.monthly_xp,
+      rank_total:   (rankTotal.count  ?? 0) + 1,
+      rank_weekly:  (rankWeekly.count ?? 0) + 1,
+      rank_monthly: (rankMonthly.count ?? 0) + 1,
+    }
+  }
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
@@ -23,6 +51,7 @@ export default async function LeaderboardPage() {
       <LeaderboardTable
         entries={(entries ?? []) as any}
         currentUserId={user.id}
+        myRank={myRank}
       />
     </div>
   )
