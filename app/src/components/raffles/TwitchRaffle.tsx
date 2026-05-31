@@ -21,7 +21,7 @@ interface ActiveRaffle {
 
 type Stage = 'setup' | 'live' | 'spinning' | 'winner'
 
-export default function TwitchRaffle() {
+export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { backHref?: string }) {
   const [keyword,      setKeyword]      = useState('')
   const [raffle,       setRaffle]       = useState<ActiveRaffle | null>(null)
   const [entries,      setEntries]      = useState<Entry[]>([])
@@ -203,7 +203,7 @@ export default function TwitchRaffle() {
 
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/raffles" className="p-2 rounded-lg hover:bg-secondary transition-colors">
+        <Link href={backHref} className="p-2 rounded-lg hover:bg-secondary transition-colors">
           <ArrowLeft className="w-5 h-5 text-muted-foreground" />
         </Link>
         <div>

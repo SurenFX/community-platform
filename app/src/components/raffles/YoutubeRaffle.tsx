@@ -30,7 +30,7 @@ interface Comment {
 
 type Stage = 'select' | 'confirm' | 'spinning' | 'winner'
 
-export default function YoutubeRaffle() {
+export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { backHref?: string }) {
   const [videos,          setVideos]          = useState<Video[]>([])
   const [loadingVideos,   setLoadingVideos]   = useState(true)
   const [selectedVideo,   setSelectedVideo]   = useState<Video | null>(null)
@@ -195,7 +195,7 @@ export default function YoutubeRaffle() {
     <div className="max-w-4xl mx-auto space-y-6">
 
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/raffles" className="p-2 rounded-lg hover:bg-secondary transition-colors">
+        <Link href={backHref} className="p-2 rounded-lg hover:bg-secondary transition-colors">
           <ArrowLeft className="w-5 h-5 text-muted-foreground" />
         </Link>
         <div>
