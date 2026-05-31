@@ -148,3 +148,76 @@ export async function grantXp(
 
   return {}
 }
+
+// ── Raffles ────────────────────────────────────────────────────────────────
+interface RaffleInput {
+  title:         string
+  description:   string
+  prize:         string
+  use_weighted:  boolean
+  min_level:     number | null
+  min_xp:        number | null
+  starts_at:     string
+  ends_at:       string
+}
+
+export async function createRaffle(data: RaffleInput): Promise<{ id?: string; error?: string }> {
+  const { error: authError, admin } = await getAdminClient()
+  if (authError || !admin) return { error: authError ?? 'Error' }
+
+  const { data: raffle, error } = await admin
+    .from('raffles')
+    .insert({ ...data, status: 'ACTIVE', required_platforms: [] })
+    .select('id')
+    .single()
+
+  if (error) return { error: 'No se pudo crear el sorteo' }
+  return { id: (raffle as any).id }
+}
+
+export async function drawRaffle(raffleId: string): Promise<{ winner?: string; error?: string }> {
+  const { error: authError, admin } = await getAdminClient()
+  if (authError || !admin) return { error: authError ?? 'Error' }
+
+  // Obtener todos los participantes con sus tickets
+  const { data: pool } = await admin
+    .from('raffle_pools')
+    .select('user_id, tickets')
+    .eq('raffle_id', raffleId)
+
+  if (!pool?.length) return { error: 'No hay participantes' }
+
+  // Obtener configuración del sorteo
+  const { data: raffle } = await admin
+    .from('raffles')
+    .select('use_weighted')
+    .eq('id', raffleId)
+    .single()
+
+  let winnerId: string
+
+  if ((raffle as any)?.use_weighted) {
+    // Sorteo ponderado: cada ticket es una entrada
+    const entries: string[] = []
+    for (const p of pool as any[]) {
+      for (let i = 0; i < (p.tickets || 1); i++) entries.push(p.user_id)
+    }
+    winnerId = entries[Math.floor(Math.random() * entries.length)]
+  } else {
+    // Sorteo igual: un voto por participante
+    const p = (pool as any[])[Math.floor(Math.random() * pool.length)]
+    winnerId = p.user_id
+  }
+
+  await admin.from('raffles').update({
+    status:    'DRAWN',
+    winner_id: winnerId,
+    drawn_at:  new Date().toISOString(),
+  }).eq('id', raffleId)
+
+  // Obtener username del ganador
+  const { data: winner } = await admin
+    .from('profiles').select('username').eq('id', winnerId).single()
+
+  return { winner: (winner as any)?.username ?? winnerId }
+}

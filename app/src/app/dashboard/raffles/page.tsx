@@ -53,9 +53,9 @@ export default async function RafflesPage() {
       bg:          'bg-yellow-400/10',
       border:      'border-yellow-400/20 hover:border-yellow-400/50',
       href:        '/dashboard/raffles/platform',
-      available:   false,
-      badge:       'Próximamente',
-      badgeColor:  'bg-secondary text-muted-foreground',
+      available:   true,
+      badge:       'Disponible',
+      badgeColor:  'bg-green-400/15 text-green-400',
     },
   ]
 

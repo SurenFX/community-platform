@@ -84,3 +84,48 @@ export async function setUserBanned(targetUserId: string, isBanned: boolean): Pr
   }
   return {}
 }
+
+export async function enterRaffle(raffleId: string, ticketsToUse: number): Promise<{ error?: string }> {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  if (ticketsToUse < 1) return { error: 'Mínimo 1 ticket' }
+
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  // Verificar tickets disponibles
+  const { data: rep } = await admin
+    .from('user_reputation').select('raffle_tickets').eq('user_id', user.id).single()
+  const available = (rep as any)?.raffle_tickets ?? 0
+  if (available < ticketsToUse) return { error: `Solo tenés ${available} tickets disponibles` }
+
+  // Verificar que el sorteo existe y está activo
+  const { data: raffle } = await admin
+    .from('raffles').select('id, status').eq('id', raffleId).single()
+  if (!raffle || (raffle as any).status !== 'ACTIVE') return { error: 'Sorteo no disponible' }
+
+  // Upsert en raffle_pools (acumula tickets si ya participó)
+  const { data: existing } = await admin
+    .from('raffle_pools').select('id, tickets').eq('raffle_id', raffleId).eq('user_id', user.id).single()
+
+  if (existing) {
+    await admin.from('raffle_pools')
+      .update({ tickets: (existing as any).tickets + ticketsToUse })
+      .eq('id', (existing as any).id)
+  } else {
+    await admin.from('raffle_pools')
+      .insert({ raffle_id: raffleId, user_id: user.id, tickets: ticketsToUse })
+  }
+
+  // Descontar tickets del usuario
+  await admin.from('user_reputation')
+    .update({ raffle_tickets: available - ticketsToUse })
+    .eq('user_id', user.id)
+
+  return {}
+}
