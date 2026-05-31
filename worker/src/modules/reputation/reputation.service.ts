@@ -3,6 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter'
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
 import { RedisService } from '../../infrastructure/redis/redis.service'
 import { AntiSpamService } from './anti-spam.service'
+import { BadgeService } from './badge.service'
 import { XpCalculatorService, XpEventType, SocialPlatform } from './xp-calculator.service'
 
 export interface IncomingXpEvent {
@@ -31,6 +32,7 @@ export class ReputationService {
     private antiSpam:     AntiSpamService,
     private xpCalc:       XpCalculatorService,
     private eventEmitter: EventEmitter2,
+    private badges:       BadgeService,
   ) {}
 
   async processXpEvent(event: IncomingXpEvent): Promise<XpResult> {
@@ -141,6 +143,9 @@ export class ReputationService {
         userId: profile.id, eventType: event.eventType,
       })
 
+      // 8. Evaluar badges en background (no bloquea la respuesta)
+      this.checkBadgesAsync(profile.id, event.eventType, xpResult.new_level)
+
       return {
         success:   true,
         xpAwarded: xpResult.xp_awarded,
@@ -151,6 +156,37 @@ export class ReputationService {
     } catch (err) {
       this.logger.error(`processXpEvent error: ${err}`)
       return { success: false, reason: 'INTERNAL_ERROR' }
+    }
+  }
+
+  private async checkBadgesAsync(userId: string, eventType: string, newLevel: number) {
+    try {
+      // Obtener datos necesarios para evaluar condiciones
+      const { data: rep } = await this.supabase.db
+        .from('user_reputation')
+        .select('current_streak, twitch_minutes')
+        .eq('user_id', userId)
+        .single()
+
+      const { data: profile } = await this.supabase.db
+        .from('profiles')
+        .select('created_at')
+        .eq('id', userId)
+        .single()
+
+      const awarded = await this.badges.checkAndAwardBadges(userId, {
+        newLevel,
+        eventType,
+        currentStreak:  rep?.current_streak  ?? 0,
+        twitchMinutes:  rep?.twitch_minutes   ?? 0,
+        joinedAt:       profile?.created_at   ?? '',
+      })
+
+      if (awarded.length > 0) {
+        this.eventEmitter.emit('badge.earned', { userId, badges: awarded })
+      }
+    } catch (err) {
+      this.logger.warn(`checkBadgesAsync error: ${err}`)
     }
   }
 }

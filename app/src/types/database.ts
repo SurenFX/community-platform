@@ -29,7 +29,7 @@ export type XpEventType =
   | 'ADMIN_MANUAL_GRANT'
 
 export type MissionType = 'DAILY' | 'WEEKLY' | 'SPECIAL' | 'EVENT'
-export type BadgeTier = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'LEGENDARY'
+export type BadgeTier = 'BRONZE' | 'SILVER' | 'GOLD' | 'LEGENDARY'
 export type RaffleStatus = 'PENDING' | 'ACTIVE' | 'DRAWN' | 'CANCELLED'
 export type StreakType = 'DAILY_ACTIVE' | 'STREAM_VIEWER' | 'WEEKLY_PARTICIPANT'
 
@@ -135,7 +135,7 @@ export interface Badge {
   slug: string
   name: string
   description: string
-  icon_url: string
+  image_url: string
   tier: BadgeTier
   condition: Json
   is_secret: boolean
