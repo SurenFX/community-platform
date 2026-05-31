@@ -25,29 +25,23 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // IMPORTANTE: no agregar lógica entre createServerClient y auth.getUser()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  // Rutas que requieren sesión
-  const protectedPaths = ['/dashboard', '/profile', '/leaderboard', '/missions', '/raffles']
-  const adminPaths = ['/admin']
   const pathname = request.nextUrl.pathname
 
+  const protectedPaths = ['/dashboard', '/admin']
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p))
-  const isAdmin = adminPaths.some((p) => pathname.startsWith(p))
 
   // Sin sesión → redirigir al login
-  if ((isProtected || isAdmin) && !user) {
+  if (isProtected && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     url.searchParams.set('redirect', pathname)
     return NextResponse.redirect(url)
   }
 
-  // Ruta admin → verificar rol en DB
-  if (isAdmin && user) {
+  // Ruta admin → verificar rol
+  if (pathname.startsWith('/admin') && user) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('is_admin')
