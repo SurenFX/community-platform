@@ -227,6 +227,12 @@ export default function AdminRafflesClient({ raffles: initial, poolMap }: AdminR
                   </div>
                   <h3 className="text-sm font-bold text-foreground">{raffle.title}</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">🎁 {raffle.prize}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {new Date(raffle.ends_at) < new Date()
+                      ? <span className="text-destructive">Venció el {new Date(raffle.ends_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                      : <>Cierra el {new Date(raffle.ends_at).toLocaleDateString('es-AR', { day: 'numeric', month: 'short', year: 'numeric' })}</>
+                    }
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-4 shrink-0">
