@@ -106,3 +106,45 @@ export async function toggleMissionActive(id: string, isActive: boolean): Promis
   }
   return {}
 }
+
+// ── XP Manual ──────────────────────────────────────────────────────────────
+export async function grantXp(
+  targetUserId: string,
+  amount: number,
+  reason?: string,
+): Promise<{ error?: string }> {
+  if (amount <= 0 || amount > 10000) return { error: 'Cantidad inválida (1-10000)' }
+
+  const { error: authError, admin } = await getAdminClient()
+  if (authError || !admin) return { error: authError ?? 'Error' }
+
+  // Obtener discord_id del usuario para el worker
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('discord_id, discord_tag')
+    .eq('id', targetUserId)
+    .single()
+
+  if (!profile) return { error: 'Usuario no encontrado' }
+
+  // Llamar al RPC award_xp directamente (mismo que usa el worker)
+  const { error: rpcError } = await admin.rpc('award_xp', {
+    p_user_id:    targetUserId,
+    p_event_type: 'ADMIN_MANUAL_GRANT',
+    p_platform:   'DISCORD',
+    p_xp:         amount,
+    p_base_xp:    amount,
+    p_multiplier: 1,
+    p_quality:    1,
+    p_streak:     0,
+    p_ref:        reason ? `admin_grant_${Date.now()}` : null,
+    p_metadata:   reason ? { reason } : null,
+  })
+
+  if (rpcError) {
+    console.error('grantXp error:', rpcError.message)
+    return { error: 'No se pudo otorgar el XP' }
+  }
+
+  return {}
+}

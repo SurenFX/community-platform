@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Shield, Ban, ShieldOff, User, Search, Loader2 } from 'lucide-react'
+import { Shield, Ban, ShieldOff, User, Search, Loader2, Zap } from 'lucide-react'
+import GrantXpModal from './GrantXpModal'
 import { getLevelColor, getLevelTitle, formatNumber, timeAgo } from '@/lib/utils'
 import { setUserAdmin, setUserBanned } from '@/app/actions/social'
 
@@ -33,6 +34,7 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
   const [search, setSearch] = useState('')
   const [isPending, startTransition] = useTransition()
   const [actionUserId, setActionUserId] = useState<string | null>(null)
+  const [grantTarget, setGrantTarget] = useState<{ id: string; username: string } | null>(null)
 
   const filtered = users.filter(u =>
     u.username.toLowerCase().includes(search.toLowerCase()) ||
@@ -66,6 +68,7 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
   }
 
   return (
+    <>
     <div className="space-y-4">
       {/* Búsqueda */}
       <div className="relative">
@@ -182,6 +185,13 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
                             >
                               <Ban className="w-4 h-4" />
                             </button>
+                            <button
+                              onClick={() => setGrantTarget({ id: user.id, username: user.username })}
+                              title="Otorgar XP"
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-yellow-400 hover:bg-yellow-400/10 transition-all"
+                            >
+                              <Zap className="w-4 h-4" />
+                            </button>
                           </>
                         )}
                       </div>
@@ -200,5 +210,24 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
         )}
       </div>
     </div>
+
+
+    {grantTarget && (
+      <GrantXpModal
+        userId={grantTarget.id}
+        username={grantTarget.username}
+        onClose={() => setGrantTarget(null)}
+        onGranted={(amount) => {
+          setUsers(prev => prev.map(u =>
+            u.id === grantTarget.id
+              ? { ...u, user_reputation: u.user_reputation
+                  ? { ...u.user_reputation, total_xp: u.user_reputation.total_xp + amount }
+                  : u.user_reputation }
+              : u
+          ))
+        }}
+      />
+    )}
+    </>
   )
 }
