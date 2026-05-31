@@ -33,9 +33,14 @@ export default function Sidebar({ profile }: SidebarProps) {
           <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
             <Shield className="w-4 h-4 text-primary" />
           </div>
-          <span className="font-bold text-foreground text-sm tracking-wide uppercase">
-            Community
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold text-foreground text-sm tracking-wide uppercase">
+              Community
+            </span>
+            <span className="text-[9px] font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded-full tracking-wide">
+              BETA
+            </span>
+          </div>
         </div>
       </div>
 
