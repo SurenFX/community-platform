@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Save, Loader2, ToggleLeft, ToggleRight } from 'lucide-react'
+import { updateXpConfig } from '@/app/actions/admin'
 import type { XpConfig } from '@/types/database'
 
 const EVENT_LABELS: Record<string, string> = {
@@ -43,23 +43,18 @@ export default function XpConfigAdmin({ configs: initialConfigs }: { configs: Xp
   const [configs, setConfigs] = useState(initialConfigs)
   const [saved,   setSaved]   = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const supabase = createClient()
-
   function updateConfig(id: string, field: keyof XpConfig, value: any) {
     setConfigs(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c))
   }
 
   async function saveConfig(config: XpConfig) {
     startTransition(async () => {
-      await supabase
-        .from('xp_config')
-        .update({
+      await updateXpConfig(config.id, {
           base_xp:      config.base_xp,
           cooldown_sec: config.cooldown_sec,
           daily_cap:    config.daily_cap,
           is_enabled:   config.is_enabled,
-        } as unknown as never)
-        .eq('id', config.id)
+        })
 
       setSaved(config.id)
       setTimeout(() => setSaved(null), 2000)

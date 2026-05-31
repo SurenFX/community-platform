@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Plus, Edit2, ToggleLeft, ToggleRight, Loader2, X, Check } from 'lucide-react'
+import { createMission, updateMission, toggleMissionActive } from '@/app/actions/admin'
 import type { Mission, MissionType, XpEventType } from '@/types/database'
 
 const TYPE_COLORS: Record<MissionType, string> = {
@@ -44,8 +44,6 @@ export default function MissionsAdmin({ missions: initialMissions }: MissionsAdm
   const [form,       setForm]       = useState(EMPTY_FORM)
   const [isPending,  startTransition] = useTransition()
   const [actionId,   setActionId]   = useState<string | null>(null)
-  const supabase = createClient()
-
   function openCreate() {
     setForm(EMPTY_FORM)
     setEditId(null)
@@ -78,13 +76,11 @@ export default function MissionsAdmin({ missions: initialMissions }: MissionsAdm
       }
 
       if (editId) {
-        const { data: updated } = await supabase
-          .from('missions').update(data as unknown as never).eq('id', editId).select().single() as any
-        if (updated) setMissions(prev => prev.map(m => m.id === editId ? updated : m))
+        const result = await updateMission(editId, data)
+        if (result.data) setMissions(prev => prev.map(m => m.id === editId ? result.data! : m))
       } else {
-        const { data: created } = await supabase
-          .from('missions').insert(data as unknown as never).select().single() as any
-        if (created) setMissions(prev => [created, ...prev])
+        const result = await createMission(data)
+        if (result.data) setMissions(prev => [result.data!, ...prev])
       }
       setShowForm(false)
     })
@@ -93,12 +89,12 @@ export default function MissionsAdmin({ missions: initialMissions }: MissionsAdm
   async function toggleActive(mission: Mission) {
     setActionId(mission.id)
     startTransition(async () => {
-      const { data: updated } = await supabase
-        .from('missions')
-        .update(({ is_active: !mission.is_active }) as unknown as never)
-        .eq('id', mission.id)
-        .select().single()
-      if (updated) setMissions(prev => prev.map(m => m.id === mission.id ? updated : m))
+      const result = await toggleMissionActive(mission.id, !mission.is_active)
+      if (!result.error) {
+        setMissions(prev => prev.map(m =>
+          m.id === mission.id ? { ...m, is_active: !mission.is_active } : m
+        ))
+      }
       setActionId(null)
     })
   }
