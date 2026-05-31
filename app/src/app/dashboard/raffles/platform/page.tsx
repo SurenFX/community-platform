@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import PlatformRaffleClient from '@/components/raffles/PlatformRaffle'
 
@@ -7,17 +8,24 @@ export default async function PlatformRafflePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  // Admin client para bypassear RLS en raffles y raffle_pools
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
   const [rafflesRes, repRes, myPoolRes] = await Promise.all([
-    supabase.from('raffles').select('*').eq('status', 'ACTIVE')
-      .lte('starts_at', new Date().toISOString()).order('ends_at') as any,
-    supabase.from('user_reputation').select('raffle_tickets, level, total_xp')
-      .eq('user_id', user.id).single() as any,
-    supabase.from('raffle_pools').select('raffle_id, tickets').eq('user_id', user.id) as any,
+    admin.from('raffles').select('*').eq('status', 'ACTIVE')
+      .lte('starts_at', new Date().toISOString()).order('ends_at'),
+    admin.from('user_reputation').select('raffle_tickets, level, total_xp')
+      .eq('user_id', user.id).single(),
+    admin.from('raffle_pools').select('raffle_id, tickets').eq('user_id', user.id),
   ])
 
-  const raffles   = rafflesRes.data  ?? []
-  const rep       = repRes.data
-  const myPools   = myPoolRes.data   ?? []
+  const raffles   = (rafflesRes.data  ?? []) as any[]
+  const rep       = repRes.data       as any
+  const myPools   = (myPoolRes.data   ?? []) as any[]
   const myTickets = rep?.raffle_tickets ?? 0
 
   return (

@@ -36,6 +36,7 @@ const EVENT_LABELS: Record<string, string> = {
   DISCORD_REACTION_RECEIVED: 'Reacción recibida',
   DISCORD_HELPED_USER:       'Ayudaste a alguien',
   TWITCH_WATCH_TIME:         'Viste el stream',
+  TWITCH_CHAT_MESSAGE:       'Chat en Twitch',
   TWITCH_RAID_PARTICIPATE:   'Raid de Twitch',
   YOUTUBE_COMMENT:           'Comentario en YouTube',
   YOUTUBE_SHARE:             'Compartiste video',
