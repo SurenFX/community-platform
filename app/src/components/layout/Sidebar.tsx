@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { signOut } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard, Trophy, Target, Ticket,
+  LayoutDashboard, Trophy, Target,
   User, LogOut, Settings, Shield, Sliders,
 } from 'lucide-react'
 import SidebarXpBar from './SidebarXpBar'
@@ -16,11 +16,10 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { href: '/dashboard',                 label: 'Dashboard',    icon: LayoutDashboard },
-  { href: '/dashboard/leaderboard',     label: 'Leaderboard',  icon: Trophy          },
-  { href: '/dashboard/missions',        label: 'Misiones',     icon: Target          },
-  { href: '/dashboard/raffles',         label: 'Sorteos',      icon: Ticket          },
-  { href: '/dashboard/settings',        label: 'Mis cuentas',  icon: Sliders         },
+  { href: '/dashboard',                 label: 'Dashboard',   icon: LayoutDashboard },
+  { href: '/dashboard/leaderboard',     label: 'Leaderboard', icon: Trophy          },
+  { href: '/dashboard/missions',        label: 'Misiones',    icon: Target          },
+  { href: '/dashboard/settings',        label: 'Mis cuentas', icon: Sliders         },
 ]
 
 export default function Sidebar({ profile }: SidebarProps) {
@@ -29,7 +28,6 @@ export default function Sidebar({ profile }: SidebarProps) {
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-card border-r border-border flex flex-col z-40">
 
-      {/* Logo */}
       <div className="p-5 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
@@ -41,7 +39,6 @@ export default function Sidebar({ profile }: SidebarProps) {
         </div>
       </div>
 
-      {/* User + XP bar */}
       {profile && (
         <div className="p-4 border-b border-border">
           <SidebarXpBar
@@ -53,15 +50,12 @@ export default function Sidebar({ profile }: SidebarProps) {
         </div>
       )}
 
-      {/* Navegación */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href ||
             (href !== '/dashboard' && pathname.startsWith(href))
           return (
-            <Link
-              key={href}
-              href={href}
+            <Link key={href} href={href}
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                 isActive
@@ -82,8 +76,7 @@ export default function Sidebar({ profile }: SidebarProps) {
                 Admin
               </p>
             </div>
-            <Link
-              href="/admin"
+            <Link href="/admin"
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                 pathname.startsWith('/admin')
@@ -98,18 +91,15 @@ export default function Sidebar({ profile }: SidebarProps) {
         )}
       </nav>
 
-      {/* Footer */}
       <div className="p-3 border-t border-border space-y-0.5">
-        <Link
-          href={`/dashboard/profile/${profile?.id}`}
+        <Link href={`/dashboard/profile/${profile?.id}`}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all duration-150"
         >
           <User className="w-4 h-4 shrink-0" />
           Mi perfil
         </Link>
         <form action={signOut}>
-          <button
-            type="submit"
+          <button type="submit"
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-all duration-150"
           >
             <LogOut className="w-4 h-4 shrink-0" />
@@ -117,7 +107,6 @@ export default function Sidebar({ profile }: SidebarProps) {
           </button>
         </form>
       </div>
-
     </aside>
   )
 }
