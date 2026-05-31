@@ -25,7 +25,8 @@ export default async function SettingsPage({
       .eq('user_id', user.id),
   ])
 
-  const { data: { identities } } = await supabase.auth.getUserIdentities()
+  const identitiesRes = await supabase.auth.getUserIdentities()
+  const identities = identitiesRes.data?.identities ?? []
 
   const ERROR_MESSAGES: Record<string, string> = {
     no_token:    'No se pudo obtener el token de Google. Intentá conectar de nuevo.',
@@ -48,7 +49,7 @@ export default async function SettingsPage({
         userId={user.id}
         profile={profileRes.data}
         socialLinks={socialLinksRes.data ?? []}
-        identities={identities ?? []}
+        identities={identities}
         successMessage={params.connected
           ? `¡${params.connected === 'youtube' ? 'YouTube' : params.connected} conectado correctamente!`
           : null

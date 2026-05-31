@@ -76,11 +76,11 @@ export default function DashboardClient({
     async function poll() {
       try {
         // 1. Reputación
-        const { data: rep } = await supabase
+        const { data: rep } = await (supabase
           .from('user_reputation')
           .select('*')
           .eq('user_id', userId)
-          .single()
+          .single() as any) as { data: import('@/types/database').UserReputation | null }
 
         if (rep) {
           const newXp    = rep.total_xp
@@ -106,12 +106,12 @@ export default function DashboardClient({
         }
 
         // 2. Eventos recientes — buscar nuevos desde el último conocido
-        const { data: newEvents } = await supabase
+        const { data: newEvents } = await (supabase
           .from('xp_events')
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
-          .limit(5)
+          .limit(5) as any) as { data: import('@/types/database').XpEvent[] | null }
 
         if (newEvents?.length) {
           const latestId = newEvents[0].id

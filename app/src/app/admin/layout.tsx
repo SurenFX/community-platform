@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import AdminSidebar from '@/components/admin/AdminSidebar'
+import type { Profile } from '@/types/database'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -11,7 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .from('profiles')
     .select('is_admin, username, avatar_url')
     .eq('id', user.id)
-    .single()
+    .single() as any as { data: Pick<Profile, 'is_admin' | 'username' | 'avatar_url'> | null }
 
   if (!profile?.is_admin) redirect('/dashboard')
 

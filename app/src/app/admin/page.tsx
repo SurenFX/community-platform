@@ -1,3 +1,4 @@
+import type { XpEvent } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { Users, Zap, Trophy, Target } from 'lucide-react'
 
@@ -6,7 +7,7 @@ export default async function AdminOverviewPage() {
 
   const [usersRes, xpRes, missionsRes, topUserRes] = await Promise.all([
     supabase.from('profiles').select('id', { count: 'exact', head: true }),
-    supabase.from('xp_events').select('xp_awarded').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+    (supabase.from('xp_events').select('xp_awarded').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString())) as any as Promise<{ data: Pick<XpEvent,'xp_awarded'>[] | null }>,
     supabase.from('missions').select('id', { count: 'exact', head: true }).eq('is_active', true),
     supabase.from('user_reputation').select('user_id, total_xp, profiles!inner(username)').order('total_xp', { ascending: false }).limit(5),
   ])

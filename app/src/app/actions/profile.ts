@@ -30,10 +30,10 @@ export async function updateProfile(formData: FormData) {
   }
 
   // @ts-ignore — tipos generados manualmente no coinciden exactamente con el schema
-  const { error } = await supabase
+  const { error } = await (supabase
     .from('profiles')
-    .update({ username, bio })
-    .eq('id', user.id)
+    .update({ username, bio } as unknown as never)
+    .eq('id', user.id) as any)
 
   if (error) {
     return { error: 'No se pudo actualizar el perfil' }

@@ -58,7 +58,7 @@ export default function XpConfigAdmin({ configs: initialConfigs }: { configs: Xp
           cooldown_sec: config.cooldown_sec,
           daily_cap:    config.daily_cap,
           is_enabled:   config.is_enabled,
-        } as any)
+        } as unknown as never)
         .eq('id', config.id)
 
       setSaved(config.id)

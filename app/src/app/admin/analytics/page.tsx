@@ -1,3 +1,4 @@
+import type { XpEvent } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { Zap, Users, TrendingUp, Calendar } from 'lucide-react'
 
@@ -9,11 +10,11 @@ export default async function AdminAnalyticsPage() {
   const day30   = new Date(now.getTime() - 30 * 86400000).toISOString()
 
   const [xpWeekRes, xpMonthRes, newUsersWeekRes, topEventsRes, dailyXpRes] = await Promise.all([
-    supabase.from('xp_events').select('xp_awarded').gte('created_at', day7),
-    supabase.from('xp_events').select('xp_awarded').gte('created_at', day30),
+    (supabase.from('xp_events').select('xp_awarded').gte('created_at', day7)) as any as Promise<{ data: Pick<XpEvent,'xp_awarded'>[] | null }>,
+    (supabase.from('xp_events').select('xp_awarded').gte('created_at', day30)) as any as Promise<{ data: Pick<XpEvent,'xp_awarded'>[] | null }>,
     supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', day7),
-    supabase.from('xp_events').select('event_type, xp_awarded').gte('created_at', day7),
-    supabase.from('xp_events').select('created_at, xp_awarded').gte('created_at', day7).order('created_at'),
+    (supabase.from('xp_events').select('event_type, xp_awarded').gte('created_at', day7)) as any as Promise<{ data: Pick<XpEvent,'event_type'|'xp_awarded'>[] | null }>,
+    (supabase.from('xp_events').select('created_at, xp_awarded').gte('created_at', day7).order('created_at')) as any as Promise<{ data: Pick<XpEvent,'created_at'|'xp_awarded'>[] | null }>,
   ])
 
   const xpWeek  = xpWeekRes.data?.reduce((s, e) => s + e.xp_awarded, 0) ?? 0

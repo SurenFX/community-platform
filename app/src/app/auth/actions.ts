@@ -38,7 +38,7 @@ export async function updateProfile(formData: FormData) {
   // Usar cast explícito para evitar el error de tipos
   const { error } = await supabase
     .from('profiles')
-    .update({ username, bio: bio || null } as any)
+    .update({ username, bio: bio || null } as unknown as never)
     .eq('id', user.id)
 
   if (error) {

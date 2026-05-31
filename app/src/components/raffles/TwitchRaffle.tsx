@@ -67,11 +67,11 @@ export default function TwitchRaffle() {
   }, [raffle?.id])
 
   async function loadActiveRaffle() {
-    const { data } = await supabase
+    const { data } = await (supabase
       .from('twitch_raffles')
       .select('*')
       .eq('status', 'active')
-      .single()
+      .single() as any) as { data: ActiveRaffle | null }
 
     if (data) {
       setRaffle(data)
@@ -102,15 +102,15 @@ export default function TwitchRaffle() {
       // Cerrar cualquier sorteo activo anterior
       await supabase
         .from('twitch_raffles')
-        .update({ status: 'cancelled' })
+        .update({ status: 'cancelled' } as unknown as never)
         .eq('status', 'active')
 
       // Crear nuevo sorteo
       const { data, error: err } = await supabase
         .from('twitch_raffles')
-        .insert({ keyword: keyword.trim() })
+        .insert([{ keyword: keyword.trim(), status: 'active' }] as unknown as never)
         .select()
-        .single()
+        .single() as any
 
       if (err) throw err
 
@@ -132,7 +132,7 @@ export default function TwitchRaffle() {
     if (!raffle) return
     await supabase
       .from('twitch_raffles')
-      .update({ status: 'stopped' })
+      .update({ status: 'stopped' } as unknown as never)
       .eq('id', raffle.id)
     setStage('setup')
     setRaffle(null)
@@ -169,7 +169,7 @@ export default function TwitchRaffle() {
             winner_twitch_username: picked.twitch_username,
             winner_id:            picked.user_id,
             drawn_at:             new Date().toISOString(),
-          }).eq('id', raffle.id)
+          } as unknown as never).eq('id', raffle.id)
 
           announceRaffleWinner(picked.twitch_username).catch(() => {})
         }

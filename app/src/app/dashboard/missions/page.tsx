@@ -16,18 +16,20 @@ export default async function MissionsPage() {
 
   const now = new Date().toISOString()
 
-  const { data: missions } = await supabase
+  const { data: missionsRaw } = await supabase
     .from('missions')
     .select('*')
     .eq('is_active', true)
     .lte('starts_at', now)
     .gte('ends_at', now)
     .order('type')
+  const missions = missionsRaw as any as import('@/types/database').Mission[] | null
 
-  const { data: userMissions } = await supabase
+  const { data: userMissionsRaw } = await supabase
     .from('user_missions')
     .select('*')
     .eq('user_id', user.id)
+  const userMissions = userMissionsRaw as any as import('@/types/database').UserMission[] | null
 
   const progressMap = new Map(userMissions?.map((um) => [um.mission_id, um]))
 

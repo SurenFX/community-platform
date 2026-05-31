@@ -45,7 +45,7 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
     startTransition(async () => {
       const { error } = await supabase
         .from('profiles')
-        .update({ is_admin: !currentValue } as any)
+        .update(({ is_admin: !currentValue }) as unknown as never)
         .eq('id', userId)
 
       if (!error) {
@@ -62,7 +62,7 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
     startTransition(async () => {
       const { error } = await supabase
         .from('profiles')
-        .update({ is_banned: !currentValue } as any)
+        .update(({ is_banned: !currentValue }) as unknown as never)
         .eq('id', userId)
 
       if (!error) {

@@ -12,7 +12,7 @@ export default async function TwitchRafflePage() {
     .from('profiles')
     .select('is_admin')
     .eq('id', user.id)
-    .single()
+    .single() as any as { data: { is_admin: boolean } | null }
 
   if (!profile?.is_admin) redirect('/dashboard')
 

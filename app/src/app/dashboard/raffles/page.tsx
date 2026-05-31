@@ -12,7 +12,7 @@ export default async function RafflesPage() {
     .from('profiles')
     .select('is_admin, user_reputation(raffle_tickets)')
     .eq('id', user.id)
-    .single()
+    .single() as any as { data: { is_admin: boolean; user_reputation: { raffle_tickets: number } | null } | null }
 
   const myTickets = (profile as any)?.user_reputation?.raffle_tickets ?? 0
   const isAdmin   = profile?.is_admin ?? false

@@ -79,11 +79,11 @@ export default function MissionsAdmin({ missions: initialMissions }: MissionsAdm
 
       if (editId) {
         const { data: updated } = await supabase
-          .from('missions').update(data as any).eq('id', editId).select().single()
+          .from('missions').update(data as unknown as never).eq('id', editId).select().single() as any
         if (updated) setMissions(prev => prev.map(m => m.id === editId ? updated : m))
       } else {
         const { data: created } = await supabase
-          .from('missions').insert(data as any).select().single()
+          .from('missions').insert(data as unknown as never).select().single() as any
         if (created) setMissions(prev => [created, ...prev])
       }
       setShowForm(false)
@@ -95,7 +95,7 @@ export default function MissionsAdmin({ missions: initialMissions }: MissionsAdm
     startTransition(async () => {
       const { data: updated } = await supabase
         .from('missions')
-        .update({ is_active: !mission.is_active } as any)
+        .update(({ is_active: !mission.is_active }) as unknown as never)
         .eq('id', mission.id)
         .select().single()
       if (updated) setMissions(prev => prev.map(m => m.id === mission.id ? updated : m))
