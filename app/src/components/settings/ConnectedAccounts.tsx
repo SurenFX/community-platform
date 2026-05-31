@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Link, Unlink, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import type { Profile, UserSocialLink } from '@/types/database'
+import { disconnectSocialLink } from '@/app/actions/social'
 
 interface Identity {
   id:             string
@@ -163,12 +164,12 @@ export default function ConnectedAccounts({
     try {
       setLoading(platform.id)
       setLocalError(null)
-      await supabase
-        .from('user_social_links')
-        .delete()
-        .eq('user_id', userId)
-        .eq('platform', platform.dbPlatform!)
-      setLocalLinks(prev => prev.filter(l => l.platform !== platform.dbPlatform))
+      const result = await disconnectSocialLink(platform.dbPlatform!)
+      if (result.error) {
+        setLocalError(result.error)
+      } else {
+        setLocalLinks(prev => prev.filter(l => l.platform !== platform.dbPlatform))
+      }
       setLoading(null)
     } catch (err: any) {
       setLocalError(err.message ?? 'Error al desconectar')
