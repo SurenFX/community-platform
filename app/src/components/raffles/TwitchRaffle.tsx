@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Trophy, Shuffle, Users, Loader2, Twitch, Play, Square } from 'lucide-react'
+import { announceRaffleStart, announceRaffleWinner } from '@/app/actions/raffle'
 import Link from 'next/link'
 
 interface Entry {
@@ -117,12 +118,8 @@ export default function TwitchRaffle() {
       setEntries([])
       setStage('live')
 
-      // Anunciar en el chat de Twitch
-      fetch(`${process.env.NEXT_PUBLIC_WORKER_URL}/twitch/raffle/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-worker-secret': process.env.NEXT_PUBLIC_WORKER_SECRET ?? '' },
-        body: JSON.stringify({ keyword: keyword.trim() }),
-      }).catch(() => {})
+      // Anunciar en el chat de Twitch via server action
+      await announceRaffleStart(keyword.trim())
 
     } catch (err: any) {
       setError(err.message)
@@ -174,11 +171,7 @@ export default function TwitchRaffle() {
             drawn_at:             new Date().toISOString(),
           }).eq('id', raffle.id)
 
-          fetch(`${process.env.NEXT_PUBLIC_WORKER_URL}/twitch/raffle/winner`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-worker-secret': process.env.NEXT_PUBLIC_WORKER_SECRET ?? '' },
-            body: JSON.stringify({ winner: picked.twitch_username }),
-          }).catch(() => {})
+          announceRaffleWinner(picked.twitch_username).catch(() => {})
         }
 
         setTimeout(() => setStage('winner'), 400)
