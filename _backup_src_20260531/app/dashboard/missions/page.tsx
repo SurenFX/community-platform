@@ -51,7 +51,7 @@ export default async function MissionsPage() {
             const userMission = progressMap.get(mission.id)
             const progress = userMission?.progress ?? 0
             const isCompleted = userMission?.is_completed ?? false
-            const pct = mission.target_count > 0 ? Math.min((progress / mission.target_count) * 100, 100) : 0
+            const pct = Math.min((progress / mission.target_count) * 100, 100)
             const type = TYPE_LABELS[mission.type]
             const endsIn = Math.ceil((new Date(mission.ends_at).getTime() - Date.now()) / 86400000)
 

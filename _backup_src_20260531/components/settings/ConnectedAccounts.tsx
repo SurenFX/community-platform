@@ -38,7 +38,7 @@ interface Platform {
   redirectPath?: string
 }
 
-const TWITCH_CLIENT_ID = process.env.NEXT_PUBLIC_TWITCH_CLIENT_ID ?? ''
+const TWITCH_CLIENT_ID = 'wjlr1puhw43qc79csii0eszfus8ucf'
 
 const PLATFORMS: Platform[] = [
   {

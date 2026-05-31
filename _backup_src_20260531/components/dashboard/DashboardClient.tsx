@@ -60,8 +60,7 @@ export default function DashboardClient({
 
   const lastXpRef    = useRef(initialProfile?.user_reputation?.total_xp ?? 0)
   const lastLevelRef = useRef(initialProfile?.user_reputation?.level ?? 1)
-  const lastEventRef        = useRef(initialEvents[0]?.id ?? '')
-  const lastLevelUpShownRef = useRef(initialProfile?.user_reputation?.level ?? 1)
+  const lastEventRef = useRef(initialEvents[0]?.id ?? '')
 
   const supabase = createClient()
 
@@ -86,15 +85,12 @@ export default function DashboardClient({
           const newXp    = rep.total_xp
           const newLevel = rep.level
 
-          // Detectar level up — solo si no se mostró ya para este nivel
-          if (newLevel > lastLevelRef.current && newLevel > lastLevelUpShownRef.current) {
+          // Detectar level up
+          if (newLevel > lastLevelRef.current) {
             setLevelUpData({
               oldLevel: lastLevelRef.current,
               newLevel,
             })
-            lastLevelUpShownRef.current = newLevel
-            lastLevelRef.current = newLevel
-          } else if (newLevel > lastLevelRef.current) {
             lastLevelRef.current = newLevel
           }
 
@@ -155,20 +151,18 @@ export default function DashboardClient({
         (payload) => {
           const levelUp = payload.new as { user_id: string; level: number; xp_bonus: number }
           if (levelUp.user_id !== userId) return
-          // Solo mostrar si el polling aún no lo mostró para este nivel
-          if (levelUp.level > lastLevelUpShownRef.current) {
-            setLevelUpData({
-              oldLevel: levelUp.level - 1,
-              newLevel: levelUp.level,
-            })
-            lastLevelUpShownRef.current = levelUp.level
-          }
+          setLevelUpData({
+            oldLevel: levelUp.level - 1,
+            newLevel: levelUp.level,
+          })
           if (levelUp.xp_bonus > 0) {
             addToast(levelUp.xp_bonus, 'ADMIN_MANUAL_GRANT')
           }
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('[Realtime] status:', status)
+      })
 
     return () => { supabase.removeChannel(channel) }
   }, [userId])

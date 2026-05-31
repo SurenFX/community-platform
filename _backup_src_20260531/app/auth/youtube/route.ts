@@ -3,18 +3,7 @@ import { cookies } from 'next/headers'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
-  const { origin, searchParams } = new URL(request.url)
-  const code  = searchParams.get('code')
-  const error = searchParams.get('error')
-
-  if (error) {
-    return NextResponse.redirect(`${origin}/dashboard/configuracion?error=youtube_denied`)
-  }
-
-  if (!code) {
-    return NextResponse.redirect(`${origin}/dashboard/configuracion?error=no_code`)
-  }
-
+  const { origin } = new URL(request.url)
   const cookieStore = await cookies()
 
   const supabase = createServerClient(
@@ -32,26 +21,27 @@ export async function GET(request: NextRequest) {
     }
   )
 
-  // Intercambiar code → session (el provider_token está en la respuesta directa)
-  const { data: { session }, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-
-  if (exchangeError || !session) {
-    console.error('YouTube session exchange error:', exchangeError?.message)
-    return NextResponse.redirect(`${origin}/dashboard/configuracion?error=no_token`)
-  }
-
-  const providerToken = session.provider_token
-  const user = session.user
-
-  if (!providerToken) {
-    console.error('No provider token after exchange')
-    return NextResponse.redirect(`${origin}/dashboard/configuracion?error=no_token`)
-  }
+  // Obtener sesión actual
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.redirect(`${origin}/login`)
 
   try {
+    // Obtener el token de Google de las identidades de Supabase
+    const { data: { session } } = await supabase.auth.getSession()
+    const providerToken = session?.provider_token
+
+    if (!providerToken) {
+      console.error('No provider token found')
+      return NextResponse.redirect(`${origin}/dashboard/configuracion?error=no_token`)
+    }
+
+    // Llamar a la API de YouTube con el token del usuario
+    // para obtener su Channel ID real
     const ytRes = await fetch(
       'https://www.googleapis.com/youtube/v3/channels?part=id,snippet&mine=true',
-      { headers: { Authorization: `Bearer ${providerToken}` } }
+      {
+        headers: { Authorization: `Bearer ${providerToken}` }
+      }
     )
     const ytData = await ytRes.json()
 
@@ -62,12 +52,14 @@ export async function GET(request: NextRequest) {
 
     const channel = ytData.items?.[0]
     if (!channel) {
+      // El usuario no tiene canal de YouTube
       return NextResponse.redirect(`${origin}/dashboard/configuracion?error=no_channel`)
     }
 
     const channelId = channel.id
     const username  = channel.snippet?.title ?? channelId
 
+    // Guardar el link de YouTube en la DB
     const { error: linkError } = await supabase
       .from('user_social_links')
       .upsert({
@@ -83,6 +75,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${origin}/dashboard/configuracion?error=db_error`)
     }
 
+    // Notificar al worker para verificar suscripción
     const workerUrl = process.env.NEXT_PUBLIC_WORKER_URL ?? 'http://localhost:3001'
     await fetch(`${workerUrl}/youtube/connected`, {
       method: 'POST',
@@ -95,7 +88,7 @@ export async function GET(request: NextRequest) {
         discordId: user.user_metadata?.provider_id,
         ytId:      channelId,
       }),
-    }).catch(() => {})
+    }).catch(() => {}) // no bloquear si el worker no responde
 
     return NextResponse.redirect(`${origin}/dashboard/configuracion?connected=youtube`)
 

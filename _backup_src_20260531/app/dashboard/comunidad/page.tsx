@@ -2,7 +2,26 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Trophy, Medal, Award, User, Users } from 'lucide-react'
-import { getLevelColor, getLevelTitle } from '@/lib/utils'
+
+function getLevelColor(level: number): string {
+  if (level < 5)  return 'text-gray-400'
+  if (level < 10) return 'text-green-400'
+  if (level < 20) return 'text-blue-400'
+  if (level < 35) return 'text-purple-400'
+  if (level < 50) return 'text-yellow-400'
+  if (level < 75) return 'text-orange-400'
+  return 'text-red-400'
+}
+
+function getLevelTitle(level: number): string {
+  if (level < 5)  return 'Novato'
+  if (level < 10) return 'Activo'
+  if (level < 20) return 'Veterano'
+  if (level < 35) return 'Experto'
+  if (level < 50) return 'Élite'
+  if (level < 75) return 'Leyenda'
+  return 'Mythic'
+}
 
 export default async function ComunidadPage() {
   const supabase = await createClient()

@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Fondo oscuro con tinte cálido */
+    --background: 220 20% 8%;
+    --foreground: 45 100% 95%;
+
+    /* Cards con tinte amarillo muy sutil */
+    --card: 220 20% 11%;
+    --card-foreground: 45 100% 95%;
+
+    --popover: 220 20% 11%;
+    --popover-foreground: 45 100% 95%;
+
+    /* Primary: Cyan/Turquesa vibrante */
+    --primary: 185 100% 45%;
+    --primary-foreground: 220 20% 8%;
+
+    /* Secondary: Fondo de cards secundarias */
+    --secondary: 220 20% 16%;
+    --secondary-foreground: 45 100% 85%;
+
+    /* Muted */
+    --muted: 220 20% 16%;
+    --muted-foreground: 220 15% 55%;
+
+    /* Accent: Amarillo vibrante */
+    --accent: 45 100% 55%;
+    --accent-foreground: 220 20% 8%;
+
+    /* Destructive: Rojo coral */
+    --destructive: 5 85% 55%;
+    --destructive-foreground: 45 100% 95%;
+
+    --border: 220 20% 20%;
+    --input:  220 20% 20%;
+    --ring:   185 100% 45%;
+    --radius: 0.75rem;
+
+    /* XP bar: de cyan a amarillo */
+    --xp-start: 185 100% 45%;
+    --xp-end:   45 100% 55%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: hsl(var(--background)); }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary)); }
+
+/* XP bar gradient cyan → amarillo */
+.xp-bar {
+  background: linear-gradient(90deg, hsl(var(--xp-start)), hsl(var(--xp-end)));
+}
+
+/* Glow cyan */
+.level-glow {
+  box-shadow: 0 0 24px hsl(185 100% 45% / 0.4);
+}
+
+/* Card hover */
+.card-hover { @apply transition-all duration-200; }
+.card-hover:hover {
+  @apply border-primary/40 shadow-lg;
+  box-shadow: 0 4px 24px hsl(185 100% 45% / 0.12);
+}

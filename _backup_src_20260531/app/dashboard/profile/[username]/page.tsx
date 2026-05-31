@@ -1,7 +1,26 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import { Shield, Flame, Trophy, Zap, Calendar } from 'lucide-react'
-import { getLevelTitle, getLevelColor, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'
+
+function getLevelTitle(level: number): string {
+  if (level < 5)  return 'Novato'
+  if (level < 10) return 'Activo'
+  if (level < 20) return 'Veterano'
+  if (level < 35) return 'Experto'
+  if (level < 50) return 'Élite'
+  if (level < 75) return 'Leyenda'
+  return 'Mythic'
+}
+
+function getLevelColor(level: number): string {
+  if (level < 5)  return 'text-gray-400'
+  if (level < 10) return 'text-green-400'
+  if (level < 20) return 'text-blue-400'
+  if (level < 35) return 'text-purple-400'
+  if (level < 50) return 'text-yellow-400'
+  if (level < 75) return 'text-orange-400'
+  return 'text-red-400'
+}
 
 const EVENT_LABELS: Record<string, string> = {
   DISCORD_MESSAGE:           'Mensaje en Discord',
@@ -51,6 +70,8 @@ export default async function PublicProfilePage({
     .eq('username', decodeURIComponent(username))
     .single()
 
+  console.log('Profile:', profile?.username, 'Error:', profileError?.message)
+
   if (!profile) notFound()
 
   const [repRes, badgesRes, linksRes, eventsRes] = await Promise.all([
@@ -83,9 +104,10 @@ export default async function PublicProfilePage({
   const level   = rep?.level ?? 1
   const totalXp = rep?.total_xp ?? 0
 
-  const xpCurrent = totalXp - xpForCurrentLevel(level)
-  const xpNeeded  = xpForNextLevel(level) - xpForCurrentLevel(level)
-  const xpPercent = xpNeeded > 0 ? Math.min(100, Math.round((xpCurrent / xpNeeded) * 100)) : 0
+  const xpForLevel = (lvl: number) => lvl * lvl * 100
+  const xpCurrent  = totalXp - xpForLevel(level - 1)
+  const xpNeeded   = xpForLevel(level) - xpForLevel(level - 1)
+  const xpPercent  = Math.min(100, Math.round((xpCurrent / xpNeeded) * 100))
 
   const memberSince = new Date(profile.created_at).toLocaleDateString('es-AR', {
     day: 'numeric', month: 'long', year: 'numeric'
