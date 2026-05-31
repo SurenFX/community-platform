@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
@@ -16,8 +18,7 @@ export default async function PlatformRafflePage() {
   )
 
   const [rafflesRes, repRes, myPoolRes] = await Promise.all([
-    admin.from('raffles').select('*').eq('status', 'ACTIVE')
-      .lte('starts_at', new Date().toISOString()).order('ends_at'),
+    admin.from('raffles').select('*').eq('status', 'ACTIVE').order('ends_at'),
     admin.from('user_reputation').select('raffle_tickets, level, total_xp')
       .eq('user_id', user.id).single(),
     admin.from('raffle_pools').select('raffle_id, tickets').eq('user_id', user.id),

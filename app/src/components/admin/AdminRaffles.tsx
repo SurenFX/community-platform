@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Trophy, Plus, Users, Ticket, Play, X, Check, Loader2, Crown } from 'lucide-react'
-import { createRaffle, drawRaffle } from '@/app/actions/admin'
+import { Trophy, Plus, Users, Ticket, Play, X, Check, Loader2, Crown, XCircle, Trash2 } from 'lucide-react'
+import { createRaffle, drawRaffle, cancelRaffle, deleteRaffle } from '@/app/actions/admin'
 
 interface Raffle {
   id:           string
@@ -44,7 +44,9 @@ export default function AdminRafflesClient({ raffles: initial, poolMap }: AdminR
   const [showForm,   setShowForm]   = useState(false)
   const [form,       setForm]       = useState(EMPTY_FORM)
   const [winner,     setWinner]     = useState<Record<string, string>>({})
-  const [drawingId,  setDrawingId]  = useState<string | null>(null)
+  const [drawingId,   setDrawingId]   = useState<string | null>(null)
+  const [cancelingId,  setCancelingId]  = useState<string | null>(null)
+  const [deletingId,   setDeletingId]   = useState<string | null>(null)
   const [error,      setError]      = useState<string | null>(null)
   const [isPending,  startTransition] = useTransition()
 
@@ -87,6 +89,37 @@ export default function AdminRafflesClient({ raffles: initial, poolMap }: AdminR
         ))
       }
       setDrawingId(null)
+    })
+  }
+
+  function handleCancel(raffleId: string) {
+    setCancelingId(raffleId)
+    setError(null)
+    startTransition(async () => {
+      const result = await cancelRaffle(raffleId)
+      if (result.error) {
+        setError(result.error)
+      } else {
+        setRaffles(prev => prev.map(r =>
+          r.id === raffleId ? { ...r, status: 'CANCELLED' } : r
+        ))
+      }
+      setCancelingId(null)
+    })
+  }
+
+  function handleDelete(raffleId: string) {
+    if (!confirm('¿Seguro que querés borrar este sorteo?')) return
+    setDeletingId(raffleId)
+    setError(null)
+    startTransition(async () => {
+      const result = await deleteRaffle(raffleId)
+      if (result.error) {
+        setError(result.error)
+      } else {
+        setRaffles(prev => prev.filter(r => r.id !== raffleId))
+      }
+      setDeletingId(null)
     })
   }
 
@@ -177,7 +210,7 @@ export default function AdminRafflesClient({ raffles: initial, poolMap }: AdminR
         )}
         {raffles.map(raffle => {
           const stats     = poolMap[raffle.id]
-          const isDrawing = drawingId === raffle.id && isPending
+          const isDrawing    = drawingId   === raffle.id && isPending
           const raffleWinner = winner[raffle.id]
 
           return (
@@ -208,13 +241,31 @@ export default function AdminRafflesClient({ raffles: initial, poolMap }: AdminR
                     </div>
                   )}
 
-                  {raffle.status === 'ACTIVE' && (
-                    <button onClick={() => handleDraw(raffle.id)} disabled={isDrawing}
-                      className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-black font-semibold px-3 py-2 rounded-lg text-sm transition-all">
-                      {isDrawing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-                      Sortear
+                  <div className="flex items-center gap-2">
+                    {raffle.status === 'ACTIVE' && (
+                      <>
+                        <button onClick={() => handleDraw(raffle.id)} disabled={isDrawing}
+                          className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-black font-semibold px-3 py-2 rounded-lg text-sm transition-all">
+                          {isDrawing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                          Sortear
+                        </button>
+                        <button onClick={() => handleCancel(raffle.id)} disabled={cancelingId === raffle.id && isPending}
+                          title="Cancelar sorteo"
+                          className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
+                          {cancelingId === raffle.id && isPending
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <XCircle className="w-4 h-4" />}
+                        </button>
+                      </>
+                    )}
+                    <button onClick={() => handleDelete(raffle.id)} disabled={deletingId === raffle.id && isPending}
+                      title="Borrar sorteo"
+                      className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all">
+                      {deletingId === raffle.id && isPending
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <Trash2 className="w-4 h-4" />}
                     </button>
-                  )}
+                  </div>
                 </div>
               </div>
 

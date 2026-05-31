@@ -221,3 +221,26 @@ export async function drawRaffle(raffleId: string): Promise<{ winner?: string; e
 
   return { winner: (winner as any)?.username ?? winnerId }
 }
+
+export async function cancelRaffle(raffleId: string): Promise<{ error?: string }> {
+  const { error: authError, admin } = await getAdminClient()
+  if (authError || !admin) return { error: authError ?? 'Error' }
+
+  const { error } = await admin
+    .from('raffles').update({ status: 'CANCELLED' }).eq('id', raffleId)
+
+  if (error) return { error: 'No se pudo cancelar' }
+  return {}
+}
+
+export async function deleteRaffle(raffleId: string): Promise<{ error?: string }> {
+  const { error: authError, admin } = await getAdminClient()
+  if (authError || !admin) return { error: authError ?? 'Error' }
+
+  // Borrar pool primero (FK constraint)
+  await admin.from('raffle_pools').delete().eq('raffle_id', raffleId)
+  const { error } = await admin.from('raffles').delete().eq('id', raffleId)
+
+  if (error) return { error: 'No se pudo borrar' }
+  return {}
+}
