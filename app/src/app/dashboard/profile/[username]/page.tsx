@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import { Shield, Flame, Trophy, Zap, Calendar, Twitch, Youtube } from 'lucide-react'
 
@@ -49,7 +49,11 @@ export default async function PublicProfilePage({
   params: Promise<{ username: string }>
 }) {
   const { username } = await params
-  const supabase = await createClient()
+  const supabase = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
 
   // Buscar por username
   const { data: profile } = await supabase
