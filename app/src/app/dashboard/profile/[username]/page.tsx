@@ -67,6 +67,7 @@ export default async function PublicProfilePage({
     .eq('username', decodeURIComponent(username))
     .single()
 
+  console.log('Profile query result:', JSON.stringify({ username, profile: profile ? 'found' : 'null' }))
   if (!profile) notFound()
 
   // Actividad reciente
