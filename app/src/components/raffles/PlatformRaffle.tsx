@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Trophy, Ticket, Clock, Users, Zap, Loader2, Check, ArrowLeft, Lock } from 'lucide-react'
-import Link from 'next/link'
+import { Trophy, Ticket, Clock, Users, Zap, Loader2, Check, Lock } from 'lucide-react'
 import { enterRaffle } from '@/app/actions/social'
 
 interface Raffle {
@@ -80,10 +79,6 @@ export default function PlatformRaffleClient({
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/dashboard/raffles"
-          className="p-2 rounded-xl hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
         <div>
           <h1 className="text-2xl font-bold text-foreground">Sorteo de la plataforma</h1>
           <p className="text-muted-foreground text-sm mt-0.5">Usá tus tickets para participar</p>
