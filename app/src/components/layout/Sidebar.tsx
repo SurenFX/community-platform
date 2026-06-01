@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { signOut } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
 import {
-  Home, Trophy, Target, Settings, LogOut, Shield,
+  Home, Trophy, Target, Settings, LogOut, Shield, Ticket,
 } from 'lucide-react'
 import SidebarXpBar from './SidebarXpBar'
 import type { Profile, UserReputation } from '@/types/database'
@@ -15,10 +15,11 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { href: '/dashboard',             label: 'Inicio',        icon: Home,    exact: true },
-  { href: '/dashboard/comunidad',   label: 'Comunidad',     icon: Trophy               },
-  { href: '/dashboard/missions',    label: 'Misiones',      icon: Target               },
-  { href: '/dashboard/configuracion', label: 'Configuración', icon: Settings           },
+  { href: '/dashboard',               label: 'Inicio',         icon: Home,    exact: true },
+  { href: '/dashboard/comunidad',     label: 'Comunidad',      icon: Trophy               },
+  { href: '/dashboard/missions',      label: 'Misiones',       icon: Target               },
+  { href: '/dashboard/raffles',       label: 'Sorteos',        icon: Ticket               },
+  { href: '/dashboard/configuracion', label: 'Configuración',  icon: Settings             },
 ]
 
 export default function Sidebar({ profile }: SidebarProps) {
