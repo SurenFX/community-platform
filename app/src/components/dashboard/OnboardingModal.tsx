@@ -42,30 +42,23 @@ const STEPS = [
 ]
 
 export default function OnboardingModal({ username, avatarUrl }: Props) {
-  const [step, setStep]         = useState(0)
+  const [step,    setStep]    = useState(0)
+  const [visible, setVisible] = useState(true)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
   const isLast = step === STEPS.length - 1
   const { icon: Icon, color, bg, title, desc } = STEPS[step]
 
-  function handleNext() {
-    if (!isLast) {
-      setStep(s => s + 1)
-      return
-    }
-    // Último paso: marcar completado y redirigir a configuración
+  async function dismiss(goToConfig = false) {
+    setVisible(false)
     startTransition(async () => {
       await completeOnboarding()
-      router.push('/dashboard/configuracion')
+      if (goToConfig) router.push('/dashboard/configuracion')
     })
   }
 
-  function handleSkip() {
-    startTransition(async () => {
-      await completeOnboarding()
-    })
-  }
+  if (!visible) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
@@ -83,7 +76,7 @@ export default function OnboardingModal({ username, avatarUrl }: Props) {
             )}
             <span className="text-sm font-semibold text-foreground">{username}</span>
           </div>
-          <button onClick={handleSkip} disabled={isPending}
+          <button onClick={() => dismiss(false)} disabled={isPending}
             className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-secondary">
             <X className="w-4 h-4" />
           </button>
@@ -116,8 +109,11 @@ export default function OnboardingModal({ username, avatarUrl }: Props) {
                 Atrás
               </button>
             )}
-            <button onClick={handleNext} disabled={isPending}
-              className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2.5 rounded-xl text-sm transition-all disabled:opacity-50">
+            <button
+              onClick={() => isLast ? dismiss(true) : setStep(s => s + 1)}
+              disabled={isPending}
+              className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-2.5 rounded-xl text-sm transition-all disabled:opacity-50"
+            >
               {isLast ? 'Conectar cuentas' : 'Siguiente'}
               <ChevronRight className="w-4 h-4" />
             </button>
