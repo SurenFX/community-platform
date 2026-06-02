@@ -43,3 +43,14 @@ export async function updateProfile(formData: FormData) {
 }
 
 export const updateProfileAction = updateProfile
+
+export async function completeOnboarding() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  await (supabase
+    .from('profiles')
+    .update({ onboarding_completed: true } as any)
+    .eq('id', user.id) as any)
+}

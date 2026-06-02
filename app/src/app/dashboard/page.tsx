@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DashboardClient from '@/components/dashboard/DashboardClient'
+import OnboardingModal from '@/components/dashboard/OnboardingModal'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -27,12 +28,23 @@ export default async function DashboardPage() {
       .limit(3),
   ])
 
+  const profile = profileRes.data
+  const showOnboarding = profile && !(profile as any).onboarding_completed
+
   return (
-    <DashboardClient
-      initialProfile={profileRes.data}
-      initialEvents={activityRes.data ?? []}
-      initialMissions={missionsRes.data ?? []}
-      userId={user.id}
-    />
+    <>
+      {showOnboarding && (
+        <OnboardingModal
+          username={profile.username}
+          avatarUrl={profile.avatar_url}
+        />
+      )}
+      <DashboardClient
+        initialProfile={profile}
+        initialEvents={activityRes.data ?? []}
+        initialMissions={missionsRes.data ?? []}
+        userId={user.id}
+      />
+    </>
   )
 }
