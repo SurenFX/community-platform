@@ -151,7 +151,10 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         .ilike('username', twitchUsername)
         .single()
 
-      if (!socialLink) return
+      if (!socialLink) {
+        this.sendChat(`@${twitchUsername} ¡Para participar necesitás registrarte y vincular tu Twitch en la plataforma! → community-platform-app.vercel.app`)
+        return
+      }
 
       const { error } = await this.supabase.db
         .from('twitch_raffle_entries')
@@ -169,14 +172,11 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
 
   // ── Llamados desde el frontend via endpoint ────────────
   async announceRaffleStart(keyword: string) {
-    this.sendChat(`🎉 ¡Sorteo iniciado! Escribí "${keyword}" en el chat para participar. ¡Solo miembros registrados en la plataforma cuentan! community-platform-app.vercel.app`)
+    this.sendChat(`🎉 ¡Sorteo! Escribí "${keyword}" para participar. Necesitás tener tu cuenta de Twitch vinculada en la plataforma → community-platform-app.vercel.app`)
   }
 
   async announceRaffleWinner(winner: string) {
-    this.sendChat(`🏆 ¡Felicitaciones a @${winner}! ¡Sos el ganador del sorteo! 🎉`)
-    setTimeout(() => {
-      this.sendChat(`Gracias a todos los que participaron. ¡Hasta el próximo sorteo!`)
-    }, 3000)
+    this.sendChat(`🏆 ¡@${winner} es el ganador del sorteo! ¡Felicitaciones! 🎉`)
   }
 
   @Cron('*/2 * * * *')
