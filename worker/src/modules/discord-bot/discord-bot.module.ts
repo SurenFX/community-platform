@@ -5,5 +5,6 @@ import { ReputationModule } from '../reputation/reputation.module'
 @Module({
   imports: [ReputationModule],
   providers: [DiscordBotService],
+  exports: [DiscordBotService],
 })
 export class DiscordBotModule {}

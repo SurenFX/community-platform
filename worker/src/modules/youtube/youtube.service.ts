@@ -1,8 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Cron } from '@nestjs/schedule'
+import { EmbedBuilder } from 'discord.js'
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
 import { ReputationService } from '../reputation/reputation.service'
+import { DiscordBotService } from '../discord-bot/discord-bot.service'
 
 @Injectable()
 export class YoutubeService {
@@ -10,10 +12,14 @@ export class YoutubeService {
   private readonly channelId = 'UCrEPUgjVon78Htzr_ZrJ7ug'
   private readonly apiBase  = 'https://www.googleapis.com/youtube/v3'
 
+  // IDs de videos ya anunciados (en memoria, se resetea al reiniciar el worker)
+  private announcedVideos = new Set<string>()
+
   constructor(
-    private config:     ConfigService,
-    private supabase:   SupabaseService,
-    private reputation: ReputationService,
+    private config:      ConfigService,
+    private supabase:    SupabaseService,
+    private reputation:  ReputationService,
+    private discordBot:  DiscordBotService,
   ) {}
 
   private get apiKey(): string {
@@ -104,15 +110,45 @@ export class YoutubeService {
         }
       }
 
-      // 2. Obtener videos recientes del canal (últimos 7 días)
-      const publishedAfter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+      // 2. Obtener videos recientes del canal (últimas 24h para anuncios, 7 días para comentarios)
+      const publishedAfterAnnounce = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+      const publishedAfterComments = new Date(Date.now() - 7  * 24 * 60 * 60 * 1000).toISOString()
+
       const videosRes = await fetch(
-        `${this.apiBase}/search?part=id&channelId=${this.channelId}&type=video&publishedAfter=${publishedAfter}&maxResults=10&key=${this.apiKey}`
+        `${this.apiBase}/search?part=id,snippet&channelId=${this.channelId}&type=video&publishedAfter=${publishedAfterComments}&maxResults=10&key=${this.apiKey}`
       )
       const videosData = await videosRes.json()
-      const videoIds: string[] = videosData.items?.map((v: any) => v.id.videoId) ?? []
+      const videoItems: any[] = videosData.items ?? []
+      const videoIds: string[] = videoItems.map((v: any) => v.id.videoId)
 
       if (!videoIds.length) return
+
+      // 2b. Anunciar videos nuevos en Discord
+      const discordChannelId = this.config.get<string>('DISCORD_YOUTUBE_CHANNEL_ID')
+      if (discordChannelId) {
+        for (const item of videoItems) {
+          const videoId    = item.id.videoId
+          const publishedAt = item.snippet?.publishedAt ?? ''
+          const isNew = publishedAt > publishedAfterAnnounce
+
+          if (isNew && !this.announcedVideos.has(videoId)) {
+            this.announcedVideos.add(videoId)
+            const title     = item.snippet?.title       ?? 'Nuevo video'
+            const thumbnail = item.snippet?.thumbnails?.high?.url ?? ''
+
+            const embed = new EmbedBuilder()
+              .setColor(0xFF0000)
+              .setTitle(`🎬 ¡Nuevo video! ${title}`)
+              .setURL(`https://youtube.com/watch?v=${videoId}`)
+              .setTimestamp(new Date(publishedAt))
+
+            if (thumbnail) embed.setImage(thumbnail)
+
+            await this.discordBot.announce(discordChannelId, embed)
+            this.logger.log(`YouTube: anunciado video nuevo ${videoId}`)
+          }
+        }
+      }
 
       // 3. Para cada video, buscar comentarios de usuarios registrados
       for (const videoId of videoIds) {

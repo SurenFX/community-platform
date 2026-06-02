@@ -4,7 +4,7 @@ import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
 import {
   Client, GatewayIntentBits, Events,
   Message, MessageReaction, PartialMessageReaction,
-  User, PartialUser,
+  User, PartialUser, EmbedBuilder, TextChannel,
 } from 'discord.js'
 import { ReputationService } from '../reputation/reputation.service'
 
@@ -99,6 +99,22 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         })
       }
     )
+  }
+
+  // ── Anuncios públicos ─────────────────────────────────────
+
+  async announce(channelId: string, embed: EmbedBuilder): Promise<void> {
+    if (!this.client?.isReady()) return
+    try {
+      const channel = await this.client.channels.fetch(channelId)
+      if (!channel || !(channel instanceof TextChannel)) {
+        this.logger.warn(`Canal ${channelId} no encontrado o no es de texto`)
+        return
+      }
+      await channel.send({ embeds: [embed] })
+    } catch (err) {
+      this.logger.warn(`Error enviando anuncio a ${channelId}: ${err}`)
+    }
   }
 
   @OnEvent('user.level_up')

@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { Cron } from '@nestjs/schedule'
+import { EmbedBuilder } from 'discord.js'
+import { DiscordBotService } from '../discord-bot/discord-bot.service'
 
 interface StreamInfo {
   isLive:    boolean
@@ -15,7 +18,13 @@ export class TwitchApiService {
   private appToken: string | null = null
   private tokenExpiry: number = 0
 
-  constructor(private config: ConfigService) {}
+  // Estado en memoria para detectar transición offline → online
+  private wasLive = false
+
+  constructor(
+    private config:      ConfigService,
+    private discordBot:  DiscordBotService,
+  ) {}
 
   private get clientId(): string {
     return this.config.get<string>('TWITCH_CLIENT_ID') ?? ''
@@ -46,7 +55,7 @@ export class TwitchApiService {
     })
 
     const data = await res.json()
-    this.appToken   = data.access_token
+    this.appToken    = data.access_token
     this.tokenExpiry = Date.now() + (data.expires_in - 300) * 1000
 
     return this.appToken!
@@ -108,5 +117,34 @@ export class TwitchApiService {
       this.logger.warn(`getChannelId error: ${err}`)
       return null
     }
+  }
+
+  // ── Detección de stream en vivo — cada 3 minutos ──────────
+  @Cron('*/3 * * * *')
+  async checkStreamLive() {
+    const channelId = this.config.get<string>('DISCORD_TWITCH_CHANNEL_ID')
+    if (!channelId || !this.channel || !this.clientId) return
+
+    const stream = await this.getStreamInfo()
+
+    // Solo anunciar en la transición offline → online
+    if (stream.isLive && !this.wasLive) {
+      this.logger.log(`🔴 Stream en vivo detectado: ${stream.title}`)
+
+      const embed = new EmbedBuilder()
+        .setColor(0x9146FF)
+        .setTitle(`🔴 ¡${this.channel} está en vivo!`)
+        .setDescription(stream.title)
+        .addFields(
+          { name: '🎮 Juego',    value: stream.game    || 'Sin categoría', inline: true },
+          { name: '👥 Viewers',  value: String(stream.viewers),            inline: true },
+        )
+        .setURL(`https://twitch.tv/${this.channel}`)
+        .setTimestamp()
+
+      await this.discordBot.announce(channelId, embed)
+    }
+
+    this.wasLive = stream.isLive
   }
 }
