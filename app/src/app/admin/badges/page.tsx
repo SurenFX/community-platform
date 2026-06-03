@@ -29,6 +29,7 @@ export default async function AdminBadgesPage() {
   const { data: badges } = await supabase
     .from('badges')
     .select('*, (select count(*) from user_badges where badge_id = badges.id) as earned_count')
+    .not('family', 'is', null)
     .order('family')
     .order('family_order')
 

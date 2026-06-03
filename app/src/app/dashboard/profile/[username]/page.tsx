@@ -67,6 +67,8 @@ export default async function PublicProfilePage({
       .from('badges')
       .select('id, slug, name, description, image_url, tier, family, family_order')
       .eq('is_secret', false)
+      .not('family', 'is', null)
+      .order('family')
       .order('family_order'),
     supabase
       .from('user_social_links')
