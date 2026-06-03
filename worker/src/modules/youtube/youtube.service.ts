@@ -121,20 +121,38 @@ export class YoutubeService {
 
       if (!videoIds.length) return
 
-      // 2b. Anunciar videos nuevos en Discord (usando Redis para persistir entre deploys)
+      // 2b. Obtener duración de los videos para filtrar VODs (>1 hora)
+      const detailsRes = await fetch(
+        `${this.apiBase}/videos?part=contentDetails&id=${videoIds.join(',')}&key=${this.apiKey}`
+      )
+      const detailsData = await detailsRes.json()
+      const durationMap = new Map<string, number>()
+      for (const item of detailsData.items ?? []) {
+        durationMap.set(item.id, this.parseDurationSeconds(item.contentDetails?.duration ?? ''))
+      }
+
+      // 2c. Anunciar videos nuevos en Discord — excluir VODs (>60 min)
       const discordChannelId = this.config.get<string>('DISCORD_YOUTUBE_CHANNEL_ID')
       if (discordChannelId) {
         for (const item of videoItems) {
-          const videoId    = item.id.videoId
-          const title      = item.snippet?.title ?? 'Nuevo video'
+          const videoId     = item.id.videoId
+          const title       = item.snippet?.title ?? 'Nuevo video'
           const publishedAt = item.snippet?.publishedAt ?? ''
-          const thumbnail  = item.snippet?.thumbnails?.high?.url ?? ''
+          const thumbnail   = item.snippet?.thumbnails?.high?.url ?? ''
+          const duration    = durationMap.get(videoId) ?? 0
 
-          // setNX retorna true solo si la clave NO existía → primera vez que vemos este video
+          // Saltar VODs (más de 60 minutos)
+          if (duration > 60 * 60) {
+            this.logger.log(`YouTube: saltando VOD ${videoId} (${Math.round(duration/60)} min) - ${title}`)
+            // Marcar igual para no procesarlo de nuevo
+            await this.redis.setNX(`yt:announced:${videoId}`, 'vod', 30 * 24 * 60 * 60)
+            continue
+          }
+
           const isNew = await this.redis.setNX(
             `yt:announced:${videoId}`,
             '1',
-            30 * 24 * 60 * 60  // TTL 30 días
+            30 * 24 * 60 * 60
           )
 
           if (isNew) {
@@ -252,6 +270,16 @@ export class YoutubeService {
     } catch (err) {
       this.logger.warn(`scanVideoComments error for ${videoId}: ${err}`)
     }
+  }
+
+  // ── Parsear duración ISO 8601 a segundos ─────────────────
+  private parseDurationSeconds(duration: string): number {
+    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+    if (!match) return 0
+    const h = parseInt(match[1] ?? '0')
+    const m = parseInt(match[2] ?? '0')
+    const s = parseInt(match[3] ?? '0')
+    return h * 3600 + m * 60 + s
   }
 
   // ── Llamado cuando un usuario conecta YouTube ─────────────
