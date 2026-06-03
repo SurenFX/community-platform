@@ -5,6 +5,7 @@ import { EmbedBuilder } from 'discord.js'
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
 import { ReputationService } from '../reputation/reputation.service'
 import { DiscordBotService } from '../discord-bot/discord-bot.service'
+import { RedisService } from '../../infrastructure/redis/redis.service'
 
 @Injectable()
 export class YoutubeService {
@@ -12,16 +13,12 @@ export class YoutubeService {
   private readonly channelId = 'UCrEPUgjVon78Htzr_ZrJ7ug'
   private readonly apiBase  = 'https://www.googleapis.com/youtube/v3'
 
-  // IDs de videos ya anunciados (en memoria, se resetea al reiniciar el worker)
-  private announcedVideos    = new Set<string>()
-  // IDs de videos donde ya se premió al primer comentarista
-  private firstCommentAwarded = new Set<string>()
-
   constructor(
     private config:      ConfigService,
     private supabase:    SupabaseService,
     private reputation:  ReputationService,
     private discordBot:  DiscordBotService,
+    private redis:       RedisService,
   ) {}
 
   private get apiKey(): string {
@@ -112,12 +109,11 @@ export class YoutubeService {
         }
       }
 
-      // 2. Obtener videos recientes del canal (últimas 24h para anuncios, 7 días para comentarios)
-      const publishedAfterAnnounce = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-      const publishedAfterComments = new Date(Date.now() - 7  * 24 * 60 * 60 * 1000).toISOString()
+      // 2. Obtener videos de los últimos 7 días
+      const publishedAfter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
       const videosRes = await fetch(
-        `${this.apiBase}/search?part=id,snippet&channelId=${this.channelId}&type=video&publishedAfter=${publishedAfterComments}&maxResults=10&key=${this.apiKey}`
+        `${this.apiBase}/search?part=id,snippet&channelId=${this.channelId}&type=video&publishedAfter=${publishedAfter}&maxResults=10&key=${this.apiKey}`
       )
       const videosData = await videosRes.json()
       const videoItems: any[] = videosData.items ?? []
@@ -125,19 +121,23 @@ export class YoutubeService {
 
       if (!videoIds.length) return
 
-      // 2b. Anunciar videos nuevos en Discord
+      // 2b. Anunciar videos nuevos en Discord (usando Redis para persistir entre deploys)
       const discordChannelId = this.config.get<string>('DISCORD_YOUTUBE_CHANNEL_ID')
       if (discordChannelId) {
         for (const item of videoItems) {
           const videoId    = item.id.videoId
+          const title      = item.snippet?.title ?? 'Nuevo video'
           const publishedAt = item.snippet?.publishedAt ?? ''
-          const isNew = publishedAt > publishedAfterAnnounce
+          const thumbnail  = item.snippet?.thumbnails?.high?.url ?? ''
 
-          if (isNew && !this.announcedVideos.has(videoId)) {
-            this.announcedVideos.add(videoId)
-            const title     = item.snippet?.title       ?? 'Nuevo video'
-            const thumbnail = item.snippet?.thumbnails?.high?.url ?? ''
+          // setNX retorna true solo si la clave NO existía → primera vez que vemos este video
+          const isNew = await this.redis.setNX(
+            `yt:announced:${videoId}`,
+            '1',
+            30 * 24 * 60 * 60  // TTL 30 días
+          )
 
+          if (isNew) {
             const embed = new EmbedBuilder()
               .setColor(0xFF0000)
               .setTitle(`🎬 ¡Nuevo video! ${title}`)
@@ -147,7 +147,7 @@ export class YoutubeService {
             if (thumbnail) embed.setImage(thumbnail)
 
             await this.discordBot.announce(discordChannelId, embed)
-            this.logger.log(`YouTube: anunciado video nuevo ${videoId}`)
+            this.logger.log(`YouTube: anunciado video nuevo ${videoId} - ${title}`)
           }
         }
       }
@@ -206,8 +206,8 @@ export class YoutubeService {
         })
 
         // ── Primero en comentar en un video nuevo ─────────────────────────
-        if (!this.firstCommentAwarded.has(videoId)) {
-          this.firstCommentAwarded.add(videoId)
+        const isFirstComment = await this.redis.setNX(`yt:first_comment:${videoId}`, '1', 30 * 24 * 60 * 60)
+        if (isFirstComment) {
           try {
             await this.supabase.db
               .from('notifications')
