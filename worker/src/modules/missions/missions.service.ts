@@ -1,12 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { OnEvent } from '@nestjs/event-emitter'
+import { OnEvent, EventEmitter2 } from '@nestjs/event-emitter'
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
 
 @Injectable()
 export class MissionsService {
   private readonly logger = new Logger(MissionsService.name)
 
-  constructor(private supabase: SupabaseService) {}
+  constructor(
+    private supabase:      SupabaseService,
+    private eventEmitter:  EventEmitter2,
+  ) {}
 
   // ── Se dispara en cada evento de XP exitoso ─────────────────────────────
   @OnEvent('xp.awarded')
@@ -20,7 +23,7 @@ export class MissionsService {
       // 2. Buscar user_missions activas con objetivo = este tipo de evento
       const { data: userMissions } = await this.supabase.db
         .from('user_missions')
-        .select('id, progress, missions!inner(id, target_count, xp_reward, ticket_reward, ends_at)')
+        .select('id, progress, missions!inner(id, title, target_count, xp_reward, ticket_reward, ends_at)')
         .eq('user_id',                  payload.userId)
         .eq('is_completed',             false)
         .eq('missions.objective_type',  payload.eventType)
@@ -99,6 +102,13 @@ export class MissionsService {
     this.logger.log(
       `✅ Misión completada: user=${userId} xp=+${mission.xp_reward} tickets=+${mission.ticket_reward}`
     )
+
+    this.eventEmitter.emit('mission.completed', {
+      userId,
+      missionTitle: mission.title ?? 'Misión',
+      xpReward:     mission.xp_reward,
+      ticketReward: mission.ticket_reward,
+    })
   }
 
   // ── Inscribir usuario en todas las misiones activas que no tenga aún ────

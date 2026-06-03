@@ -320,6 +320,12 @@ export type Database = {
         Update: Partial<{ user_id: string | null }>
         Relationships: []
       }
+      notifications: {
+        Row: { id: string; user_id: string; type: string; title: string; message: string; is_read: boolean; created_at: string }
+        Insert: { user_id: string; type: string; title: string; message: string }
+        Update: Partial<{ is_read: boolean }>
+        Relationships: []
+      }
       user_level_ups: {
         Row: { id: string; user_id: string; level: number; xp_bonus: number; created_at: string }
         Insert: { user_id: string; level: number; xp_bonus?: number }

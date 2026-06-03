@@ -10,6 +10,7 @@ import { MissionsModule } from './modules/missions/missions.module'
 import { SchedulerModule } from './modules/scheduler/scheduler.module'
 import { YoutubeModule } from './modules/youtube/youtube.module'
 import { TwitchModule } from './modules/twitch/twitch.module'
+import { NotificationsModule } from './modules/notifications/notifications.module'
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { TwitchModule } from './modules/twitch/twitch.module'
     SchedulerModule,
     YoutubeModule,
     TwitchModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}
