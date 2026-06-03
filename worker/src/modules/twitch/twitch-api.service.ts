@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import { Cron } from '@nestjs/schedule'
 import { EmbedBuilder } from 'discord.js'
 import { DiscordBotService } from '../discord-bot/discord-bot.service'
+import { RedisService } from '../../infrastructure/redis/redis.service'
 
 interface StreamInfo {
   isLive:    boolean
@@ -24,6 +25,7 @@ export class TwitchApiService {
   constructor(
     private config:      ConfigService,
     private discordBot:  DiscordBotService,
+    private redis:       RedisService,
   ) {}
 
   private get clientId(): string {
@@ -127,22 +129,37 @@ export class TwitchApiService {
 
     const stream = await this.getStreamInfo()
 
-    // Solo anunciar en la transición offline → online
     if (stream.isLive && !this.wasLive) {
       this.logger.log(`🔴 Stream en vivo detectado: ${stream.title}`)
 
-      const embed = new EmbedBuilder()
-        .setColor(0x9146FF)
-        .setTitle(`🔴 ¡${this.channel} está en vivo!`)
-        .setDescription(stream.title)
-        .addFields(
-          { name: '🎮 Juego',    value: stream.game    || 'Sin categoría', inline: true },
-          { name: '👥 Viewers',  value: String(stream.viewers),            inline: true },
-        )
-        .setURL(`https://twitch.tv/${this.channel}`)
-        .setTimestamp()
+      // Usar Redis para que solo UNA máquina anuncie (anti-duplicado)
+      // TTL de 2 horas — si el stream dura más, no re-anuncia
+      const isFirst = await this.redis.setNX(
+        `twitch:live:${this.channel}`,
+        '1',
+        2 * 60 * 60
+      )
 
-      await this.discordBot.announce(channelId, embed)
+      if (isFirst) {
+        const embed = new EmbedBuilder()
+          .setColor(0x9146FF)
+          .setTitle(`🔴 ¡${this.channel} está en vivo!`)
+          .setDescription(stream.title)
+          .addFields(
+            { name: '🎮 Juego',   value: stream.game || 'Sin categoría', inline: true },
+            { name: '👥 Viewers', value: String(stream.viewers),          inline: true },
+          )
+          .setURL(`https://twitch.tv/${this.channel}`)
+          .setTimestamp()
+
+        await this.discordBot.announce(channelId, embed, '@everyone')
+        this.logger.log(`🔴 Anuncio enviado a Discord`)
+      }
+    }
+
+    // Limpiar clave de Redis cuando el stream termina
+    if (!stream.isLive && this.wasLive) {
+      await this.redis.del(`twitch:live:${this.channel}`)
     }
 
     this.wasLive = stream.isLive
