@@ -53,7 +53,7 @@ export default async function PublicProfilePage({
 
   if (!profile) notFound()
 
-  const [repRes, badgesRes, linksRes, eventsRes] = await Promise.all([
+  const [repRes, badgesRes, allBadgesRes, linksRes, eventsRes] = await Promise.all([
     supabase
       .from('user_reputation')
       .select('total_xp, level, weekly_xp, monthly_xp, current_streak, longest_streak, raffle_tickets')
@@ -61,8 +61,13 @@ export default async function PublicProfilePage({
       .single(),
     supabase
       .from('user_badges')
-      .select('earned_at, badges(name, description, icon_url, rarity)')
+      .select('badge_id, earned_at')
       .eq('user_id', profile.id),
+    supabase
+      .from('badges')
+      .select('id, slug, name, description, image_url, tier, family, family_order')
+      .eq('is_secret', false)
+      .order('family_order'),
     supabase
       .from('user_social_links')
       .select('platform, username')
@@ -75,10 +80,29 @@ export default async function PublicProfilePage({
       .limit(10),
   ])
 
-  const rep    = repRes.data
-  const badges = badgesRes.data ?? []
-  const links  = linksRes.data ?? []
-  const events = eventsRes.data ?? []
+  const rep       = repRes.data
+  const earnedIds = new Set((badgesRes.data ?? []).map((b: any) => b.badge_id))
+  const allBadges = allBadgesRes.data ?? []
+  const links     = linksRes.data ?? []
+  const events    = eventsRes.data ?? []
+
+  // Agrupar badges por familia
+  const badgesByFamily: Record<string, any[]> = {}
+  for (const badge of allBadges) {
+    const fam = (badge as any).family ?? 'other'
+    if (!badgesByFamily[fam]) badgesByFamily[fam] = []
+    badgesByFamily[fam].push(badge)
+  }
+
+  const FAMILY_LABELS: Record<string, string> = {
+    discord:  '💬 Discord',
+    stream:   '🟣 Stream',
+    streak:   '🔥 Racha',
+    level:    '⭐ Nivel',
+    missions: '🎯 Misiones',
+    youtube:  '📹 YouTube',
+    special:  '🏅 Especiales',
+  }
 
   const level   = rep?.level ?? 1
   const totalXp = rep?.total_xp ?? 0
@@ -177,27 +201,53 @@ export default async function PublicProfilePage({
       </div>
 
       {/* Badges */}
-      {badges.length > 0 && (
-        <div className="bg-card border border-border rounded-2xl p-6">
-          <h2 className="text-base font-bold text-foreground mb-4">
-            Badges <span className="text-muted-foreground font-normal text-sm">({badges.length})</span>
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {badges.map((ub: any, i: number) => {
-              const badge = ub.badges
-              return (
-                <div key={i} className={`border rounded-xl p-3 flex items-center gap-3 ${RARITY_COLORS[badge?.rarity ?? 'COMMON']}`}>
-                  <span className="text-2xl">{badge?.icon_url ?? '🏅'}</span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{badge?.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{badge?.description}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+      <div className="bg-card border border-border rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-bold text-foreground">Badges</h2>
+          <span className="text-xs text-muted-foreground">
+            {earnedIds.size} / {allBadges.length} desbloqueados
+          </span>
         </div>
-      )}
+
+        <div className="space-y-5">
+          {Object.entries(badgesByFamily).map(([family, fBadges]) => {
+            const earned = fBadges.filter(b => earnedIds.has(b.id))
+            return (
+              <div key={family}>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {FAMILY_LABELS[family] ?? family}
+                  </p>
+                  <span className="text-xs text-muted-foreground">{earned.length}/{fBadges.length}</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {fBadges.map((badge: any) => {
+                    const isEarned = earnedIds.has(badge.id)
+                    return (
+                      <div
+                        key={badge.id}
+                        className={`border rounded-xl p-3 flex items-center gap-3 transition-all ${
+                          isEarned
+                            ? RARITY_COLORS[badge.tier ?? 'COMMON']
+                            : 'border-border bg-secondary/30 opacity-40 grayscale'
+                        }`}
+                      >
+                        <span className="text-2xl">{badge.image_url ?? '🏅'}</span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">{badge.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {isEarned ? badge.description : '???'}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       {/* Actividad reciente */}
       {events.length > 0 && (

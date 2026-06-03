@@ -13,7 +13,9 @@ export class YoutubeService {
   private readonly apiBase  = 'https://www.googleapis.com/youtube/v3'
 
   // IDs de videos ya anunciados (en memoria, se resetea al reiniciar el worker)
-  private announcedVideos = new Set<string>()
+  private announcedVideos    = new Set<string>()
+  // IDs de videos donde ya se premió al primer comentarista
+  private firstCommentAwarded = new Set<string>()
 
   constructor(
     private config:      ConfigService,
@@ -202,6 +204,48 @@ export class YoutubeService {
             comment_text: commentText.slice(0, 200),
           },
         })
+
+        // ── Primero en comentar en un video nuevo ─────────────────────────
+        if (!this.firstCommentAwarded.has(videoId)) {
+          this.firstCommentAwarded.add(videoId)
+          try {
+            await this.supabase.db
+              .from('notifications')
+              .insert({
+                user_id: userId,
+                type:    'FIRST_COMMENTER',
+                title:   '🎬 ¡Primero en comentar!',
+                message: `Fuiste el primero en comentar en un video nuevo del canal. ¡+100 XP y 3 tickets!`,
+              })
+
+            await this.supabase.db.rpc('award_xp', {
+              p_user_id:    userId,
+              p_event_type: 'YOUTUBE_COMMENT',
+              p_platform:   'YOUTUBE',
+              p_xp:         100,
+              p_base_xp:    100,
+              p_multiplier: 1.0,
+              p_quality:    1.0,
+              p_streak:     0,
+              p_ref:        `first_comment_${videoId}`,
+            })
+
+            const { data: rep } = await this.supabase.db
+              .from('user_reputation')
+              .select('raffle_tickets')
+              .eq('user_id', userId)
+              .single()
+
+            await this.supabase.db
+              .from('user_reputation')
+              .update({ raffle_tickets: ((rep as any)?.raffle_tickets ?? 0) + 3 })
+              .eq('user_id', userId)
+
+            this.logger.log(`First commenter on video ${videoId}: user=${userId}`)
+          } catch (err) {
+            this.logger.warn(`First commenter error: ${err}`)
+          }
+        }
 
         this.logger.log(`YouTube comment reward: user=${userId} video=${videoId}`)
       }

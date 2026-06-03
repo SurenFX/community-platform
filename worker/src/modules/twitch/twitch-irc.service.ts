@@ -11,6 +11,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(TwitchIrcService.name)
   private client: net.Socket | null = null
   private isLive = false
+  private firstGreeterAwarded = false
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private pingTimer: ReturnType<typeof setInterval> | null = null
   private activeViewers = new Map<string, number>()
@@ -130,6 +131,49 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
       metadata: { twitch_username: twitchUsername, content: messageContent.slice(0, 200) },
     })
 
+    // ── Primero en saludar en el stream ──────────────────────────────────
+    if (!this.firstGreeterAwarded) {
+      this.firstGreeterAwarded = true
+      try {
+        await this.supabase.db
+          .from('notifications')
+          .insert({
+            user_id: socialLink.user_id,
+            type:    'FIRST_GREETER',
+            title:   '🎉 ¡Primero en saludar!',
+            message: `Fuiste el primero en escribir en el chat del stream. ¡+100 XP y 3 tickets!`,
+          })
+
+        await this.supabase.db.rpc('award_xp', {
+          p_user_id:    socialLink.user_id,
+          p_event_type: 'TWITCH_CHAT_MESSAGE',
+          p_platform:   'TWITCH',
+          p_xp:         100,
+          p_base_xp:    100,
+          p_multiplier: 1.0,
+          p_quality:    1.0,
+          p_streak:     0,
+          p_ref:        `first_greeter_${Date.now()}`,
+        })
+
+        const { data: rep } = await this.supabase.db
+          .from('user_reputation')
+          .select('raffle_tickets')
+          .eq('user_id', socialLink.user_id)
+          .single()
+
+        await this.supabase.db
+          .from('user_reputation')
+          .update({ raffle_tickets: ((rep as any)?.raffle_tickets ?? 0) + 3 })
+          .eq('user_id', socialLink.user_id)
+
+        this.sendChat(`🎉 ¡@${twitchUsername} fue el primero en saludar! +100 XP y 3 tickets 🎟️`)
+        this.logger.log(`First greeter: ${twitchUsername}`)
+      } catch (err) {
+        this.logger.warn(`First greeter error: ${err}`)
+      }
+    }
+
     this.activeViewers.set(twitchUsername, Date.now())
   }
 
@@ -188,6 +232,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`Stream iniciado: ${info.title}`)
         this.isLive = true
         this.activeViewers.clear()
+        this.firstGreeterAwarded = false
 
         await this.supabase.db.from('stream_sessions').insert({ title: info.title, game: info.game })
         await this.supabase.db.from('platform_config').upsert([

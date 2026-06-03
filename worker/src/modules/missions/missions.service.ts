@@ -56,7 +56,7 @@ export class MissionsService {
   private async completeMission(
     userId:        string,
     userMissionId: string,
-    mission:       { id: string; xp_reward: number; ticket_reward: number; target_count: number }
+    mission:       { id: string; title?: string; xp_reward: number; ticket_reward: number; target_count: number }
   ) {
     // Marcar completada
     await this.supabase.db
