@@ -170,7 +170,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
           .update({ raffle_tickets: ((rep as any)?.raffle_tickets ?? 0) + 3 })
           .eq('user_id', socialLink.user_id)
 
-        this.sendChat(`🎉 ¡@${twitchUsername} fue el primero en saludar! +100 XP y 3 tickets 🎟️`)
+        // No spamear el chat — la notificación llega por la plataforma
         this.logger.log(`First greeter: ${twitchUsername}`)
       } catch (err) {
         this.logger.warn(`First greeter error: ${err}`)
