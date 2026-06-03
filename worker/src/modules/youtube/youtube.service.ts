@@ -164,7 +164,7 @@ export class YoutubeService {
 
             if (thumbnail) embed.setImage(thumbnail)
 
-            await this.discordBot.announce(discordChannelId, embed)
+            await this.discordBot.announce(discordChannelId, embed, '@everyone')
             this.logger.log(`YouTube: anunciado video nuevo ${videoId} - ${title}`)
           }
         }
