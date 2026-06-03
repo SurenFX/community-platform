@@ -18,11 +18,35 @@ interface MissionWithData extends UserMission {
   missions: Mission | null
 }
 
+interface BadgeItem {
+  id: string; slug: string; name: string; description: string
+  image_url: string; tier: string; family: string; family_order: number
+}
+
+const TIER_COLORS: Record<string, string> = {
+  BRONZE:    'border-amber-700/30 bg-amber-700/10',
+  SILVER:    'border-slate-400/30 bg-slate-400/10',
+  GOLD:      'border-yellow-400/30 bg-yellow-400/10',
+  LEGENDARY: 'border-purple-400/30 bg-purple-400/10',
+}
+
+const FAMILY_LABELS: Record<string, string> = {
+  discord:  '💬 Discord',
+  stream:   '🟣 Stream',
+  streak:   '🔥 Racha',
+  level:    '⭐ Nivel',
+  missions: '🎯 Misiones',
+  youtube:  '📹 YouTube',
+  special:  '🏅 Especiales',
+}
+
 interface DashboardClientProps {
   initialProfile:  ProfileWithAll | null
   initialEvents:   XpEvent[]
   initialMissions: MissionWithData[]
   userId:          string
+  allBadges:       BadgeItem[]
+  earnedBadgeIds:  string[]
 }
 
 interface XpToastData {
@@ -52,7 +76,17 @@ export default function DashboardClient({
   initialEvents,
   initialMissions,
   userId,
+  allBadges,
+  earnedBadgeIds,
 }: DashboardClientProps) {
+  const earnedSet = new Set(earnedBadgeIds)
+
+  // Agrupar badges por familia
+  const badgesByFamily: Record<string, BadgeItem[]> = {}
+  for (const badge of allBadges) {
+    if (!badgesByFamily[badge.family]) badgesByFamily[badge.family] = []
+    badgesByFamily[badge.family].push(badge)
+  }
   const [profile,     setProfile]     = useState(initialProfile)
   const [events,      setEvents]      = useState(initialEvents)
   const [missions,    setMissions]    = useState(initialMissions)
@@ -200,6 +234,55 @@ export default function DashboardClient({
         <RecentActivity events={events} />
         <ActiveMissions missions={missions} />
       </div>
+
+      {/* Badges */}
+      {allBadges.length > 0 && (
+        <div className="bg-card border border-border rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-base font-bold text-foreground">Badges</h2>
+            <span className="text-xs text-muted-foreground">
+              {earnedSet.size} / {allBadges.length} desbloqueados
+            </span>
+          </div>
+          <div className="space-y-5">
+            {Object.entries(badgesByFamily).map(([family, fBadges]) => {
+              const earned = fBadges.filter(b => earnedSet.has(b.id))
+              return (
+                <div key={family}>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {FAMILY_LABELS[family] ?? family}
+                    </p>
+                    <span className="text-xs text-muted-foreground">{earned.length}/{fBadges.length}</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {fBadges.map(badge => {
+                      const isEarned = earnedSet.has(badge.id)
+                      return (
+                        <div key={badge.id}
+                          className={`border rounded-xl p-3 flex items-center gap-3 transition-all ${
+                            isEarned
+                              ? TIER_COLORS[badge.tier] ?? 'border-border bg-secondary/30'
+                              : 'border-border bg-secondary/20 opacity-40 grayscale'
+                          }`}
+                        >
+                          <span className="text-2xl">{badge.image_url ?? '🏅'}</span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-foreground truncate">{badge.name}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {isEarned ? badge.description : '???'}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
         {toasts.map(toast => (
