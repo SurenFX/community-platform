@@ -4,6 +4,7 @@ import { Cron } from '@nestjs/schedule'
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
 import { ReputationService } from '../reputation/reputation.service'
 import { TwitchApiService } from './twitch-api.service'
+import { RedisService } from '../../infrastructure/redis/redis.service'
 import * as net from 'net'
 
 @Injectable()
@@ -21,6 +22,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     private supabase:   SupabaseService,
     private reputation: ReputationService,
     private twitchApi:  TwitchApiService,
+    private redis:      RedisService,
   ) {}
 
   async onModuleInit() {
@@ -132,8 +134,9 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     })
 
     // ── Primero en saludar en el stream ──────────────────────────────────
-    if (!this.firstGreeterAwarded) {
-      this.firstGreeterAwarded = true
+    const channel = this.config.get<string>('TWITCH_CHANNEL') ?? 'stream'
+    const isFirstGreeter = await this.redis.setNX(`twitch:first_greeter:${channel}`, '1', 12 * 60 * 60)
+    if (isFirstGreeter) {
       try {
         await this.supabase.db
           .from('notifications')
@@ -232,7 +235,9 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`Stream iniciado: ${info.title}`)
         this.isLive = true
         this.activeViewers.clear()
-        this.firstGreeterAwarded = false
+        // Limpiar el flag de primer saludador para este nuevo stream
+        const ch = this.config.get<string>('TWITCH_CHANNEL') ?? 'stream'
+        await this.redis.del(`twitch:first_greeter:${ch}`)
 
         await this.supabase.db.from('stream_sessions').insert({ title: info.title, game: info.game })
         await this.supabase.db.from('platform_config').upsert([
