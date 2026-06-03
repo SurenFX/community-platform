@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Shield, Tv, Youtube, Zap, ChevronRight, X } from 'lucide-react'
 import { completeOnboarding } from '@/app/actions/profile'
@@ -43,13 +43,13 @@ const STEPS = [
 
 export default function OnboardingModal({ username, avatarUrl }: Props) {
   const [step,    setStep]    = useState(0)
-  const [visible, setVisible] = useState(() => {
-    // Si ya fue cerrado en este navegador, no mostrar nunca más
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('onboarding_done') !== 'true'
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    if (localStorage.getItem('onboarding_done') !== 'true') {
+      setVisible(true)
     }
-    return true
-  })
+  }, [])
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
