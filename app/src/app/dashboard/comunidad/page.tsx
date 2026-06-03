@@ -1,7 +1,10 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Trophy, Medal, Award, User, Users } from 'lucide-react'
+import { Users, User } from 'lucide-react'
 import { getLevelColor, getLevelTitle } from '@/lib/utils'
 
 export default async function ComunidadPage() {
@@ -9,43 +12,41 @@ export default async function ComunidadPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [globalRes, weeklyRes, monthlyRes, totalRes] = await Promise.all([
-    supabase
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  const [membersRes, totalRes] = await Promise.all([
+    admin
       .from('user_reputation')
-      .select('user_id, total_xp, level, profiles!inner(username, avatar_url, discord_tag)')
+      .select('user_id, total_xp, level, profiles!inner(username, avatar_url)')
       .order('total_xp', { ascending: false })
-      .limit(20),
-    supabase
-      .from('user_reputation')
-      .select('user_id, weekly_xp, level, profiles!inner(username, avatar_url, discord_tag)')
-      .order('weekly_xp', { ascending: false })
-      .limit(20),
-    supabase
-      .from('user_reputation')
-      .select('user_id, monthly_xp, level, profiles!inner(username, avatar_url, discord_tag)')
-      .order('monthly_xp', { ascending: false })
-      .limit(20),
-    supabase.from('profiles').select('id', { count: 'exact', head: true }),
+      .limit(50),
+    admin.from('profiles').select('id', { count: 'exact', head: true }),
   ])
 
-  const rankIcons = [
-    <Trophy key={0} className="w-5 h-5 text-yellow-400" />,
-    <Medal  key={1} className="w-5 h-5 text-gray-300"   />,
-    <Award  key={2} className="w-5 h-5 text-amber-600"  />,
-  ]
+  const members = membersRes.data ?? []
+  const userIds = members.map((m: any) => m.user_id)
 
-  const tabs = [
-    { id: 'global',  label: 'Global',  data: globalRes.data,  xpField: 'total_xp'  },
-    { id: 'weekly',  label: 'Semanal', data: weeklyRes.data,  xpField: 'weekly_xp' },
-    { id: 'monthly', label: 'Mensual', data: monthlyRes.data, xpField: 'monthly_xp'},
-  ]
+  const { data: allEarned } = await admin
+    .from('user_badges')
+    .select('user_id, badges(image_url, name)')
+    .in('user_id', userIds)
+
+  const badgesByUser: Record<string, any[]> = {}
+  for (const ub of allEarned ?? []) {
+    if (!badgesByUser[(ub as any).user_id]) badgesByUser[(ub as any).user_id] = []
+    if ((ub as any).badges) badgesByUser[(ub as any).user_id].push((ub as any).badges)
+  }
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Comunidad</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Los miembros más activos</p>
+          <p className="text-muted-foreground mt-1 text-sm">Todos los miembros activos</p>
         </div>
         <div className="bg-card border border-border rounded-xl px-4 py-2.5 flex items-center gap-2">
           <Users className="w-4 h-4 text-primary" />
@@ -54,57 +55,64 @@ export default async function ComunidadPage() {
         </div>
       </div>
 
-      {tabs.map(({ id, label, data, xpField }) => (
-        <div key={id} className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-border">
-            <h2 className="text-base font-semibold text-foreground">{label}</h2>
-          </div>
-          <div className="divide-y divide-border">
-            {(data ?? []).map((entry: any, i) => {
-              const profile = entry.profiles
-              const xp      = entry[xpField] ?? 0
-              const isMe    = entry.user_id === user.id
-              const level   = entry.level ?? 1
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {members.map((entry: any) => {
+          const profile  = entry.profiles
+          const isMe     = entry.user_id === user.id
+          const badges   = badgesByUser[entry.user_id] ?? []
+          const username = profile?.username ?? entry.user_id
 
-              return (
-                <Link key={entry.user_id}
-                  href={`/dashboard/profile/${encodeURIComponent(profile?.username ?? entry.user_id)}`}
-                  className={`flex items-center gap-4 px-5 py-3.5 hover:bg-secondary/30 transition-colors ${isMe ? 'bg-primary/5 border-l-2 border-primary' : ''}`}
-                >
-                  <div className="w-8 flex justify-center shrink-0">
-                    {i < 3 ? rankIcons[i] : (
-                      <span className="text-sm font-bold text-muted-foreground">#{i + 1}</span>
+          return (
+            <Link
+              key={entry.user_id}
+              href={`/dashboard/profile/${encodeURIComponent(username)}`}
+              className={`bg-card border rounded-2xl p-4 hover:border-primary/40 transition-all duration-200 space-y-3 ${
+                isMe ? 'border-primary/30 bg-primary/5' : 'border-border'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt={username} className="w-11 h-11 rounded-xl shrink-0" />
+                ) : (
+                  <div className="w-11 h-11 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                    <User className="w-5 h-5 text-primary" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm font-bold text-foreground truncate">{username}</p>
+                    {isMe && (
+                      <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium shrink-0">Tú</span>
                     )}
                   </div>
-                  {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt={profile.username} className="w-9 h-9 rounded-xl shrink-0" />
-                  ) : (
-                    <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
-                      <User className="w-4 h-4 text-primary" />
-                    </div>
+                  <p className={`text-xs font-medium ${getLevelColor(entry.level)}`}>
+                    Nv. {entry.level} · {getLevelTitle(entry.level)}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold text-foreground">{entry.total_xp.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">XP</p>
+                </div>
+              </div>
+
+              {badges.length > 0 ? (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {badges.slice(0, 8).map((badge: any, i: number) => (
+                    <span key={i} title={badge.name} className="text-lg leading-none">
+                      {badge.image_url ?? '🏅'}
+                    </span>
+                  ))}
+                  {badges.length > 8 && (
+                    <span className="text-xs text-muted-foreground ml-1">+{badges.length - 8}</span>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-foreground truncate">
-                        {profile?.username ?? 'Usuario'}
-                      </p>
-                      {isMe && (
-                        <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full font-medium shrink-0">Tú</span>
-                      )}
-                    </div>
-                    <p className={`text-xs font-medium ${getLevelColor(level)}`}>
-                      {getLevelTitle(level)} · Nv. {level}
-                    </p>
-                  </div>
-                  <span className="text-sm font-bold text-primary shrink-0">
-                    {xp.toLocaleString()} XP
-                  </span>
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-      ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Sin badges aún</p>
+              )}
+            </Link>
+          )
+        })}
+      </div>
     </div>
   )
 }

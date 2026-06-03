@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { cn, getLevelColor, getLevelTitle, formatNumber } from '@/lib/utils'
 import { Trophy, Medal, User, ChevronDown } from 'lucide-react'
 
@@ -84,14 +85,21 @@ export default function LeaderboardTable({ entries, currentUserId, myRank }: Lea
           const isCurrentUser = entry.user_id === currentUserId
           const xp            = entry[period]
 
+          const username = entry.profiles?.username
+          const RowWrapper = ({ children }: { children: React.ReactNode }) =>
+            !isCurrentUser && username ? (
+              <Link href={`/dashboard/profile/${username}`}
+                className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-secondary/30 cursor-pointer">
+                {children}
+              </Link>
+            ) : (
+              <div className="flex items-center gap-4 px-6 py-4 transition-colors bg-primary/5 border-l-2 border-l-primary">
+                {children}
+              </div>
+            )
+
           return (
-            <div
-              key={entry.user_id}
-              className={cn(
-                'flex items-center gap-4 px-6 py-4 transition-colors',
-                isCurrentUser ? 'bg-primary/5 border-l-2 border-l-primary' : 'hover:bg-secondary/30'
-              )}
-            >
+            <RowWrapper key={entry.user_id}>
               <div className="w-8 flex justify-center shrink-0">
                 {rank === 1 ? <Trophy className="w-5 h-5 text-yellow-400" />
                   : rank === 2 ? <Medal className="w-5 h-5 text-slate-400" />
@@ -126,7 +134,7 @@ export default function LeaderboardTable({ entries, currentUserId, myRank }: Lea
                 <p className="text-sm font-bold text-foreground">{formatNumber(xp)}</p>
                 <p className="text-xs text-muted-foreground">XP</p>
               </div>
-            </div>
+            </RowWrapper>
           )
         })}
       </div>

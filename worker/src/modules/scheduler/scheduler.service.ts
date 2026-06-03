@@ -52,6 +52,51 @@ export class SchedulerService {
   }
 
   /**
+   * Reset misiones DAILY — corre cada día a las 00:00
+   * Elimina el progreso de user_missions completadas o en curso del tipo DAILY
+   */
+  @Cron('0 0 * * *')
+  async resetDailyMissions() {
+    this.logger.log('Cron: reseteando misiones diarias...')
+    try {
+      await this.supabase.db
+        .from('user_missions')
+        .delete()
+        .in('mission_id',
+          this.supabase.db
+            .from('missions')
+            .select('id')
+            .eq('type', 'DAILY') as any
+        )
+      this.logger.log('✓ Misiones diarias reseteadas')
+    } catch (err) {
+      this.logger.error(`Error en resetDailyMissions: ${err}`)
+    }
+  }
+
+  /**
+   * Reset misiones WEEKLY — corre cada lunes a las 00:00
+   */
+  @Cron('0 0 * * 1')
+  async resetWeeklyMissions() {
+    this.logger.log('Cron: reseteando misiones semanales...')
+    try {
+      await this.supabase.db
+        .from('user_missions')
+        .delete()
+        .in('mission_id',
+          this.supabase.db
+            .from('missions')
+            .select('id')
+            .eq('type', 'WEEKLY') as any
+        )
+      this.logger.log('✓ Misiones semanales reseteadas')
+    } catch (err) {
+      this.logger.error(`Error en resetWeeklyMissions: ${err}`)
+    }
+  }
+
+  /**
    * Verificar sorteos vencidos — corre cada hora
    */
   @Cron(CronExpression.EVERY_HOUR)
