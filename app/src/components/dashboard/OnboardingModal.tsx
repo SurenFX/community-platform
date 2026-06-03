@@ -43,7 +43,13 @@ const STEPS = [
 
 export default function OnboardingModal({ username, avatarUrl }: Props) {
   const [step,    setStep]    = useState(0)
-  const [visible, setVisible] = useState(true)
+  const [visible, setVisible] = useState(() => {
+    // Si ya fue cerrado en este navegador, no mostrar nunca más
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('onboarding_done') !== 'true'
+    }
+    return true
+  })
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -51,6 +57,7 @@ export default function OnboardingModal({ username, avatarUrl }: Props) {
   const { icon: Icon, color, bg, title, desc } = STEPS[step]
 
   async function dismiss(goToConfig = false) {
+    localStorage.setItem('onboarding_done', 'true')
     setVisible(false)
     startTransition(async () => {
       await completeOnboarding()
