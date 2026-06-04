@@ -8,11 +8,11 @@ interface ActiveMissionsProps {
   missions: MissionWithData[]
 }
 
-const TYPE_COLORS: Record<string, string> = {
-  DAILY:   'bg-blue-400/15 text-blue-400',
-  WEEKLY:  'bg-purple-400/15 text-purple-400',
-  SPECIAL: 'bg-amber-400/15 text-amber-400',
-  EVENT:   'bg-pink-400/15 text-pink-400',
+const TYPE_LABELS: Record<string, { label: string; color: string }> = {
+  DAILY:   { label: 'Diaria',   color: 'bg-blue-400/15 text-blue-400'    },
+  WEEKLY:  { label: 'Semanal',  color: 'bg-purple-400/15 text-purple-400' },
+  SPECIAL: { label: 'Especial', color: 'bg-amber-400/15 text-amber-400'  },
+  EVENT:   { label: 'Evento',   color: 'bg-pink-400/15 text-pink-400'    },
 }
 
 export default function ActiveMissions({ missions }: ActiveMissionsProps) {
@@ -37,9 +37,9 @@ export default function ActiveMissions({ missions }: ActiveMissionsProps) {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span
-                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${TYPE_COLORS[mission.type] ?? 'bg-secondary text-muted-foreground'}`}
+                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${TYPE_LABELS[mission.type]?.color ?? 'bg-secondary text-muted-foreground'}`}
                       >
-                        {mission.type}
+                        {TYPE_LABELS[mission.type]?.label ?? mission.type}
                       </span>
                       <p className="text-sm font-medium text-foreground">
                         {mission.title}

@@ -50,7 +50,10 @@ export default function Sidebar({ profile }: SidebarProps) {
       {/* Avatar + XP — clickeable al perfil propio */}
       {profile && (
         <div className="p-4 border-b border-border">
-          <div className="flex items-center gap-3 mb-3">
+          <Link
+            href={`/dashboard/profile/${profile.username}`}
+            className="flex items-center gap-3 mb-3 group rounded-xl hover:bg-secondary/60 transition-all p-1 -m-1"
+          >
             {profile.avatar_url ? (
               <img
                 src={profile.avatar_url}
@@ -65,9 +68,10 @@ export default function Sidebar({ profile }: SidebarProps) {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">{profile.username}</p>
+              <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{profile.username}</p>
+              <p className="text-xs text-muted-foreground">Ver perfil</p>
             </div>
-          </div>
+          </Link>
           <SidebarXpBar
             userId={profile.id}
             initialRep={profile.user_reputation}

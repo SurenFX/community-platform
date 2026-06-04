@@ -42,9 +42,21 @@ export default async function AdminAnalyticsPage() {
   const maxXp = Math.max(...days.map(d => d.xp), 1)
 
   const EVENT_LABELS: Record<string, string> = {
-    DISCORD_MESSAGE: 'Mensaje Discord', TWITCH_CHAT_MESSAGE: 'Chat Twitch',
-    TWITCH_WATCH_TIME: 'Watch time', YOUTUBE_COMMENT: 'Comentario YT',
-    DISCORD_HELPED_USER: 'Ayuda Discord', MISSION_COMPLETED: 'Misión',
+    DISCORD_MESSAGE:           'Mensaje Discord',
+    DISCORD_REACTION_RECEIVED: 'Reacción Discord',
+    DISCORD_HELPED_USER:       'Ayuda Discord',
+    TWITCH_CHAT_MESSAGE:       'Chat Twitch',
+    TWITCH_WATCH_TIME:         'Watch time',
+    TWITCH_FOLLOW:             'Follow Twitch',
+    TWITCH_SUBSCRIBE:          'Sub Twitch',
+    TWITCH_RAID_PARTICIPATE:   'Raid Twitch',
+    YOUTUBE_COMMENT:           'Comentario YT',
+    YOUTUBE_SUBSCRIBE:         'Sub YouTube',
+    TELEGRAM_MESSAGE:          'Mensaje Telegram',
+    MISSION_COMPLETED:         'Misión completada',
+    STREAK_BONUS:              'Bonus racha',
+    BADGE_EARNED:              'Badge ganado',
+    ADMIN_MANUAL_GRANT:        'XP manual admin',
   }
 
   return (

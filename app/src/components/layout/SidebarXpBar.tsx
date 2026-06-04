@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { getLevelColor, getLevelTitle } from '@/lib/utils'
+import { getLevelColor, getLevelTitle, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'
 import type { UserReputation } from '@/types/database'
 
 interface SidebarXpBarProps {
@@ -10,31 +10,35 @@ interface SidebarXpBarProps {
   initialRep: UserReputation | null
   username:   string
   avatarUrl:  string | null
-  compact?:   boolean  // solo muestra la barra, sin avatar ni nombre
+  compact?:   boolean
 }
 
 export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, compact }: SidebarXpBarProps) {
   const [rep, setRep] = useState(initialRep)
-  const supabase = createClient()
 
   useEffect(() => {
-    const interval = setInterval(async () => {
-      const { data } = await supabase
-        .from('user_reputation')
-        .select('*')
-        .eq('user_id', userId)
-        .single()
-      if (data) setRep(data as UserReputation)
-    }, 8000)
-    return () => clearInterval(interval)
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`sidebar-rep:${userId}`)
+      .on('postgres_changes', {
+        event:  'UPDATE',
+        schema: 'public',
+        table:  'user_reputation',
+        filter: `user_id=eq.${userId}`,
+      }, (payload) => {
+        setRep(payload.new as UserReputation)
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [userId])
 
-  const level          = rep?.level ?? 1
-  const totalXp        = rep?.total_xp ?? 0
-  const currentLevelXp = Math.pow(level - 1, 2) * 100
-  const nextLevelXp    = Math.pow(level, 2) * 100
-  const progressPct    = nextLevelXp > currentLevelXp
-    ? Math.min(((totalXp - currentLevelXp) / (nextLevelXp - currentLevelXp)) * 100, 100)
+  const level       = rep?.level ?? 1
+  const totalXp     = rep?.total_xp ?? 0
+  const currentLvXp = xpForCurrentLevel(level)
+  const nextLvXp    = xpForNextLevel(level)
+  const progressPct = nextLvXp > currentLvXp
+    ? Math.min(((totalXp - currentLvXp) / (nextLvXp - currentLvXp)) * 100, 100)
     : 100
 
   if (compact) {
