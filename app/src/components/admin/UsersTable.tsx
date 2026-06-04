@@ -23,10 +23,10 @@ interface UsersTableProps {
 }
 
 const PLATFORM_ICONS: Record<string, string> = {
-  DISCORD: '🎮',
-  TWITCH:  '🟣',
-  YOUTUBE: '🔴',
-  TWITTER: '🐦',
+  DISCORD:  '🎮',
+  TWITCH:   '🟣',
+  YOUTUBE:  '🔴',
+  TELEGRAM: '✈️',
 }
 
 export default function UsersTable({ users: initialUsers }: UsersTableProps) {

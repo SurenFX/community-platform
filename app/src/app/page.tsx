@@ -71,7 +71,7 @@ export default async function HomePage() {
           </h1>
 
           <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto leading-relaxed">
-            Ganá XP por participar en Discord, Twitch y YouTube. Subí de nivel, desbloqueá badges y competí en el ranking de la comunidad.
+            Ganá XP por participar en Discord, Twitch, YouTube y Telegram. Subí de nivel, desbloqueá badges y competí en el ranking de la comunidad.
           </p>
 
           <Link href="/login"
@@ -90,7 +90,7 @@ export default async function HomePage() {
           {[
             { value: totalMembers,            label: 'Miembros',      icon: Users       },
             { value: totalEvents.toLocaleString(), label: 'Acciones con XP', icon: TrendingUp },
-            { value: '3',                     label: 'Plataformas',   icon: MessageSquare },
+            { value: '4',                     label: 'Plataformas',   icon: MessageSquare },
           ].map(({ value, label, icon: Icon }) => (
             <div key={label}>
               <Icon className="w-5 h-5 text-primary mx-auto mb-2" />
@@ -145,9 +145,10 @@ export default async function HomePage() {
           </div>
           <div className="grid sm:grid-cols-3 gap-6 mb-16">
             {[
-              { icon: MessageSquare, color: 'text-indigo-400', bg: 'bg-indigo-400/10', title: 'Discord', desc: 'Mensajes, reacciones y participación en el servidor' },
-              { icon: Tv,            color: 'text-purple-400', bg: 'bg-purple-400/10', title: 'Twitch',  desc: 'Chat en streams, tiempo de visualización y raids' },
-              { icon: Youtube,       color: 'text-red-400',    bg: 'bg-red-400/10',    title: 'YouTube', desc: 'Comentarios en videos del canal' },
+              { icon: MessageSquare, color: 'text-indigo-400',    bg: 'bg-indigo-400/10',    title: 'Discord',  desc: 'Mensajes, reacciones y participación en el servidor' },
+              { icon: Tv,            color: 'text-purple-400',  bg: 'bg-purple-400/10',  title: 'Twitch',   desc: 'Chat en streams, tiempo de visualización y raids' },
+              { icon: Youtube,       color: 'text-red-400',     bg: 'bg-red-400/10',     title: 'YouTube',  desc: 'Comentarios en videos del canal' },
+              { icon: MessageSquare, color: 'text-[#26A5E4]',   bg: 'bg-[#26A5E4]/10',  title: 'Telegram', desc: 'Mensajes en el grupo de la comunidad' },
             ].map(({ icon: Icon, color, bg, title, desc }) => (
               <div key={title} className="bg-card border border-border rounded-2xl p-6 card-hover">
                 <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center mb-4`}>
