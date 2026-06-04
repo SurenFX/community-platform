@@ -123,12 +123,10 @@ const PLATFORMS: Platform[] = [
 export default function ConnectedAccounts({
   userId, profile, socialLinks, identities, successMessage, errorMessage,
 }: ConnectedAccountsProps) {
-  const [localLinks,    setLocalLinks]    = useState<UserSocialLink[]>(socialLinks)
-  const [loading,       setLoading]       = useState<string | null>(null)
-  const [localError,    setLocalError]    = useState<string | null>(null)
-  const [telegramModal, setTelegramModal] = useState(false)
-  const [telegramId,    setTelegramId]    = useState('')
-  const [telegramUser,  setTelegramUser]  = useState('')
+  const [localLinks,      setLocalLinks]      = useState<UserSocialLink[]>(socialLinks)
+  const [loading,         setLoading]         = useState<string | null>(null)
+  const [localError,      setLocalError]      = useState<string | null>(null)
+  const [telegramWaiting, setTelegramWaiting] = useState(false)
   const supabase = createClient()
 
   function isConnected(platform: Platform): boolean {
@@ -150,8 +148,48 @@ export default function ConnectedAccounts({
       setLocalError(null)
 
       if (platform.id === 'telegram') {
-        setTelegramModal(true)
+        // 1. Generar token en Supabase
+        const token = crypto.randomUUID()
+        const { error: tokenError } = await supabase
+          .from('telegram_link_tokens')
+          .insert({ token, user_id: userId })
+
+        if (tokenError) throw tokenError
+
+        // 2. Abrir deep link del bot
+        const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
+        window.open(`https://t.me/${botUsername}?start=${token}`, '_blank')
+
+        // 3. Esperar vinculación (polling cada 2s por 3 minutos)
+        setTelegramWaiting(true)
         setLoading(null)
+
+        const startTime = Date.now()
+        const poll = setInterval(async () => {
+          if (Date.now() - startTime > 3 * 60 * 1000) {
+            clearInterval(poll)
+            setTelegramWaiting(false)
+            setLocalError('Tiempo agotado. Intentá de nuevo.')
+            return
+          }
+
+          const { data: link } = await supabase
+            .from('user_social_links')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('platform', 'TELEGRAM')
+            .maybeSingle()
+
+          if (link) {
+            clearInterval(poll)
+            setTelegramWaiting(false)
+            setLocalLinks(prev => [
+              ...prev.filter(l => l.platform !== 'TELEGRAM'),
+              link as UserSocialLink,
+            ])
+          }
+        }, 2000)
+
         return
       }
 
@@ -270,6 +308,11 @@ export default function ConnectedAccounts({
                       {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Unlink className="w-3 h-3" />}
                       Desconectar
                     </button>
+                  ) : platform.id === 'telegram' && telegramWaiting ? (
+                    <span className="flex items-center gap-1.5 text-xs text-[#26A5E4] bg-[#26A5E4]/10 border border-[#26A5E4]/30 px-3 py-1.5 rounded-lg">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Esperando...
+                    </span>
                   ) : (
                     <button
                       onClick={() => handleConnect(platform)}
@@ -308,98 +351,31 @@ export default function ConnectedAccounts({
         </div>
       </div>
 
-      {/* Modal vinculación Telegram */}
-      {telegramModal && (
+      {/* Modal espera vinculación Telegram */}
+      {telegramWaiting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-          <div className="bg-card border border-[#26A5E4]/30 rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#26A5E4]/10 flex items-center justify-center">
-                <svg className="w-5 h-5 text-[#26A5E4]" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-foreground">Vincular Telegram</h3>
-                <p className="text-xs text-muted-foreground">Seguí los pasos para conectar tu cuenta</p>
-              </div>
+          <div className="bg-card border border-[#26A5E4]/30 rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl text-center">
+            <div className="w-14 h-14 rounded-2xl bg-[#26A5E4]/10 flex items-center justify-center mx-auto">
+              <svg className="w-7 h-7 text-[#26A5E4]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+              </svg>
             </div>
-
-            <ol className="space-y-3 text-sm">
-              <li className="flex gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#26A5E4]/20 text-[#26A5E4] text-xs font-bold flex items-center justify-center shrink-0">1</span>
-                <p className="text-muted-foreground">Andá al grupo de Telegram y escribí el comando <code className="bg-secondary px-1.5 py-0.5 rounded text-foreground">/vincular</code></p>
-              </li>
-              <li className="flex gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#26A5E4]/20 text-[#26A5E4] text-xs font-bold flex items-center justify-center shrink-0">2</span>
-                <p className="text-muted-foreground">El bot te va a responder con tu ID de Telegram. Copialo y pegalo acá abajo.</p>
-              </li>
-            </ol>
-
-            <div className="space-y-3">
-              <input
-                type="text"
-                value={telegramId}
-                onChange={e => setTelegramId(e.target.value.trim())}
-                placeholder="Tu ID de Telegram (ej: 123456789)"
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#26A5E4]/50"
-              />
-              <input
-                type="text"
-                value={telegramUser}
-                onChange={e => setTelegramUser(e.target.value.trim())}
-                placeholder="Tu @username de Telegram (sin @)"
-                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#26A5E4]/50"
-              />
+            <div>
+              <h3 className="text-base font-bold text-foreground mb-1">Vinculando Telegram</h3>
+              <p className="text-sm text-muted-foreground">
+                Se abrió Telegram. Tocá <strong className="text-foreground">Iniciar</strong> en el bot para completar la vinculación.
+              </p>
             </div>
-
-            {localError && (
-              <p className="text-xs text-destructive">{localError}</p>
-            )}
-
-            <div className="flex gap-3">
-              <button onClick={() => { setTelegramModal(false); setTelegramId(''); setTelegramUser(''); setLocalError(null) }}
-                className="flex-1 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-all">
-                Cancelar
-              </button>
-              <button
-                disabled={!telegramId || loading === 'telegram'}
-                onClick={async () => {
-                  if (!telegramId) return
-                  setLoading('telegram')
-                  setLocalError(null)
-                  try {
-                    const supabaseClient = createClient()
-                    const { error } = await supabaseClient
-                      .from('user_social_links')
-                      .upsert({
-                        user_id:     userId,
-                        platform:    'TELEGRAM',
-                        external_id: telegramId,
-                        username:    telegramUser || telegramId,
-                        is_verified: false,
-                      }, { onConflict: 'user_id,platform' }) as any
-
-                    if (error) throw error
-
-                    setLocalLinks(prev => [
-                      ...prev.filter(l => l.platform !== 'TELEGRAM'),
-                      { id: 'tg', user_id: userId, platform: 'TELEGRAM', external_id: telegramId, username: telegramUser || telegramId, is_verified: false, connected_at: new Date().toISOString() }
-                    ])
-                    setTelegramModal(false)
-                    setTelegramId('')
-                    setTelegramUser('')
-                  } catch (err: any) {
-                    setLocalError(err.message ?? 'Error al vincular')
-                  } finally {
-                    setLoading(null)
-                  }
-                }}
-                className="flex-1 py-2.5 rounded-xl bg-[#26A5E4] hover:bg-[#1a8fc7] disabled:opacity-50 text-white font-semibold text-sm transition-all flex items-center justify-center gap-2"
-              >
-                {loading === 'telegram' ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Vincular
-              </button>
+            <div className="flex items-center justify-center gap-2 text-[#26A5E4] text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Esperando confirmación...
             </div>
+            <button
+              onClick={() => setTelegramWaiting(false)}
+              className="w-full py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+            >
+              Cancelar
+            </button>
           </div>
         </div>
       )}
