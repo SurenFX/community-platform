@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { updateProfileAction } from '@/app/actions/profile'
 import { X, Loader2 } from 'lucide-react'
 
@@ -14,6 +15,7 @@ export default function EditProfileModal({ username, bio, onClose }: EditProfile
   const [error, setError]     = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   async function handleSubmit(formData: FormData) {
     setError(null)
@@ -23,6 +25,7 @@ export default function EditProfileModal({ username, bio, onClose }: EditProfile
         setError(result.error)
       } else {
         setSuccess(true)
+        router.refresh()
         setTimeout(onClose, 800)
       }
     })

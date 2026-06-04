@@ -18,18 +18,22 @@ const EVENT_LABELS: Record<string, string> = {
   YOUTUBE_COMMENT:            'Comentario YouTube',
   YOUTUBE_SHARE:              'Compartir YouTube',
   YOUTUBE_SUBSCRIBE:          'Suscribirse YouTube',
+  TELEGRAM_MESSAGE:           'Mensaje en Telegram',
   MISSION_COMPLETED:          'Misión completada',
   STREAK_BONUS:               'Bonus de racha',
+  BADGE_EARNED:               'Badge ganado',
   ADMIN_MANUAL_GRANT:         'Otorgado por admin',
 }
 
 const PLATFORM_COLOR: Record<string, string> = {
-  DISCORD: 'text-indigo-400',
-  TWITCH:  'text-purple-400',
-  YOUTUBE: 'text-red-400',
-  MISSION: 'text-amber-400',
-  STREAK:  'text-orange-400',
-  ADMIN:   'text-gray-400',
+  DISCORD:  'text-indigo-400',
+  TWITCH:   'text-purple-400',
+  YOUTUBE:  'text-red-400',
+  TELEGRAM: 'text-[#26A5E4]',
+  MISSION:  'text-amber-400',
+  STREAK:   'text-orange-400',
+  BADGE:    'text-yellow-400',
+  ADMIN:    'text-gray-400',
 }
 
 function getPlatformColor(eventType: string): string {

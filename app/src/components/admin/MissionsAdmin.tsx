@@ -13,12 +13,17 @@ const TYPE_COLORS: Record<MissionType, string> = {
 }
 
 const EVENT_LABELS: Partial<Record<XpEventType, string>> = {
-  DISCORD_MESSAGE:       'Mensaje en Discord',
-  TWITCH_WATCH_TIME:     'Ver stream (bloques 10min)',
-  TWITCH_CHAT_MESSAGE:   'Chat en Twitch',
-  YOUTUBE_COMMENT:       'Comentar en YouTube',
-  DISCORD_HELPED_USER:   'Ayudar en Discord',
-  TWITCH_RAID_PARTICIPATE: 'Participar en raid',
+  DISCORD_MESSAGE:           'Mensaje en Discord',
+  DISCORD_REACTION_RECEIVED: 'Reacción recibida en Discord',
+  DISCORD_HELPED_USER:       'Ayudar en Discord',
+  TWITCH_WATCH_TIME:         'Ver stream (bloques 10min)',
+  TWITCH_CHAT_MESSAGE:       'Chat en Twitch',
+  TWITCH_FOLLOW:             'Follow en Twitch',
+  TWITCH_SUBSCRIBE:          'Sub en Twitch',
+  TWITCH_RAID_PARTICIPATE:   'Participar en raid',
+  YOUTUBE_COMMENT:           'Comentar en YouTube',
+  YOUTUBE_SUBSCRIBE:         'Suscribirse en YouTube',
+  TELEGRAM_MESSAGE:          'Mensaje en Telegram',
 }
 
 interface MissionsAdminProps {
