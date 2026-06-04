@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Youtube, MessageSquare, Eye, ArrowLeft, Trophy, Shuffle, Loader2, Check, Users, Hash } from 'lucide-react'
+import { Youtube, MessageSquare, Eye, ArrowLeft, Trophy, Shuffle, Loader2, Check, Users, Hash, ExternalLink, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 
 const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY
@@ -36,6 +36,7 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
   const [loadingVideos,   setLoadingVideos]   = useState(true)
   const [selectedIds,     setSelectedIds]     = useState<Set<string>>(new Set())
   const [multiEntry,      setMultiEntry]      = useState(false) // false = 1 entrada por persona, true = 1 por video
+  const [showAllComments, setShowAllComments] = useState(false)
   const [comments,        setComments]        = useState<Comment[]>([])
   const [loadingComments, setLoadingComments] = useState(false)
   const [stage,           setStage]           = useState<Stage>('select')
@@ -209,6 +210,7 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
     setWinner(null)
     setSpinningName('')
     setError(null)
+    setShowAllComments(false)
   }
 
   const fmt = (n: number) => n >= 1000 ? `${(n/1000).toFixed(1)}K` : n.toString()
@@ -408,22 +410,42 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
                   <div className="px-5 py-4 border-b border-border flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground">Participantes ({comments.length})</p>
-                    <p className="text-xs text-muted-foreground">Primeros 5</p>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {comments.slice(0,5).map(c => (
-                      <div key={c.id} className="flex items-start gap-3 px-5 py-3">
-                        <img src={c.authorPhoto} alt={c.author} className="w-8 h-8 rounded-full shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-foreground">{c.author}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{c.text}</p>
-                        </div>
-                      </div>
-                    ))}
-                    {comments.length > 5 && (
-                      <p className="px-5 py-3 text-center text-xs text-muted-foreground">y {comments.length - 5} más...</p>
+                    {!showAllComments && comments.length > 5 && (
+                      <button onClick={() => setShowAllComments(true)}
+                        className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
+                        Ver todos <ChevronDown className="w-3 h-3" />
+                      </button>
                     )}
                   </div>
+                  <div className={`divide-y divide-border ${!showAllComments ? 'max-h-72' : 'max-h-[32rem]'} overflow-y-auto`}>
+                    {(showAllComments ? comments : comments.slice(0, 5)).map(c => {
+                      const originalCommentId = c.id.includes('_') ? c.id.split('_')[0] : c.id
+                      const commentUrl = `https://youtube.com/watch?v=${c.videoId}&lc=${originalCommentId}`
+                      return (
+                        <div key={c.id} className="flex items-start gap-3 px-5 py-3 hover:bg-secondary/30 transition-colors group">
+                          <img src={c.authorPhoto} alt={c.author} className="w-8 h-8 rounded-full shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-foreground">{c.author}</p>
+                            <a href={commentUrl} target="_blank" rel="noopener noreferrer"
+                              className="text-xs text-muted-foreground hover:text-primary mt-0.5 line-clamp-1 transition-colors inline-block w-full">
+                              {c.text}
+                            </a>
+                          </div>
+                          <a href={commentUrl} target="_blank" rel="noopener noreferrer"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                          </a>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {!showAllComments && comments.length > 5 && (
+                    <button onClick={() => setShowAllComments(true)}
+                      className="w-full py-3 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors border-t border-border flex items-center justify-center gap-1">
+                      <ChevronDown className="w-3.5 h-3.5" />
+                      Ver {comments.length - 5} participantes más
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -469,15 +491,33 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
               <img src={winner.authorPhoto} alt={winner.author} className="w-14 h-14 rounded-full ring-4 ring-yellow-400/30" />
               <div className="text-left">
                 <p className="text-2xl font-black text-foreground">{winner.author}</p>
-                <p className="text-sm text-muted-foreground">
-                  Comentó en "{videos.find(v => v.id === winner.videoId)?.title?.slice(0, 40)}..."
-                </p>
+                {(() => {
+                  const winnerVideo = videos.find(v => v.id === winner.videoId)
+                  return winnerVideo ? (
+                    <a href={winnerVideo.url} target="_blank" rel="noopener noreferrer"
+                      className="text-sm text-red-400 hover:text-red-300 flex items-center gap-1 mt-0.5 transition-colors">
+                      <Youtube className="w-3.5 h-3.5 shrink-0" />
+                      <span className="line-clamp-1">{winnerVideo.title}</span>
+                      <ExternalLink className="w-3 h-3 shrink-0" />
+                    </a>
+                  ) : null
+                })()}
               </div>
             </div>
-            <div className="bg-secondary/50 border border-border rounded-xl p-4 text-left max-w-md mx-auto">
-              <p className="text-xs font-semibold text-muted-foreground mb-1.5">Su comentario:</p>
-              <p className="text-sm text-foreground leading-relaxed">"{winner.text}"</p>
-            </div>
+            {(() => {
+              const originalCommentId = winner.id.includes('_') ? winner.id.split('_')[0] : winner.id
+              const commentUrl = `https://youtube.com/watch?v=${winner.videoId}&lc=${originalCommentId}`
+              return (
+                <a href={commentUrl} target="_blank" rel="noopener noreferrer"
+                  className="block bg-secondary/50 border border-border hover:border-primary/40 rounded-xl p-4 text-left max-w-md mx-auto transition-colors group">
+                  <p className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
+                    Su comentario
+                    <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </p>
+                  <p className="text-sm text-foreground leading-relaxed">"{winner.text}"</p>
+                </a>
+              )
+            })()}
           </div>
 
           <div className="flex gap-3">
