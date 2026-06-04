@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Link, Unlink, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import type { Profile, UserSocialLink } from '@/types/database'
-import { disconnectSocialLink } from '@/app/actions/social'
+import { disconnectSocialLink, toggleSocialLinkPublic } from '@/app/actions/social'
 
 interface Identity {
   id:             string
@@ -112,7 +112,19 @@ export default function ConnectedAccounts({
   const [loading,         setLoading]         = useState<string | null>(null)
   const [localError,      setLocalError]      = useState<string | null>(null)
   const [telegramWaiting, setTelegramWaiting] = useState(false)
+  const [togglingPublic,  setTogglingPublic]  = useState<string | null>(null)
   const supabase = createClient()
+
+  async function handleTogglePublic(platform: string, current: boolean) {
+    setTogglingPublic(platform)
+    const result = await toggleSocialLinkPublic(platform, !current)
+    if (!result.error) {
+      setLocalLinks(prev => prev.map(l =>
+        l.platform === platform ? { ...l, is_public: !current } : l
+      ))
+    }
+    setTogglingPublic(null)
+  }
 
   function isConnected(platform: Platform): boolean {
     if (platform.id === 'discord') return true
@@ -285,14 +297,35 @@ export default function ConnectedAccounts({
                   ) : platform.id === 'discord' ? (
                     <span className="text-xs text-muted-foreground bg-secondary px-3 py-1.5 rounded-lg">Principal</span>
                   ) : connected ? (
-                    <button
-                      onClick={() => handleDisconnect(platform)}
-                      disabled={isLoading}
-                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive bg-secondary hover:bg-destructive/10 border border-border hover:border-destructive/30 px-3 py-1.5 rounded-lg transition-all"
-                    >
-                      {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Unlink className="w-3 h-3" />}
-                      Desconectar
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {platform.id !== 'discord' && (
+                        <button
+                          onClick={() => handleTogglePublic(platform.dbPlatform!, localLinks.find(l => l.platform === platform.dbPlatform)?.is_public ?? false)}
+                          disabled={togglingPublic === platform.dbPlatform}
+                          title={localLinks.find(l => l.platform === platform.dbPlatform)?.is_public ? 'Visible en perfil' : 'Oculto en perfil'}
+                          className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
+                            localLinks.find(l => l.platform === platform.dbPlatform)?.is_public
+                              ? 'bg-green-400/10 border-green-400/30 text-green-400'
+                              : 'bg-secondary border-border text-muted-foreground'
+                          }`}
+                        >
+                          {togglingPublic === platform.dbPlatform
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : localLinks.find(l => l.platform === platform.dbPlatform)?.is_public
+                              ? '👁 Visible'
+                              : '🙈 Oculto'
+                          }
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDisconnect(platform)}
+                        disabled={isLoading}
+                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive bg-secondary hover:bg-destructive/10 border border-border hover:border-destructive/30 px-3 py-1.5 rounded-lg transition-all"
+                      >
+                        {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Unlink className="w-3 h-3" />}
+                        Desconectar
+                      </button>
+                    </div>
                   ) : platform.id === 'telegram' && telegramWaiting ? (
                     <span className="flex items-center gap-1.5 text-xs text-[#26A5E4] bg-[#26A5E4]/10 border border-[#26A5E4]/30 px-3 py-1.5 rounded-lg">
                       <Loader2 className="w-3 h-3 animate-spin" />

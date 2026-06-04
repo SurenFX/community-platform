@@ -89,7 +89,8 @@ export default async function PublicProfilePage({
     supabase
       .from('user_social_links')
       .select('platform, username')
-      .eq('user_id', profile.id),
+      .eq('user_id', profile.id)
+      .eq('is_public', true),
     supabase
       .from('xp_events')
       .select('event_type, xp_awarded, created_at')

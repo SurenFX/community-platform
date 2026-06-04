@@ -75,6 +75,7 @@ export interface UserSocialLink {
   external_id: string
   username: string
   is_verified: boolean
+  is_public: boolean
   connected_at: string
 }
 

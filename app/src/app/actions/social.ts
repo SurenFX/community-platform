@@ -30,6 +30,21 @@ export async function disconnectSocialLink(platform: string): Promise<{ error?: 
   return {}
 }
 
+export async function toggleSocialLinkPublic(platform: string, isPublic: boolean): Promise<{ error?: string }> {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { error } = await supabase
+    .from('user_social_links')
+    .update({ is_public: isPublic })
+    .eq('user_id', user.id)
+    .eq('platform', platform)
+
+  if (error) return { error: 'No se pudo actualizar la visibilidad' }
+  return {}
+}
+
 export async function setUserAdmin(targetUserId: string, isAdmin: boolean): Promise<{ error?: string }> {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
