@@ -198,16 +198,12 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         .ilike('username', twitchUsername)
         .single()
 
-      if (!socialLink) {
-        this.sendChat(`@${twitchUsername} ¡Para participar necesitás registrarte y vincular tu Twitch en la plataforma! → community-platform-app.vercel.app`)
-        return
-      }
-
+      // Cualquier viewer puede participar — user_id es null si no está registrado
       const { error } = await this.supabase.db
         .from('twitch_raffle_entries')
         .insert({
           raffle_id:       raffle.id,
-          user_id:         socialLink.user_id,
+          user_id:         socialLink?.user_id ?? null,
           twitch_username: twitchUsername,
         })
 
@@ -219,7 +215,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
 
   // ── Llamados desde el frontend via endpoint ────────────
   async announceRaffleStart(keyword: string) {
-    this.sendChat(`🎉 ¡Sorteo! Escribí "${keyword}" para participar. Necesitás tener tu cuenta de Twitch vinculada en la plataforma → community-platform-app.vercel.app`)
+    this.sendChat(`🎉 ¡Sorteo! Escribí "${keyword}" en el chat para participar.`)
   }
 
   async announceRaffleWinner(winner: string) {
