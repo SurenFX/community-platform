@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Youtube, MessageSquare, Eye, ArrowLeft, Trophy, Shuffle, Loader2, ChevronRight } from 'lucide-react'
+import { Youtube, MessageSquare, Eye, ArrowLeft, Trophy, Shuffle, Loader2, ChevronRight, Check } from 'lucide-react'
 import Link from 'next/link'
 
 const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY
@@ -26,6 +26,7 @@ interface Comment {
   text:        string
   likeCount:   number
   publishedAt: string
+  videoId:     string
 }
 
 type Stage = 'select' | 'confirm' | 'spinning' | 'winner'
@@ -33,14 +34,14 @@ type Stage = 'select' | 'confirm' | 'spinning' | 'winner'
 export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { backHref?: string }) {
   const [videos,          setVideos]          = useState<Video[]>([])
   const [loadingVideos,   setLoadingVideos]   = useState(true)
-  const [selectedVideo,   setSelectedVideo]   = useState<Video | null>(null)
+  const [selectedIds,     setSelectedIds]     = useState<Set<string>>(new Set())
   const [comments,        setComments]        = useState<Comment[]>([])
   const [loadingComments, setLoadingComments] = useState(false)
   const [stage,           setStage]           = useState<Stage>('select')
   const [winner,          setWinner]          = useState<Comment | null>(null)
   const [spinningName,    setSpinningName]    = useState('')
   const [error,           setError]           = useState<string | null>(null)
-  const spinIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const spinIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { fetchVideos() }, [])
 
@@ -49,7 +50,6 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
       setLoadingVideos(true)
       setError(null)
 
-      // 1. Obtener la playlist de uploads del canal
       const channelRes = await fetch(
         `${API_BASE}/channels?part=contentDetails&id=${CHANNEL_ID}&key=${YOUTUBE_API_KEY}`
       )
@@ -59,7 +59,6 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
       const uploadsId = channelData.items?.[0]?.contentDetails?.relatedPlaylists?.uploads
       if (!uploadsId) throw new Error('No se encontró la playlist del canal')
 
-      // 2. Obtener los últimos 20 items para tener margen de filtrado
       const playlistRes = await fetch(
         `${API_BASE}/playlistItems?part=contentDetails&playlistId=${uploadsId}&maxResults=20&key=${YOUTUBE_API_KEY}`
       )
@@ -70,8 +69,6 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
         .map((item: any) => item.contentDetails.videoId)
         .join(',')
 
-      // 3. Obtener detalles con liveStreamingDetails — el campo clave
-      // Si un video tiene liveStreamingDetails, fue un live (pasado o activo)
       const detailsRes = await fetch(
         `${API_BASE}/videos?part=snippet,statistics,contentDetails,liveStreamingDetails&id=${videoIds}&key=${YOUTUBE_API_KEY}`
       )
@@ -80,15 +77,11 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
 
       const filtered: Video[] = detailsData.items
         .filter((v: any) => {
-          // Excluir si tiene liveStreamingDetails (fue un live, sin importar el estado)
           if (v.liveStreamingDetails) return false
-
-          // Excluir Shorts (duración menor a 60 segundos)
           if (isShortVideo(v.contentDetails.duration)) return false
-
           return true
         })
-        .slice(0, 6)
+        .slice(0, 9)
         .map((v: any) => ({
           id:           v.id,
           title:        v.snippet.title,
@@ -127,27 +120,54 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
     return `${m}:${String(s).padStart(2,'0')}`
   }
 
-  async function loadComments(video: Video) {
+  function toggleVideo(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function loadComments() {
+    if (!selectedIds.size) return
     try {
       setLoadingComments(true)
-      setSelectedVideo(video)
+      setError(null)
       setStage('confirm')
-      const res = await fetch(
-        `${API_BASE}/commentThreads?part=snippet&videoId=${video.id}&maxResults=100&order=relevance&key=${YOUTUBE_API_KEY}`
-      )
-      const data = await res.json()
-      if (data.error) throw new Error(data.error.message)
-      setComments((data.items ?? []).map((item: any) => {
-        const c = item.snippet.topLevelComment.snippet
-        return {
-          id: item.id, author: c.authorDisplayName,
-          authorPhoto: c.authorProfileImageUrl,
-          text: c.textDisplay, likeCount: c.likeCount ?? 0,
-          publishedAt: c.publishedAt,
+
+      const allComments: Comment[] = []
+      const seenAuthors = new Set<string>()
+
+      for (const videoId of selectedIds) {
+        const res = await fetch(
+          `${API_BASE}/commentThreads?part=snippet&videoId=${videoId}&maxResults=100&order=relevance&key=${YOUTUBE_API_KEY}`
+        )
+        const data = await res.json()
+        if (data.error) throw new Error(data.error.message)
+
+        for (const item of data.items ?? []) {
+          const c = item.snippet.topLevelComment.snippet
+          // Un autor puede comentar en múltiples videos — solo cuenta una vez
+          if (!seenAuthors.has(c.authorDisplayName)) {
+            seenAuthors.add(c.authorDisplayName)
+            allComments.push({
+              id:          item.id,
+              author:      c.authorDisplayName,
+              authorPhoto: c.authorProfileImageUrl,
+              text:        c.textDisplay,
+              likeCount:   c.likeCount ?? 0,
+              publishedAt: c.publishedAt,
+              videoId,
+            })
+          }
         }
-      }))
+      }
+
+      setComments(allComments)
     } catch (err: any) {
       setError(`No se pudieron cargar los comentarios: ${err.message}`)
+      setStage('select')
     } finally {
       setLoadingComments(false)
     }
@@ -179,8 +199,12 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
 
   function reset() {
     if (spinIntervalRef.current) clearTimeout(spinIntervalRef.current)
-    setStage('select'); setSelectedVideo(null); setComments([])
-    setWinner(null); setSpinningName(''); setError(null)
+    setStage('select')
+    setSelectedIds(new Set())
+    setComments([])
+    setWinner(null)
+    setSpinningName('')
+    setError(null)
   }
 
   const fmt = (n: number) => n >= 1000 ? `${(n/1000).toFixed(1)}K` : n.toString()
@@ -190,6 +214,9 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
     if (d < 30)  return `${d}d`
     return `${Math.floor(d/30)}m`
   }
+
+  const selectedVideos = videos.filter(v => selectedIds.has(v.id))
+  const totalComments  = selectedVideos.reduce((acc, v) => acc + v.commentCount, 0)
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -203,7 +230,7 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
             <Youtube className="w-6 h-6 text-red-400" />
             Sorteo en YouTube
           </h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Sorteá entre los comentarios de un video del canal</p>
+          <p className="text-muted-foreground text-sm mt-0.5">Seleccioná uno o más videos y sorteá entre sus comentaristas</p>
         </div>
       </div>
 
@@ -218,9 +245,12 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
       {stage === 'select' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Últimos 6 videos del canal</p>
+            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+              Últimos videos del canal
+            </p>
             <p className="text-xs text-muted-foreground">Lives y Shorts excluidos</p>
           </div>
+
           {loadingVideos ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[...Array(6)].map((_, i) => (
@@ -234,64 +264,101 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {videos.map(video => (
-                <button key={video.id} onClick={() => loadComments(video)}
-                  className="bg-card border border-border hover:border-red-400/50 rounded-xl overflow-hidden text-left transition-all duration-200 hover:shadow-lg hover:shadow-red-400/5 group">
-                  <div className="relative aspect-video overflow-hidden">
-                    <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
-                    <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded font-medium">{video.duration}</div>
-                  </div>
-                  <div className="p-4">
-                    <p className="text-sm font-semibold text-foreground line-clamp-2 mb-3 leading-snug">{video.title}</p>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{fmt(video.viewCount)}</span>
-                        <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{fmt(video.commentCount)}</span>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {videos.map(video => {
+                  const isSelected = selectedIds.has(video.id)
+                  return (
+                    <button key={video.id} onClick={() => toggleVideo(video.id)}
+                      className={`relative bg-card border rounded-xl overflow-hidden text-left transition-all duration-200 group ${
+                        isSelected
+                          ? 'border-red-400/60 shadow-lg shadow-red-400/10'
+                          : 'border-border hover:border-red-400/30'
+                      }`}>
+
+                      {/* Checkbox overlay */}
+                      <div className={`absolute top-2 right-2 z-10 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                        isSelected
+                          ? 'bg-red-500 border-red-500'
+                          : 'bg-black/50 border-white/50 group-hover:border-white'
+                      }`}>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
                       </div>
-                      <div className="flex items-center gap-1">
-                        <span>{ago(video.publishedAt)}</span>
-                        <ChevronRight className="w-3 h-3 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                      <div className="relative aspect-video overflow-hidden">
+                        <img src={video.thumbnail} alt={video.title}
+                          className={`w-full h-full object-cover transition-transform duration-300 ${isSelected ? 'scale-105' : 'group-hover:scale-105'}`} />
+                        <div className={`absolute inset-0 transition-colors ${isSelected ? 'bg-red-500/10' : 'bg-black/20 group-hover:bg-black/10'}`} />
+                        <div className="absolute bottom-2 left-2 bg-black/80 text-white text-xs px-1.5 py-0.5 rounded font-medium">{video.duration}</div>
                       </div>
-                    </div>
+
+                      <div className="p-4">
+                        <p className="text-sm font-semibold text-foreground line-clamp-2 mb-3 leading-snug">{video.title}</p>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{fmt(video.viewCount)}</span>
+                            <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{fmt(video.commentCount)}</span>
+                          </div>
+                          <span>{ago(video.publishedAt)}</span>
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Barra de acción */}
+              {selectedIds.size > 0 && (
+                <div className="sticky bottom-4 bg-card border border-red-400/30 rounded-2xl p-4 flex items-center justify-between shadow-xl shadow-black/20">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">
+                      {selectedIds.size} video{selectedIds.size !== 1 ? 's' : ''} seleccionado{selectedIds.size !== 1 ? 's' : ''}
+                    </p>
+                    <p className="text-xs text-muted-foreground">~{fmt(totalComments)} comentarios en total</p>
                   </div>
-                </button>
-              ))}
-            </div>
+                  <button onClick={loadComments} disabled={loadingComments}
+                    className="flex items-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold px-5 py-2.5 rounded-xl transition-all hover:scale-[1.02]">
+                    {loadingComments
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</>
+                      : <><MessageSquare className="w-4 h-4" /> Cargar comentaristas</>
+                    }
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
 
       {/* CONFIRM */}
-      {stage === 'confirm' && selectedVideo && (
+      {stage === 'confirm' && (
         <div className="space-y-5">
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            <div className="flex gap-5 p-5">
-              <img src={selectedVideo.thumbnail} alt={selectedVideo.title} className="w-32 h-20 object-cover rounded-xl shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-base font-bold text-foreground mb-2 line-clamp-2">{selectedVideo.title}</p>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1.5"><Eye className="w-4 h-4" />{fmt(selectedVideo.viewCount)}</span>
-                  <span className="flex items-center gap-1.5"><MessageSquare className="w-4 h-4" />{fmt(selectedVideo.commentCount)}</span>
+          {/* Videos seleccionados */}
+          <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
+            <p className="text-sm font-semibold text-foreground mb-3">Videos incluidos ({selectedVideos.length})</p>
+            {selectedVideos.map(v => (
+              <div key={v.id} className="flex items-center gap-3">
+                <img src={v.thumbnail} alt={v.title} className="w-16 h-10 object-cover rounded-lg shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-foreground truncate">{v.title}</p>
+                  <p className="text-xs text-muted-foreground">{fmt(v.commentCount)} comentarios</p>
                 </div>
-                <a href={selectedVideo.url} target="_blank" rel="noopener noreferrer" className="text-xs text-red-400 hover:text-red-300 mt-2 inline-block">Ver en YouTube →</a>
               </div>
-            </div>
+            ))}
           </div>
 
           {loadingComments ? (
             <div className="bg-card border border-border rounded-2xl p-10 flex items-center justify-center gap-3">
               <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
-              <p className="text-sm text-muted-foreground">Cargando comentarios...</p>
+              <p className="text-sm text-muted-foreground">Cargando comentarios de {selectedIds.size} videos...</p>
             </div>
           ) : (
             <>
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { label: 'Participantes', value: comments.length },
-                  { label: 'Ganadores',     value: 1 },
-                  { label: 'Chance',        value: comments.length > 0 ? `${(1/comments.length*100).toFixed(1)}%` : '—' },
+                  { label: 'Participantes únicos', value: comments.length },
+                  { label: 'Videos',               value: selectedIds.size },
+                  { label: 'Chance',               value: comments.length > 0 ? `${(1/comments.length*100).toFixed(1)}%` : '—' },
                 ].map(({ label, value }) => (
                   <div key={label} className="bg-card border border-border rounded-xl p-4 text-center">
                     <p className="text-2xl font-bold text-foreground">{value}</p>
@@ -324,10 +391,12 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
               )}
 
               <div className="flex gap-3">
-                <button onClick={reset} className="flex-1 py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all">Cambiar video</button>
+                <button onClick={reset} className="flex-1 py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all">
+                  Cambiar selección
+                </button>
                 <button onClick={startSpin} disabled={!comments.length}
                   className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]">
-                  <Shuffle className="w-4 h-4" />¡Sortear!
+                  <Shuffle className="w-4 h-4" />¡Sortear entre {comments.length} participantes!
                 </button>
               </div>
             </>
@@ -347,7 +416,7 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
                 style={{ height: `${8 + (i % 4) * 8}px`, animationDelay: `${i * 0.1}s`, animationDuration: '0.6s' }} />
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">{comments.length} participantes</p>
+          <p className="text-xs text-muted-foreground">{comments.length} participantes de {selectedIds.size} videos</p>
         </div>
       )}
 
@@ -363,7 +432,9 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
               <img src={winner.authorPhoto} alt={winner.author} className="w-14 h-14 rounded-full ring-4 ring-yellow-400/30" />
               <div className="text-left">
                 <p className="text-2xl font-black text-foreground">{winner.author}</p>
-                <p className="text-sm text-muted-foreground">Comentó en el video</p>
+                <p className="text-sm text-muted-foreground">
+                  Comentó en "{videos.find(v => v.id === winner.videoId)?.title?.slice(0, 40)}..."
+                </p>
               </div>
             </div>
             <div className="bg-secondary/50 border border-border rounded-xl p-4 text-left max-w-md mx-auto">
@@ -372,23 +443,10 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
             </div>
           </div>
 
-          {selectedVideo && (
-            <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-4">
-              <img src={selectedVideo.thumbnail} alt={selectedVideo.title} className="w-20 h-14 object-cover rounded-lg shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-muted-foreground mb-0.5">Video sorteado</p>
-                <p className="text-sm font-semibold text-foreground line-clamp-1">{selectedVideo.title}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{comments.length} participantes</p>
-              </div>
-              <a href={selectedVideo.url} target="_blank" rel="noopener noreferrer"
-                className="shrink-0 text-xs bg-red-400/15 text-red-400 hover:bg-red-400/25 px-3 py-1.5 rounded-lg transition-colors">
-                Ver video
-              </a>
-            </div>
-          )}
-
           <div className="flex gap-3">
-            <button onClick={reset} className="flex-1 py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all">Nuevo sorteo</button>
+            <button onClick={reset} className="flex-1 py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all">
+              Nuevo sorteo
+            </button>
             <button onClick={startSpin} className="flex-1 flex items-center justify-center gap-2 bg-card border border-red-400/30 hover:border-red-400/60 text-red-400 font-semibold py-3 rounded-xl transition-all">
               <Shuffle className="w-4 h-4" />Sortear de nuevo
             </button>

@@ -99,11 +99,11 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
       setLoading(true)
       setError(null)
 
-      // Cerrar cualquier sorteo activo anterior
+      // Cerrar cualquier sorteo anterior que no esté cerrado
       await supabase
         .from('twitch_raffles')
         .update({ status: 'cancelled' } as unknown as never)
-        .eq('status', 'active')
+        .in('status', ['active', 'drawn', 'stopped'])
 
       // Crear nuevo sorteo
       const { data, error: err } = await supabase
@@ -183,8 +183,15 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
     spinRef.current = setTimeout(tick, speed)
   }
 
-  function resetToSetup() {
+  async function resetToSetup() {
     if (spinRef.current) clearTimeout(spinRef.current)
+    // Cerrar el sorteo actual en la DB si existe
+    if (raffle) {
+      await supabase
+        .from('twitch_raffles')
+        .update({ status: 'closed' } as unknown as never)
+        .eq('id', raffle.id)
+    }
     setStage('setup')
     setRaffle(null)
     setEntries([])
