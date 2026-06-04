@@ -6,19 +6,21 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Calcular nivel desde XP total
-// Fórmula: nivel = floor(sqrt(xp / 100)) + 1, techo en 100
+// Fórmula: curva gradual — XP por nivel = 25*(n+5), empieza en 150 XP/nivel, techo en 200
+// Acumulado: xpForLevel(n) = 12.5 * (n-1) * (n+10)
+// Inversa:   n = floor((-9 + sqrt(121 + xp/3.125)) / 2)
 export function xpToLevel(xp: number): number {
-  return Math.min(Math.floor(Math.sqrt(xp / 100)) + 1, 100)
+  return Math.min(Math.floor((-9 + Math.sqrt(121 + xp / 3.125)) / 2), 200)
 }
 
-// XP necesario para llegar al siguiente nivel
+// XP acumulado al inicio del nivel n+1 (= cuánto XP total se necesita para llegar al siguiente)
 export function xpForNextLevel(currentLevel: number): number {
-  return Math.pow(currentLevel, 2) * 100
+  return 12.5 * currentLevel * (currentLevel + 11)
 }
 
 // XP acumulado al inicio del nivel actual
 export function xpForCurrentLevel(currentLevel: number): number {
-  return Math.pow(currentLevel - 1, 2) * 100
+  return 12.5 * (currentLevel - 1) * (currentLevel + 10)
 }
 
 // Progreso dentro del nivel actual (0-100)
@@ -37,21 +39,41 @@ export function formatNumber(n: number): string {
   return n.toString()
 }
 
-// Nombre del nivel según rango
+// Nombre del nivel según rango (15 tiers, cap 200)
 export function getLevelTitle(level: number): string {
-  if (level >= 75) return 'Legend'
-  if (level >= 50) return 'Elite'
-  if (level >= 25) return 'Core'
-  if (level >= 10) return 'Regular'
-  return 'Viewer'
+  if (level >= 200) return 'SalchiNeta'
+  if (level >= 175) return 'Celestial'
+  if (level >= 150) return 'Trascendente'
+  if (level >= 125) return 'Ascendido'
+  if (level >= 100) return 'Mítico'
+  if (level >= 80)  return 'Inmortal'
+  if (level >= 65)  return 'Leyenda'
+  if (level >= 50)  return 'Maestro'
+  if (level >= 38)  return 'Élite'
+  if (level >= 28)  return 'Dedicado'
+  if (level >= 20)  return 'Veterano'
+  if (level >= 13)  return 'Fanático'
+  if (level >= 8)   return 'Habitual'
+  if (level >= 4)   return 'Seguidor'
+  return 'Espectador'
 }
 
 // Color del nivel para badges y UI
 export function getLevelColor(level: number): string {
-  if (level >= 75) return 'text-yellow-400'
-  if (level >= 50) return 'text-purple-400'
-  if (level >= 25) return 'text-blue-400'
-  if (level >= 10) return 'text-green-400'
+  if (level >= 200) return 'text-yellow-300'
+  if (level >= 175) return 'text-sky-300'
+  if (level >= 150) return 'text-violet-300'
+  if (level >= 125) return 'text-amber-300'
+  if (level >= 100) return 'text-orange-400'
+  if (level >= 80)  return 'text-rose-400'
+  if (level >= 65)  return 'text-pink-400'
+  if (level >= 50)  return 'text-purple-400'
+  if (level >= 38)  return 'text-indigo-400'
+  if (level >= 28)  return 'text-blue-400'
+  if (level >= 20)  return 'text-cyan-400'
+  if (level >= 13)  return 'text-teal-400'
+  if (level >= 8)   return 'text-emerald-400'
+  if (level >= 4)   return 'text-green-400'
   return 'text-slate-400'
 }
 
