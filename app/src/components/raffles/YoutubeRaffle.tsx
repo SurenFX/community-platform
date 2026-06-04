@@ -345,7 +345,10 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
                       <p className="text-sm font-bold text-foreground">
                         {selectedIds.size} video{selectedIds.size !== 1 ? 's' : ''} seleccionado{selectedIds.size !== 1 ? 's' : ''}
                       </p>
-                      <p className="text-xs text-muted-foreground">~{fmt(totalComments)} comentarios en total</p>
+                      {multiEntry
+                        ? <p className="text-xs text-muted-foreground">~{fmt(totalComments)} entradas en total</p>
+                        : <p className="text-xs text-muted-foreground">≤{fmt(totalComments)} participantes únicos</p>
+                      }
                     </div>
                     <button onClick={loadComments} disabled={loadingComments}
                       className="flex items-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold px-5 py-2.5 rounded-xl transition-all hover:scale-[1.02]">
