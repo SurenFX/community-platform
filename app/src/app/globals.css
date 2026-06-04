@@ -70,9 +70,100 @@
   box-shadow: 0 0 24px hsl(185 100% 45% / 0.4);
 }
 
-/* Card hover */
-.card-hover { @apply transition-all duration-200; }
+/* Card hover — lift + glow */
+.card-hover {
+  @apply transition-all duration-200;
+  transform: translateY(0);
+}
 .card-hover:hover {
-  @apply border-primary/40 shadow-lg;
-  box-shadow: 0 4px 24px hsl(185 100% 45% / 0.12);
+  @apply border-primary/40;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px hsl(185 100% 45% / 0.15), 0 0 0 1px hsl(185 100% 45% / 0.1);
+}
+
+/* Shimmer para badges ganados */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.badge-earned {
+  position: relative;
+  overflow: hidden;
+}
+.badge-earned::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, hsl(185 100% 45% / 0.15) 50%, transparent 60%);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Pulse suave para indicadores de estado */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+.pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
+
+/* Fade in al montar */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up { animation: fade-in-up 0.3s ease-out forwards; }
+
+/* Glow primario en hover para botones */
+.btn-glow {
+  @apply transition-all duration-200;
+}
+.btn-glow:hover {
+  box-shadow: 0 0 20px hsl(185 100% 45% / 0.4);
+}
+
+/* Row hover con borde izquierdo animado */
+.row-hover {
+  @apply transition-all duration-150 border-l-2 border-l-transparent;
+}
+.row-hover:hover {
+  @apply bg-primary/5 border-l-primary;
+}
+
+/* Sidebar nav item */
+.nav-item {
+  @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150;
+}
+.nav-item:hover {
+  @apply text-foreground bg-secondary/80;
+  box-shadow: inset 0 0 0 1px hsl(185 100% 45% / 0.1);
+}
+.nav-item.active {
+  @apply bg-primary/15 text-primary;
+  box-shadow: inset 0 0 0 1px hsl(185 100% 45% / 0.25), 0 0 12px hsl(185 100% 45% / 0.1);
+}
+
+/* Input focus glow */
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(185 100% 45% / 0.3);
+}
+
+/* Gradient border en cards especiales */
+.gradient-border {
+  position: relative;
+  background: hsl(var(--card));
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, hsl(185 100% 45% / 0.4), hsl(45 100% 55% / 0.2), transparent);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }

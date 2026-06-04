@@ -237,7 +237,7 @@ export default function DashboardClient({
 
       {/* Badges */}
       {allBadges.length > 0 && (
-        <div className="bg-card border border-border rounded-2xl p-6">
+        <div className="gradient-border rounded-2xl p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-base font-bold text-foreground">Badges</h2>
             <span className="text-xs text-muted-foreground">
@@ -260,9 +260,9 @@ export default function DashboardClient({
                       const isEarned = earnedSet.has(badge.id)
                       return (
                         <div key={badge.id}
-                          className={`border rounded-xl p-3 flex items-center gap-3 transition-all ${
+                          className={`border rounded-xl p-3 flex items-center gap-3 transition-all duration-200 ${
                             isEarned
-                              ? TIER_COLORS[badge.tier] ?? 'border-border bg-secondary/30'
+                              ? `${TIER_COLORS[badge.tier] ?? 'border-border bg-secondary/30'} badge-earned card-hover cursor-default`
                               : 'border-border bg-secondary/20 opacity-40 grayscale'
                           }`}
                         >

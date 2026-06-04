@@ -87,10 +87,8 @@ export default function Sidebar({ profile }: SidebarProps) {
           return (
             <Link key={href} href={href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
-                isActive
-                  ? 'bg-primary/15 text-primary border border-primary/25 shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/80'
+                'nav-item',
+                isActive ? 'active' : 'text-muted-foreground'
               )}
             >
               <Icon className="w-4 h-4 shrink-0" />
@@ -107,12 +105,7 @@ export default function Sidebar({ profile }: SidebarProps) {
               </p>
             </div>
             <Link href="/admin"
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
-                pathname.startsWith('/admin')
-                  ? 'bg-primary/15 text-primary border border-primary/25'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary/80'
-              )}
+              className={cn('nav-item', pathname.startsWith('/admin') ? 'active' : 'text-muted-foreground')}
             >
               <Shield className="w-4 h-4 shrink-0" />
               Panel Admin

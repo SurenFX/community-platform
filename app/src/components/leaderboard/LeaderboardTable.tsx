@@ -86,14 +86,15 @@ export default function LeaderboardTable({ entries, currentUserId, myRank }: Lea
           const xp            = entry[period]
 
           const username = entry.profiles?.username
+          const topGlow = rank === 1 ? 'bg-yellow-400/5' : rank === 2 ? 'bg-slate-400/5' : rank === 3 ? 'bg-amber-600/5' : ''
           const RowWrapper = ({ children }: { children: React.ReactNode }) =>
             !isCurrentUser && username ? (
               <Link href={`/dashboard/profile/${username}`}
-                className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-secondary/30 cursor-pointer">
+                className={`row-hover flex items-center gap-4 px-6 py-4 ${topGlow}`}>
                 {children}
               </Link>
             ) : (
-              <div className="flex items-center gap-4 px-6 py-4 transition-colors bg-primary/5 border-l-2 border-l-primary">
+              <div className={`flex items-center gap-4 px-6 py-4 bg-primary/5 border-l-2 border-l-primary ${topGlow}`}>
                 {children}
               </div>
             )

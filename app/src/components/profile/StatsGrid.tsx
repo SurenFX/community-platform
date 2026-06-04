@@ -56,10 +56,12 @@ function StatCard({
 
   return (
     <div className={`
-      bg-card border rounded-xl p-5 card-hover transition-all duration-300
-      ${flashing ? 'border-primary/50 shadow-lg shadow-primary/10' : 'border-border'}
-    `}>
-      <div className={`inline-flex p-2 rounded-lg ${bg} mb-3`}>
+      bg-card border rounded-xl p-5 card-hover transition-all duration-300 fade-in-up
+      ${flashing ? 'border-primary/50' : 'border-border'}
+    `}
+    style={{ boxShadow: flashing ? '0 0 20px hsl(185 100% 45% / 0.15)' : undefined }}
+    >
+      <div className={`inline-flex p-2.5 rounded-xl ${bg} mb-3 transition-transform duration-200 group-hover:scale-110`}>
         <Icon className={`w-5 h-5 ${color}`} />
       </div>
       <p className={`text-2xl font-bold transition-all duration-300 ${flashing ? 'text-primary scale-110' : 'text-foreground'}`}>
