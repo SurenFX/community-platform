@@ -24,11 +24,15 @@ const PLATFORM_ICONS: Record<string, string> = {
 }
 
 const RARITY_COLORS: Record<string, string> = {
+  BRONZE:    'border-amber-700/30 bg-amber-700/10',
+  SILVER:    'border-slate-400/30 bg-slate-400/10',
+  GOLD:      'border-yellow-400/30 bg-yellow-400/10',
+  LEGENDARY: 'border-purple-400/30 bg-purple-400/10',
+  // legacy
   COMMON:    'border-gray-500/30 bg-gray-500/10',
   UNCOMMON:  'border-green-500/30 bg-green-500/10',
   RARE:      'border-blue-500/30 bg-blue-500/10',
   EPIC:      'border-purple-500/30 bg-purple-500/10',
-  LEGENDARY: 'border-yellow-500/30 bg-yellow-500/10',
 }
 
 export default async function PublicProfilePage({
