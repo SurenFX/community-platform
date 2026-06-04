@@ -70,7 +70,7 @@ export default async function AdminBadgesPage() {
           <div className="divide-y divide-border">
             {fBadges.map((badge: any) => (
               <div key={badge.id} className="flex items-center gap-4 px-6 py-4">
-                <span className="text-3xl w-10 text-center">{badge.image_url ?? '🏅'}</span>
+                <span className="text-3xl w-10 text-center">{badge.image_url || '🏅'}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <p className="text-sm font-semibold text-foreground">{badge.name}</p>

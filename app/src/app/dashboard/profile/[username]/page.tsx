@@ -254,7 +254,7 @@ export default async function PublicProfilePage({
                             : 'border-border bg-secondary/30 opacity-40 grayscale'
                         }`}
                       >
-                        <span className="text-2xl">{badge.image_url ?? '🏅'}</span>
+                        <span className="text-2xl">{badge.image_url || '🏅'}</span>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{badge.name}</p>
                           <p className="text-xs text-muted-foreground truncate">
