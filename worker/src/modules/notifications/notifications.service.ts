@@ -50,6 +50,16 @@ export class NotificationsService {
     }
   }
 
+  @OnEvent('streak.milestone')
+  async onStreakMilestone(payload: { userId: string; days: number; xp: number; label: string }) {
+    await this.create(
+      payload.userId,
+      'STREAK_BONUS',
+      `🔥 ¡Racha de ${payload.days} días!`,
+      `Mantuviste tu racha por ${payload.label}. Recompensa: +${payload.xp} XP.`,
+    )
+  }
+
   @OnEvent('mission.completed')
   async onMissionCompleted(payload: { userId: string; missionTitle: string; xpReward: number; ticketReward: number }) {
     const extras: string[] = []

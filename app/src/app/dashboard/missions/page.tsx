@@ -91,7 +91,7 @@ export default async function MissionsPage() {
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>{progress} / {mission.target_count}</span>
-                    <span>Vence en {endsIn} día{endsIn !== 1 ? 's' : ''}</span>
+                    {endsIn <= 365 && <span>Vence en {endsIn} día{endsIn !== 1 ? 's' : ''}</span>}
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div

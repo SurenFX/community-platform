@@ -148,6 +148,25 @@ export class ReputationService {
       // 8. Actualizar streak del día
       const streakResult = await this.streak.updateStreak(profile.id)
 
+      // 8b. Si se alcanzó milestone de racha → dar XP bonus
+      if (streakResult.milestoneHit) {
+        const { days, xp, label } = streakResult.milestoneHit
+        await this.supabase.db.rpc('award_xp', {
+          p_user_id:    profile.id,
+          p_event_type: 'STREAK_BONUS',
+          p_platform:   'DISCORD',
+          p_xp:         xp,
+          p_base_xp:    xp,
+          p_multiplier: 1.0,
+          p_quality:    1.0,
+          p_streak:     days,
+          p_ref:        `streak_milestone_${profile.id}_${days}`,
+          p_metadata:   { days, label },
+        })
+        this.eventEmitter.emit('streak.milestone', { userId: profile.id, days, xp, label })
+        this.logger.log(`🔥 Streak milestone: user=${profile.id} ${days} días → +${xp} XP`)
+      }
+
       // 9. Evaluar badges en background (no bloquea la respuesta)
       this.checkBadgesAsync(profile.id, event.eventType, xpResult.new_level, streakResult.currentStreak)
 

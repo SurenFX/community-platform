@@ -43,7 +43,7 @@ export default function Sidebar({ profile }: SidebarProps) {
               BETA
             </span>
           </div>
-          <NotificationBell />
+          <NotificationBell userId={profile?.id} />
         </div>
       </div>
 

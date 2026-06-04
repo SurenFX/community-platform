@@ -7,8 +7,22 @@ export class StreakService {
 
   constructor(private supabase: SupabaseService) {}
 
+  // Milestones que dan recompensa extra
+  static readonly MILESTONES: Record<number, { xp: number; label: string }> = {
+    3:   { xp: 50,   label: '3 días seguidos' },
+    7:   { xp: 150,  label: '1 semana seguida' },
+    14:  { xp: 300,  label: '2 semanas seguidas' },
+    30:  { xp: 600,  label: '1 mes seguido' },
+    60:  { xp: 1200, label: '2 meses seguidos' },
+    100: { xp: 2000, label: '100 días seguidos' },
+  }
+
   // ── Llamado desde ReputationService en cada evento de XP exitoso ───────────
-  async updateStreak(userId: string): Promise<{ streakChanged: boolean; currentStreak: number }> {
+  async updateStreak(userId: string): Promise<{
+    streakChanged:  boolean
+    currentStreak:  number
+    milestoneHit?:  { days: number; xp: number; label: string }
+  }> {
     try {
       const { data: rep } = await this.supabase.db
         .from('user_reputation')
@@ -49,7 +63,10 @@ export class StreakService {
         .eq('user_id', userId)
 
       this.logger.log(`🔥 Streak: user=${userId} ${rep.current_streak}→${newStreak}`)
-      return { streakChanged: true, currentStreak: newStreak }
+
+      // Verificar si se alcanzó un milestone
+      const milestone = StreakService.MILESTONES[newStreak]
+      return { streakChanged: true, currentStreak: newStreak, milestoneHit: milestone ? { days: newStreak, ...milestone } : undefined }
 
     } catch (err) {
       this.logger.warn(`updateStreak error: ${err}`)

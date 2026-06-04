@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition, useRef } from 'react'
 import { Bell, X, CheckCheck } from 'lucide-react'
 import { getNotifications, markAllAsRead, markAsRead } from '@/app/actions/notifications'
+import { createClient } from '@/lib/supabase/client'
 
 interface Notification {
   id:         string
@@ -29,11 +30,12 @@ function typeColor(type: string) {
     case 'LEVEL_UP':          return 'text-primary'
     case 'BADGE_EARNED':      return 'text-yellow-400'
     case 'MISSION_COMPLETED': return 'text-green-400'
+    case 'STREAK_BONUS':      return 'text-orange-400'
     default:                  return 'text-muted-foreground'
   }
 }
 
-export default function NotificationBell() {
+export default function NotificationBell({ userId }: { userId?: string }) {
   const [open,          setOpen]          = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isPending,     startTransition]  = useTransition()
@@ -43,10 +45,25 @@ export default function NotificationBell() {
 
   useEffect(() => {
     loadNotifications()
-    // Polling cada 30 segundos para nuevas notificaciones
-    const interval = setInterval(loadNotifications, 30000)
-    return () => clearInterval(interval)
-  }, [])
+
+    if (!userId) return
+
+    // Realtime — escuchar inserts en la tabla notifications
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`notifications:${userId}`)
+      .on('postgres_changes', {
+        event:  'INSERT',
+        schema: 'public',
+        table:  'notifications',
+        filter: `user_id=eq.${userId}`,
+      }, (payload) => {
+        setNotifications(prev => [payload.new as Notification, ...prev])
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [userId])
 
   // Cerrar al hacer clic afuera
   useEffect(() => {
