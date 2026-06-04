@@ -15,8 +15,9 @@ const FAMILY_LABELS: Record<string, string> = {
   level:    '⭐ Nivel',
   missions: '🎯 Misiones',
   youtube:  '📹 YouTube',
-  telegram: '✈️ Telegram',
-  special:  '🏅 Especiales',
+  telegram:  '✈️ Telegram',
+  seniority: '🏛️ Antigüedad',
+  special:   '🏅 Especiales',
 }
 
 export default async function AdminBadgesPage() {

@@ -133,14 +133,15 @@ export default async function PublicProfilePage({
   }
 
   const FAMILY_LABELS: Record<string, string> = {
-    discord:  '💬 Discord',
-    stream:   '🟣 Stream',
-    streak:   '🔥 Racha',
-    level:    '⭐ Nivel',
-    missions: '🎯 Misiones',
-    youtube:  '📹 YouTube',
-    telegram: '✈️ Telegram',
-    special:  '🏅 Especiales',
+    discord:   '💬 Discord',
+    stream:    '🟣 Stream',
+    streak:    '🔥 Racha',
+    level:     '⭐ Nivel',
+    missions:  '🎯 Misiones',
+    youtube:   '📹 YouTube',
+    telegram:  '✈️ Telegram',
+    seniority: '🏛️ Antigüedad',
+    special:   '🏅 Especiales',
   }
 
   const level   = rep?.level ?? 1

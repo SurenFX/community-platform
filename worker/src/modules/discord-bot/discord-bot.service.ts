@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter'
+import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
 import {
   Client, GatewayIntentBits, Events,
   Message, MessageReaction, PartialMessageReaction,
@@ -17,6 +18,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     private config:       ConfigService,
     private reputation:   ReputationService,
     private eventEmitter: EventEmitter2,
+    private supabase:     SupabaseService,
   ) {}
 
   async onModuleInit() {
@@ -70,6 +72,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
           guild_id:   message.guild.id,
         },
       })
+
+      // Verificar badge de antigüedad (solo si el miembro tiene joinedAt)
+      this.checkSeniorityBadge(message.author.id, message.member?.joinedAt ?? null)
     })
 
     this.client.on(
@@ -99,6 +104,63 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         })
       }
     )
+  }
+
+  // ── Badge de antigüedad en el servidor ────────────────────────────────────
+  private readonly SENIORITY_BADGES = [
+    { slug: 'seniority_founder',     months: 24 },
+    { slug: 'seniority_veteran',     months: 12 },
+    { slug: 'seniority_old',         months: 6  },
+    { slug: 'seniority_established', months: 3  },
+  ]
+
+  private async checkSeniorityBadge(discordId: string, joinedAt: Date | null): Promise<void> {
+    if (!joinedAt) return
+    try {
+      // Buscar el perfil
+      const { data: profile } = await this.supabase.db
+        .from('profiles')
+        .select('id')
+        .eq('discord_id', discordId)
+        .single()
+      if (!profile) return
+
+      // Verificar si ya tiene algún badge de antigüedad
+      const { data: existing } = await this.supabase.db
+        .from('user_badges')
+        .select('badges!inner(slug)')
+        .eq('user_id', profile.id)
+        .in('badges.slug', this.SENIORITY_BADGES.map(b => b.slug))
+
+      if (existing && existing.length > 0) return
+
+      // Calcular meses en el servidor
+      const monthsInServer = Math.floor((Date.now() - joinedAt.getTime()) / (30 * 24 * 60 * 60 * 1000))
+
+      // Encontrar el badge correspondiente
+      const targetBadge = this.SENIORITY_BADGES.find(b => monthsInServer >= b.months)
+      if (!targetBadge) return
+
+      // Obtener ID del badge
+      const { data: badge } = await this.supabase.db
+        .from('badges')
+        .select('id')
+        .eq('slug', targetBadge.slug)
+        .single()
+      if (!badge) return
+
+      // Otorgar badge
+      const { error } = await this.supabase.db
+        .from('user_badges')
+        .insert({ user_id: profile.id, badge_id: badge.id })
+
+      if (!error) {
+        this.eventEmitter.emit('badge.earned', { userId: profile.id, badges: [targetBadge.slug] })
+        this.logger.log(`🏛️ Seniority badge "${targetBadge.slug}" → user=${profile.id} (${monthsInServer} meses)`)
+      }
+    } catch (err) {
+      this.logger.warn(`checkSeniorityBadge error: ${err}`)
+    }
   }
 
   // ── Anuncios públicos ─────────────────────────────────────
