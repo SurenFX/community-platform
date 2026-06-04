@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import PlatformRaffleClient from '@/components/raffles/PlatformRaffle'
-import { Ticket } from 'lucide-react'
+import { Ticket, History } from 'lucide-react'
+import Link from 'next/link'
 
 export default async function PlatformRafflePage() {
   const supabase = await createClient()
@@ -37,13 +38,24 @@ export default async function PlatformRafflePage() {
 
   const rep = repData as any
 
+  const header = (
+    <div className="flex items-center justify-between mb-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Sorteos</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Usá tus tickets para participar en sorteos exclusivos</p>
+      </div>
+      <Link href="/dashboard/raffles/history"
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border px-3 py-2 rounded-lg transition-all">
+        <History className="w-3.5 h-3.5" />
+        Historial
+      </Link>
+    </div>
+  )
+
   if (!raffles.length) {
     return (
       <div className="max-w-2xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Sorteos</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Usá tus tickets para participar en sorteos exclusivos</p>
-        </div>
+        {header}
         <div className="bg-card border border-border rounded-xl p-12 text-center">
           <Ticket className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
           <p className="text-foreground font-semibold mb-1">No hay sorteos activos</p>
@@ -54,13 +66,16 @@ export default async function PlatformRafflePage() {
   }
 
   return (
-    <PlatformRaffleClient
-      raffles={raffles as any}
-      myTickets={rep?.raffle_tickets ?? 0}
-      myLevel={rep?.level ?? 1}
-      myXp={rep?.total_xp ?? 0}
-      myPools={(myPools ?? []) as any}
-      userId={user.id}
-    />
+    <div className="max-w-2xl mx-auto">
+      {header}
+      <PlatformRaffleClient
+        raffles={raffles as any}
+        myTickets={rep?.raffle_tickets ?? 0}
+        myLevel={rep?.level ?? 1}
+        myXp={rep?.total_xp ?? 0}
+        myPools={(myPools ?? []) as any}
+        userId={user.id}
+      />
+    </div>
   )
 }
