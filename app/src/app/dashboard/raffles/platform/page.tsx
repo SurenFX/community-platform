@@ -59,7 +59,12 @@ export default async function PlatformRafflePage() {
         <div className="bg-card border border-border rounded-xl p-12 text-center">
           <Ticket className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
           <p className="text-foreground font-semibold mb-1">No hay sorteos activos</p>
-          <p className="text-sm text-muted-foreground">Seguí acumulando tickets — pronto habrá nuevos sorteos.</p>
+          <p className="text-sm text-muted-foreground mb-4">Seguí acumulando tickets — pronto habrá nuevos sorteos.</p>
+          <Link href="/dashboard/raffles/history"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border px-4 py-2 rounded-lg transition-all">
+            <History className="w-4 h-4" />
+            Ver historial de sorteos
+          </Link>
         </div>
       </div>
     )
