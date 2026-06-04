@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Youtube, MessageSquare, Eye, ArrowLeft, Trophy, Shuffle, Loader2, ChevronRight, Check } from 'lucide-react'
+import { Youtube, MessageSquare, Eye, ArrowLeft, Trophy, Shuffle, Loader2, Check, Users, Hash } from 'lucide-react'
 import Link from 'next/link'
 
 const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY
@@ -35,6 +35,7 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
   const [videos,          setVideos]          = useState<Video[]>([])
   const [loadingVideos,   setLoadingVideos]   = useState(true)
   const [selectedIds,     setSelectedIds]     = useState<Set<string>>(new Set())
+  const [multiEntry,      setMultiEntry]      = useState(false) // false = 1 entrada por persona, true = 1 por video
   const [comments,        setComments]        = useState<Comment[]>([])
   const [loadingComments, setLoadingComments] = useState(false)
   const [stage,           setStage]           = useState<Stage>('select')
@@ -137,7 +138,7 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
       setStage('confirm')
 
       const allComments: Comment[] = []
-      const seenAuthors = new Set<string>()
+      const seenAuthors = new Set<string>() // solo para modo único
 
       for (const videoId of selectedIds) {
         const res = await fetch(
@@ -148,19 +149,22 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
 
         for (const item of data.items ?? []) {
           const c = item.snippet.topLevelComment.snippet
-          // Un autor puede comentar en múltiples videos — solo cuenta una vez
-          if (!seenAuthors.has(c.authorDisplayName)) {
+
+          if (!multiEntry) {
+            // Modo único: si ya comentó en otro video, no se agrega de nuevo
+            if (seenAuthors.has(c.authorDisplayName)) continue
             seenAuthors.add(c.authorDisplayName)
-            allComments.push({
-              id:          item.id,
-              author:      c.authorDisplayName,
-              authorPhoto: c.authorProfileImageUrl,
-              text:        c.textDisplay,
-              likeCount:   c.likeCount ?? 0,
-              publishedAt: c.publishedAt,
-              videoId,
-            })
           }
+
+          allComments.push({
+            id:          `${item.id}_${videoId}`,
+            author:      c.authorDisplayName,
+            authorPhoto: c.authorProfileImageUrl,
+            text:        c.textDisplay,
+            likeCount:   c.likeCount ?? 0,
+            publishedAt: c.publishedAt,
+            videoId,
+          })
         }
       }
 
@@ -309,20 +313,46 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
 
               {/* Barra de acción */}
               {selectedIds.size > 0 && (
-                <div className="sticky bottom-4 bg-card border border-red-400/30 rounded-2xl p-4 flex items-center justify-between shadow-xl shadow-black/20">
-                  <div>
-                    <p className="text-sm font-bold text-foreground">
-                      {selectedIds.size} video{selectedIds.size !== 1 ? 's' : ''} seleccionado{selectedIds.size !== 1 ? 's' : ''}
-                    </p>
-                    <p className="text-xs text-muted-foreground">~{fmt(totalComments)} comentarios en total</p>
+                <div className="sticky bottom-4 bg-card border border-red-400/30 rounded-2xl p-4 space-y-3 shadow-xl shadow-black/20">
+                  {/* Modo de participación */}
+                  <div className="flex gap-2">
+                    <button onClick={() => setMultiEntry(false)}
+                      className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                        !multiEntry ? 'bg-red-500/15 border-red-500/40 text-red-400' : 'border-border text-muted-foreground hover:border-red-400/20'
+                      }`}>
+                      <Users className="w-4 h-4 shrink-0" />
+                      <div className="text-left">
+                        <p className="font-semibold leading-none">1 entrada por persona</p>
+                        <p className="text-[11px] opacity-70 mt-0.5">Todos tienen las mismas chances</p>
+                      </div>
+                    </button>
+                    <button onClick={() => setMultiEntry(true)}
+                      className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                        multiEntry ? 'bg-red-500/15 border-red-500/40 text-red-400' : 'border-border text-muted-foreground hover:border-red-400/20'
+                      }`}>
+                      <Hash className="w-4 h-4 shrink-0" />
+                      <div className="text-left">
+                        <p className="font-semibold leading-none">1 entrada por video</p>
+                        <p className="text-[11px] opacity-70 mt-0.5">Más videos comentados = más chances</p>
+                      </div>
+                    </button>
                   </div>
-                  <button onClick={loadComments} disabled={loadingComments}
-                    className="flex items-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold px-5 py-2.5 rounded-xl transition-all hover:scale-[1.02]">
-                    {loadingComments
-                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</>
-                      : <><MessageSquare className="w-4 h-4" /> Cargar comentaristas</>
-                    }
-                  </button>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-foreground">
+                        {selectedIds.size} video{selectedIds.size !== 1 ? 's' : ''} seleccionado{selectedIds.size !== 1 ? 's' : ''}
+                      </p>
+                      <p className="text-xs text-muted-foreground">~{fmt(totalComments)} comentarios en total</p>
+                    </div>
+                    <button onClick={loadComments} disabled={loadingComments}
+                      className="flex items-center gap-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-bold px-5 py-2.5 rounded-xl transition-all hover:scale-[1.02]">
+                      {loadingComments
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Cargando...</>
+                        : <><MessageSquare className="w-4 h-4" /> Cargar comentaristas</>
+                      }
+                    </button>
+                  </div>
                 </div>
               )}
             </>
@@ -354,11 +384,18 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
             </div>
           ) : (
             <>
+              <div className="bg-secondary/50 border border-border rounded-xl px-4 py-3 flex items-center gap-2 text-sm">
+                {multiEntry
+                  ? <><Hash className="w-4 h-4 text-red-400" /> <span className="text-foreground font-medium">1 entrada por video</span> <span className="text-muted-foreground">— más videos comentados = más chances</span></>
+                  : <><Users className="w-4 h-4 text-red-400" /> <span className="text-foreground font-medium">1 entrada por persona</span> <span className="text-muted-foreground">— todos tienen las mismas chances</span></>
+                }
+              </div>
+
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { label: 'Participantes únicos', value: comments.length },
+                  { label: multiEntry ? 'Entradas totales' : 'Participantes únicos', value: comments.length },
                   { label: 'Videos',               value: selectedIds.size },
-                  { label: 'Chance',               value: comments.length > 0 ? `${(1/comments.length*100).toFixed(1)}%` : '—' },
+                  { label: 'Chance mín.',          value: comments.length > 0 ? `${(1/comments.length*100).toFixed(1)}%` : '—' },
                 ].map(({ label, value }) => (
                   <div key={label} className="bg-card border border-border rounded-xl p-4 text-center">
                     <p className="text-2xl font-bold text-foreground">{value}</p>
