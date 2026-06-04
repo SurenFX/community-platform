@@ -10,7 +10,7 @@ export default async function LeaderboardPage() {
   // Top 50 con todos los campos de XP
   const { data: entries } = await supabase
     .from('user_reputation')
-    .select('user_id, total_xp, weekly_xp, monthly_xp, level, profiles!inner(username, avatar_url)')
+    .select('user_id, total_xp, weekly_xp, monthly_xp, level, current_streak, profiles!inner(username, avatar_url)')
     .order('total_xp', { ascending: false })
     .limit(50)
 

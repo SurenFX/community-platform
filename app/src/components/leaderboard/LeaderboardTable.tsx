@@ -3,17 +3,18 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { cn, getLevelColor, getLevelTitle, formatNumber } from '@/lib/utils'
-import { Trophy, Medal, User, ChevronDown } from 'lucide-react'
+import { Trophy, Medal, User, ChevronDown, Flame } from 'lucide-react'
 
 type Period = 'total_xp' | 'weekly_xp' | 'monthly_xp'
 
 interface Entry {
-  user_id:    string
-  total_xp:   number
-  weekly_xp:  number
-  monthly_xp: number
-  level:      number
-  profiles:   { username: string; avatar_url: string | null } | null
+  user_id:        string
+  total_xp:       number
+  weekly_xp:      number
+  monthly_xp:     number
+  level:          number
+  current_streak: number
+  profiles:       { username: string; avatar_url: string | null } | null
 }
 
 interface MyRank {
@@ -124,6 +125,11 @@ export default function LeaderboardTable({ entries, currentUserId, myRank }: Lea
                   </p>
                   {isCurrentUser && (
                     <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium">Tú</span>
+                  )}
+                  {entry.current_streak >= 3 && (
+                    <span className="flex items-center gap-0.5 text-[10px] text-orange-400 font-bold">
+                      <Flame className="w-3 h-3" />{entry.current_streak}
+                    </span>
                   )}
                 </div>
                 <p className={cn('text-xs font-medium', getLevelColor(entry.level))}>

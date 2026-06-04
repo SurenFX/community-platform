@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import PlatformRaffleClient from '@/components/raffles/PlatformRaffle'
-import { Trophy } from 'lucide-react'
+import { Ticket } from 'lucide-react'
 
 export default async function PlatformRafflePage() {
   const supabase = await createClient()
@@ -17,12 +17,11 @@ export default async function PlatformRafflePage() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const { data: allRaffles, error: rafflesError } = await admin
+  const { data: allRaffles } = await admin
     .from('raffles')
     .select('id, title, status, ends_at, starts_at, prize, description, use_weighted, min_level, min_xp')
     .order('ends_at')
 
-  // Debug: mostrar todos los sorteos para diagnosticar
   const raffles = allRaffles?.filter((r: any) => r.status === 'ACTIVE') ?? []
 
   const { data: repData } = await admin
@@ -38,28 +37,25 @@ export default async function PlatformRafflePage() {
 
   const rep = repData as any
 
-  // Debug temporal — mostrar error si falla la query
-  if (rafflesError) {
+  if (!raffles.length) {
     return (
-      <div className="max-w-2xl mx-auto p-6 bg-destructive/10 border border-destructive/20 rounded-xl">
-        <p className="text-destructive font-mono text-sm">Error: {rafflesError.message}</p>
-      </div>
-    )
-  }
-
-  // Debug panel
-  if (!allRaffles?.length) {
-    return (
-      <div className="max-w-2xl mx-auto p-6 bg-secondary rounded-xl space-y-2">
-        <p className="text-sm font-bold">Debug: query OK, 0 sorteos encontrados en total</p>
-        {rafflesError && <p className="text-destructive text-xs">Error: {(rafflesError as any).message}</p>}
+      <div className="max-w-2xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground">Sorteos</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Usá tus tickets para participar en sorteos exclusivos</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-12 text-center">
+          <Ticket className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+          <p className="text-foreground font-semibold mb-1">No hay sorteos activos</p>
+          <p className="text-sm text-muted-foreground">Seguí acumulando tickets — pronto habrá nuevos sorteos.</p>
+        </div>
       </div>
     )
   }
 
   return (
     <PlatformRaffleClient
-      raffles={(raffles ?? []) as any}
+      raffles={raffles as any}
       myTickets={rep?.raffle_tickets ?? 0}
       myLevel={rep?.level ?? 1}
       myXp={rep?.total_xp ?? 0}

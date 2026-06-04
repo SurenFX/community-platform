@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Shield, Tv, Youtube, Zap, ChevronRight, X } from 'lucide-react'
+import { Shield, Tv, Youtube, Zap, ChevronRight, X, Send } from 'lucide-react'
 import { completeOnboarding } from '@/app/actions/profile'
 
 interface Props {
@@ -33,11 +33,18 @@ const STEPS = [
     desc:  'Vinculá tu cuenta de YouTube para ganar XP por comentar en los videos del canal.',
   },
   {
+    icon:  Send,
+    color: 'text-[#26A5E4]',
+    bg:    'bg-[#26A5E4]/10',
+    title: 'Unite al grupo de Telegram',
+    desc:  'Vinculá tu Telegram para ganar XP por cada mensaje que mandes en el grupo de la comunidad. ¡Es la forma más fácil de acumular XP diariamente!',
+  },
+  {
     icon:  Zap,
     color: 'text-yellow-400',
     bg:    'bg-yellow-400/10',
     title: '¡Empezá a ganar XP!',
-    desc:  'Cuanto más activo seas en Discord, Twitch y YouTube, más XP ganás. Subí de nivel, desbloqueá badges y participá en sorteos exclusivos.',
+    desc:  'Cuanto más activo seas en Discord, Twitch, YouTube y Telegram, más XP ganás. Subí de nivel, desbloqueá badges y participá en sorteos exclusivos.',
   },
 ]
 

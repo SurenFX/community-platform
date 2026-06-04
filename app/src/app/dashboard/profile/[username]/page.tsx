@@ -1,26 +1,32 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { Shield, Flame, Trophy, Zap, Calendar } from 'lucide-react'
 import { getLevelTitle, getLevelColor, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'
+import ProfileEditButton from '@/components/profile/ProfileEditButton'
 
 const EVENT_LABELS: Record<string, string> = {
   DISCORD_MESSAGE:           'Mensaje en Discord',
   DISCORD_REACTION_RECEIVED: 'Reacción recibida',
   DISCORD_HELPED_USER:       'Ayudó a alguien',
   TWITCH_WATCH_TIME:         'Vio el stream',
-  TWITCH_CHAT_MESSAGE:       'Chat en Twitch',
+  TWITCH_CHAT_MESSAGE:       'Chat en el stream',
+  TWITCH_FOLLOW:             'Siguió el canal',
+  TWITCH_SUBSCRIBE:          'Sub al canal',
   TWITCH_RAID_PARTICIPATE:   'Participó en raid',
   YOUTUBE_COMMENT:           'Comentó en YouTube',
-  YOUTUBE_SUBSCRIBE:         'Se suscribió al canal',
+  YOUTUBE_SUBSCRIBE:         'Se suscribió en YouTube',
+  TELEGRAM_MESSAGE:          'Mensaje en Telegram',
   MISSION_COMPLETED:         'Completó una misión',
-  STREAK_BONUS:              'Bonus de racha',
+  STREAK_BONUS:              'Bonus de racha 🔥',
   ADMIN_MANUAL_GRANT:        'XP otorgado por admin',
 }
 
 const PLATFORM_ICONS: Record<string, string> = {
-  DISCORD: '🎮',
-  TWITCH:  '🟣',
-  YOUTUBE: '🔴',
+  DISCORD:  '🎮',
+  TWITCH:   '🟣',
+  YOUTUBE:  '🔴',
+  TELEGRAM: '✈️',
 }
 
 const RARITY_COLORS: Record<string, string> = {
@@ -42,6 +48,10 @@ export default async function PublicProfilePage({
 }) {
   const { username } = await params
 
+  // Usuario autenticado (para mostrar botón de editar en perfil propio)
+  const authClient = await createClient()
+  const { data: { user: currentUser } } = await authClient.auth.getUser()
+
   const supabase = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -56,6 +66,8 @@ export default async function PublicProfilePage({
     .single()
 
   if (!profile) notFound()
+
+  const isOwner = currentUser?.id === profile.id
 
   const [repRes, badgesRes, allBadgesRes, linksRes, eventsRes] = await Promise.all([
     supabase
@@ -107,6 +119,7 @@ export default async function PublicProfilePage({
     level:    '⭐ Nivel',
     missions: '🎯 Misiones',
     youtube:  '📹 YouTube',
+    telegram: '✈️ Telegram',
     special:  '🏅 Especiales',
   }
 
@@ -150,6 +163,9 @@ export default async function PublicProfilePage({
             <div className="mb-1 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl font-black text-foreground">{profile.username}</h1>
+                {isOwner && (
+                  <ProfileEditButton username={profile.username} bio={profile.bio} />
+                )}
                 {profile.is_admin && (
                   <span className="flex items-center gap-1 text-[10px] font-bold bg-primary/20 text-primary px-2 py-0.5 rounded-full">
                     <Shield className="w-3 h-3" /> Admin
