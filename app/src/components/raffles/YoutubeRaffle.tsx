@@ -271,12 +271,12 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 ${selectedIds.size > 0 ? 'pb-36' : ''}`}>
                 {videos.map(video => {
                   const isSelected = selectedIds.has(video.id)
                   return (
                     <button key={video.id} onClick={() => toggleVideo(video.id)}
-                      className={`relative bg-card border rounded-xl overflow-hidden text-left transition-all duration-200 group ${
+                      className={`relative bg-card border rounded-xl overflow-hidden text-left transition-all duration-200 group isolate ${
                         isSelected
                           ? 'border-red-400/60 shadow-lg shadow-red-400/10'
                           : 'border-border hover:border-red-400/30'
@@ -315,7 +315,7 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
 
               {/* Barra de acción */}
               {selectedIds.size > 0 && (
-                <div className="sticky bottom-4 bg-card border border-red-400/30 rounded-2xl p-4 space-y-3 shadow-xl shadow-black/20">
+                <div className="sticky bottom-4 z-20 bg-card/95 backdrop-blur-sm border border-red-400/30 rounded-2xl p-4 space-y-3 shadow-xl shadow-black/40">
                   {/* Modo de participación */}
                   <div className="flex gap-2">
                     <button onClick={() => setMultiEntry(false)}
