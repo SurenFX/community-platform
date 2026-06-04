@@ -69,7 +69,7 @@ export default async function PublicProfilePage({
 
   const isOwner = currentUser?.id === profile.id
 
-  const [repRes, badgesRes, allBadgesRes, linksRes, eventsRes] = await Promise.all([
+  const [repRes, badgesRes, allBadgesRes, linksRes, eventsRes, eventsRes2] = await Promise.all([
     supabase
       .from('user_reputation')
       .select('total_xp, level, weekly_xp, monthly_xp, current_streak, longest_streak, raffle_tickets')
@@ -96,6 +96,10 @@ export default async function PublicProfilePage({
       .eq('user_id', profile.id)
       .order('created_at', { ascending: false })
       .limit(10),
+    supabase
+      .from('xp_events')
+      .select('platform, xp_awarded')
+      .eq('user_id', profile.id),
   ])
 
   const rep       = repRes.data
@@ -103,6 +107,22 @@ export default async function PublicProfilePage({
   const allBadges = allBadgesRes.data ?? []
   const links     = linksRes.data ?? []
   const events    = eventsRes.data ?? []
+  const allEvents = (eventsRes2 as any)?.data ?? []
+
+  // Desglose de XP por plataforma
+  const xpByPlatform: Record<string, number> = {}
+  for (const e of allEvents) {
+    if (!e.platform || e.platform === 'DISCORD' && e.xp_awarded === 0) continue
+    xpByPlatform[e.platform] = (xpByPlatform[e.platform] ?? 0) + e.xp_awarded
+  }
+  const totalXpAllPlatforms = Object.values(xpByPlatform).reduce((a, b) => a + b, 0)
+  const platformBreakdown = Object.entries(xpByPlatform)
+    .sort((a, b) => b[1] - a[1])
+    .map(([platform, xp]) => ({
+      platform,
+      xp,
+      pct: totalXpAllPlatforms > 0 ? Math.round((xp / totalXpAllPlatforms) * 100) : 0,
+    }))
 
   // Agrupar badges por familia
   const badgesByFamily: Record<string, any[]> = {}
@@ -221,6 +241,35 @@ export default async function PublicProfilePage({
           </div>
         ))}
       </div>
+
+      {/* Desglose XP por plataforma */}
+      {platformBreakdown.length > 0 && (
+        <div className="bg-card border border-border rounded-2xl p-6">
+          <h2 className="text-base font-bold text-foreground mb-4">XP por plataforma</h2>
+          <div className="space-y-3">
+            {platformBreakdown.map(({ platform, xp, pct }) => {
+              const cfg: Record<string, { label: string; color: string; bar: string }> = {
+                DISCORD:  { label: 'Discord',  color: 'text-indigo-400',  bar: 'bg-indigo-400'  },
+                TWITCH:   { label: 'Twitch',   color: 'text-purple-400',  bar: 'bg-purple-400'  },
+                YOUTUBE:  { label: 'YouTube',  color: 'text-red-400',     bar: 'bg-red-400'     },
+                TELEGRAM: { label: 'Telegram', color: 'text-[#26A5E4]',   bar: 'bg-[#26A5E4]'  },
+              }
+              const p = cfg[platform] ?? { label: platform, color: 'text-muted-foreground', bar: 'bg-muted-foreground' }
+              return (
+                <div key={platform}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className={`font-semibold ${p.color}`}>{p.label}</span>
+                    <span className="text-muted-foreground">{xp.toLocaleString()} XP · {pct}%</span>
+                  </div>
+                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-700 ${p.bar}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Badges */}
       <div className="bg-card border border-border rounded-2xl p-6">
