@@ -106,14 +106,29 @@ const PLATFORMS: Platform[] = [
       </svg>
     ),
   },
+  {
+    id: 'telegram', name: 'Telegram', provider: 'telegram', dbPlatform: 'TELEGRAM',
+    color: 'text-[#26A5E4]', bgColor: 'bg-[#26A5E4]/10', borderColor: 'border-[#26A5E4]/30',
+    description: 'Ganá XP por participar en el grupo de Telegram',
+    xpItems: ['Mensaje en el grupo: +8 XP'],
+    connectFn: 'direct',
+    icon: (
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+      </svg>
+    ),
+  },
 ]
 
 export default function ConnectedAccounts({
   userId, profile, socialLinks, identities, successMessage, errorMessage,
 }: ConnectedAccountsProps) {
-  const [localLinks, setLocalLinks] = useState<UserSocialLink[]>(socialLinks)
-  const [loading,    setLoading]    = useState<string | null>(null)
-  const [localError, setLocalError] = useState<string | null>(null)
+  const [localLinks,    setLocalLinks]    = useState<UserSocialLink[]>(socialLinks)
+  const [loading,       setLoading]       = useState<string | null>(null)
+  const [localError,    setLocalError]    = useState<string | null>(null)
+  const [telegramModal, setTelegramModal] = useState(false)
+  const [telegramId,    setTelegramId]    = useState('')
+  const [telegramUser,  setTelegramUser]  = useState('')
   const supabase = createClient()
 
   function isConnected(platform: Platform): boolean {
@@ -134,8 +149,13 @@ export default function ConnectedAccounts({
       setLoading(platform.id)
       setLocalError(null)
 
+      if (platform.id === 'telegram') {
+        setTelegramModal(true)
+        setLoading(null)
+        return
+      }
+
       if (platform.connectFn === 'direct' && platform.directUrl) {
-        // URL directa — no pasa por Supabase
         window.location.href = platform.directUrl()
         return
       }
@@ -287,6 +307,102 @@ export default function ConnectedAccounts({
           ))}
         </div>
       </div>
+
+      {/* Modal vinculación Telegram */}
+      {telegramModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+          <div className="bg-card border border-[#26A5E4]/30 rounded-2xl w-full max-w-md p-6 space-y-5 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#26A5E4]/10 flex items-center justify-center">
+                <svg className="w-5 h-5 text-[#26A5E4]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">Vincular Telegram</h3>
+                <p className="text-xs text-muted-foreground">Seguí los pasos para conectar tu cuenta</p>
+              </div>
+            </div>
+
+            <ol className="space-y-3 text-sm">
+              <li className="flex gap-3">
+                <span className="w-6 h-6 rounded-full bg-[#26A5E4]/20 text-[#26A5E4] text-xs font-bold flex items-center justify-center shrink-0">1</span>
+                <p className="text-muted-foreground">Andá al grupo de Telegram y escribí el comando <code className="bg-secondary px-1.5 py-0.5 rounded text-foreground">/vincular</code></p>
+              </li>
+              <li className="flex gap-3">
+                <span className="w-6 h-6 rounded-full bg-[#26A5E4]/20 text-[#26A5E4] text-xs font-bold flex items-center justify-center shrink-0">2</span>
+                <p className="text-muted-foreground">El bot te va a responder con tu ID de Telegram. Copialo y pegalo acá abajo.</p>
+              </li>
+            </ol>
+
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={telegramId}
+                onChange={e => setTelegramId(e.target.value.trim())}
+                placeholder="Tu ID de Telegram (ej: 123456789)"
+                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#26A5E4]/50"
+              />
+              <input
+                type="text"
+                value={telegramUser}
+                onChange={e => setTelegramUser(e.target.value.trim())}
+                placeholder="Tu @username de Telegram (sin @)"
+                className="w-full bg-secondary border border-border rounded-xl px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#26A5E4]/50"
+              />
+            </div>
+
+            {localError && (
+              <p className="text-xs text-destructive">{localError}</p>
+            )}
+
+            <div className="flex gap-3">
+              <button onClick={() => { setTelegramModal(false); setTelegramId(''); setTelegramUser(''); setLocalError(null) }}
+                className="flex-1 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-all">
+                Cancelar
+              </button>
+              <button
+                disabled={!telegramId || loading === 'telegram'}
+                onClick={async () => {
+                  if (!telegramId) return
+                  setLoading('telegram')
+                  setLocalError(null)
+                  try {
+                    const supabaseClient = createClient()
+                    const { error } = await supabaseClient
+                      .from('user_social_links')
+                      .upsert({
+                        user_id:     userId,
+                        platform:    'TELEGRAM',
+                        external_id: telegramId,
+                        username:    telegramUser || telegramId,
+                        is_verified: false,
+                      }, { onConflict: 'user_id,platform' }) as any
+
+                    if (error) throw error
+
+                    setLocalLinks(prev => [
+                      ...prev.filter(l => l.platform !== 'TELEGRAM'),
+                      { id: 'tg', user_id: userId, platform: 'TELEGRAM', external_id: telegramId, username: telegramUser || telegramId, is_verified: false, connected_at: new Date().toISOString() }
+                    ])
+                    setTelegramModal(false)
+                    setTelegramId('')
+                    setTelegramUser('')
+                  } catch (err: any) {
+                    setLocalError(err.message ?? 'Error al vincular')
+                  } finally {
+                    setLoading(null)
+                  }
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-[#26A5E4] hover:bg-[#1a8fc7] disabled:opacity-50 text-white font-semibold text-sm transition-all flex items-center justify-center gap-2"
+              >
+                {loading === 'telegram' ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                Vincular
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

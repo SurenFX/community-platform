@@ -18,6 +18,7 @@ export type XpEventType =
   | 'STREAK_BONUS'
   | 'BADGE_EARNED'
   | 'ADMIN_MANUAL_GRANT'
+  | 'TELEGRAM_MESSAGE'
 
 export type SocialPlatform = 'DISCORD' | 'TWITCH' | 'YOUTUBE' | 'TWITTER' | 'TELEGRAM'
 

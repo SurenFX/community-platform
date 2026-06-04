@@ -11,6 +11,7 @@ import { SchedulerModule } from './modules/scheduler/scheduler.module'
 import { YoutubeModule } from './modules/youtube/youtube.module'
 import { TwitchModule } from './modules/twitch/twitch.module'
 import { NotificationsModule } from './modules/notifications/notifications.module'
+import { TelegramModule } from './modules/telegram/telegram.module'
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     YoutubeModule,
     TwitchModule,
     NotificationsModule,
+    TelegramModule,
   ],
 })
 export class AppModule {}
