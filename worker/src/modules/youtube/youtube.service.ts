@@ -5,6 +5,7 @@ import { EmbedBuilder } from 'discord.js'
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
 import { ReputationService } from '../reputation/reputation.service'
 import { DiscordBotService } from '../discord-bot/discord-bot.service'
+import { TelegramService } from '../telegram/telegram.service'
 import { RedisService } from '../../infrastructure/redis/redis.service'
 
 @Injectable()
@@ -18,6 +19,7 @@ export class YoutubeService {
     private supabase:    SupabaseService,
     private reputation:  ReputationService,
     private discordBot:  DiscordBotService,
+    private telegram:    TelegramService,
     private redis:       RedisService,
   ) {}
 
@@ -165,6 +167,11 @@ export class YoutubeService {
             if (thumbnail) embed.setImage(thumbnail)
 
             await this.discordBot.announce(discordChannelId, embed, '@everyone')
+            await this.telegram.announce(
+              `🎬 <b>¡Nuevo video!</b> ${title}\n\n` +
+              `<a href="https://youtube.com/watch?v=${videoId}">Ver en YouTube</a>`,
+              'TELEGRAM_YOUTUBE_THREAD_ID'
+            )
             this.logger.log(`YouTube: anunciado video nuevo ${videoId} - ${title}`)
           }
         }

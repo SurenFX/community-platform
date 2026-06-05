@@ -171,6 +171,22 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     })
   }
 
+  // ── Enviar mensaje al grupo de Telegram (con soporte de subtema) ─
+  async announce(text: string, threadEnvKey?: string): Promise<void> {
+    const groupId  = this.config.get<string>('TELEGRAM_GROUP_ID')
+    const threadId = threadEnvKey ? this.config.get<string>(threadEnvKey) : undefined
+    if (!this.bot || !groupId) return
+    try {
+      await this.bot.telegram.sendMessage(groupId, text, {
+        parse_mode: 'HTML',
+        ...(threadId ? { message_thread_id: Number(threadId) } : {}),
+      })
+      this.logger.log(`📢 Telegram anuncio enviado${threadId ? ` al tema #${threadId}` : ''}`)
+    } catch (err) {
+      this.logger.warn(`Error enviando anuncio Telegram: ${err}`)
+    }
+  }
+
   getBotInfo() {
     return this.bot?.telegram.getMe()
   }

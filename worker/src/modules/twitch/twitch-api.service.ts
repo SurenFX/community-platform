@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config'
 import { Cron } from '@nestjs/schedule'
 import { EmbedBuilder } from 'discord.js'
 import { DiscordBotService } from '../discord-bot/discord-bot.service'
+import { TelegramService } from '../telegram/telegram.service'
 import { RedisService } from '../../infrastructure/redis/redis.service'
 
 interface StreamInfo {
@@ -25,6 +26,7 @@ export class TwitchApiService {
   constructor(
     private config:      ConfigService,
     private discordBot:  DiscordBotService,
+    private telegram:    TelegramService,
     private redis:       RedisService,
   ) {}
 
@@ -153,7 +155,14 @@ export class TwitchApiService {
           .setTimestamp()
 
         await this.discordBot.announce(channelId, embed, '@everyone')
-        this.logger.log(`🔴 Anuncio enviado a Discord`)
+        await this.telegram.announce(
+          `🔴 <b>¡${this.channel} está en vivo!</b>\n\n` +
+          `🎮 ${stream.game || 'Sin categoría'} · 👥 ${stream.viewers} viewers\n` +
+          `📺 ${stream.title}\n\n` +
+          `<a href="https://twitch.tv/${this.channel}">¡Unite al stream!</a>`,
+          'TELEGRAM_TWITCH_THREAD_ID'
+        )
+        this.logger.log(`🔴 Anuncio enviado a Discord y Telegram`)
       }
     }
 
