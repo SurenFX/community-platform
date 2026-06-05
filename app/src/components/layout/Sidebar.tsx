@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { signOut } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
 import {
-  Home, Trophy, Target, Settings, LogOut, Shield, Ticket, Tv,
+  Home, Trophy, Target, Settings, LogOut, Shield, Ticket,
 } from 'lucide-react'
 import SidebarXpBar from './SidebarXpBar'
 import NotificationBell from './NotificationBell'
@@ -20,7 +20,6 @@ const navItems = [
   { href: '/dashboard/comunidad',     label: 'Comunidad',      icon: Trophy               },
   { href: '/dashboard/missions',      label: 'Misiones',       icon: Target               },
   { href: '/dashboard/raffles',       label: 'Sorteos',        icon: Ticket               },
-  { href: '/dashboard/streams',       label: 'Streams',        icon: Tv                   },
   { href: '/dashboard/configuracion', label: 'Configuración',  icon: Settings             },
 ]
 
