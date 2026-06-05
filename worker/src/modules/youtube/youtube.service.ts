@@ -233,7 +233,7 @@ export class YoutubeService {
                 user_id: userId,
                 type:    'FIRST_COMMENTER',
                 title:   '🎬 ¡Primero en comentar!',
-                message: `Fuiste el primero en comentar en un video nuevo del canal. ¡+100 XP y 3 tickets!`,
+                message: `Fuiste el primero en comentar en un video nuevo del canal. ¡+100 XP y +50 SC!`,
               })
 
             await this.supabase.db.rpc('award_xp', {
@@ -250,13 +250,13 @@ export class YoutubeService {
 
             const { data: rep } = await this.supabase.db
               .from('user_reputation')
-              .select('raffle_tickets')
+              .select('salchi_coins')
               .eq('user_id', userId)
               .single()
 
             await this.supabase.db
               .from('user_reputation')
-              .update({ raffle_tickets: ((rep as any)?.raffle_tickets ?? 0) + 3 })
+              .update({ salchi_coins: ((rep as any)?.salchi_coins ?? 0) + 50 })
               .eq('user_id', userId)
 
             this.logger.log(`First commenter on video ${videoId}: user=${userId}`)

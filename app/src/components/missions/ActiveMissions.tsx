@@ -1,3 +1,6 @@
+'use client'
+
+import { useRef, useCallback } from 'react'
 import type { UserMission, Mission } from '@/types/database'
 
 const PLATFORM_FROM_OBJECTIVE: Record<string, { label: string; color: string; bg: string }> = {
@@ -29,9 +32,43 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   EVENT:   { label: 'Evento',   color: 'bg-pink-400/15 text-pink-400'    },
 }
 
+function useDragScroll() {
+  const ref = useRef<HTMLDivElement>(null)
+  const isDragging = useRef(false)
+  const startY = useRef(0)
+  const startScrollTop = useRef(0)
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    const el = ref.current
+    if (!el) return
+    isDragging.current = true
+    startY.current = e.clientY
+    startScrollTop.current = el.scrollTop
+    el.style.cursor = 'grabbing'
+    el.style.userSelect = 'none'
+  }, [])
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging.current || !ref.current) return
+    const dy = e.clientY - startY.current
+    ref.current.scrollTop = startScrollTop.current - dy
+  }, [])
+
+  const onMouseUp = useCallback(() => {
+    if (!ref.current) return
+    isDragging.current = false
+    ref.current.style.cursor = 'grab'
+    ref.current.style.userSelect = ''
+  }, [])
+
+  return { ref, onMouseDown, onMouseMove, onMouseUp, onMouseLeave: onMouseUp }
+}
+
 export default function ActiveMissions({ missions }: ActiveMissionsProps) {
+  const drag = useDragScroll()
+
   return (
-    <div className="bg-card border border-border rounded-xl p-6">
+    <div className="bg-card border border-border rounded-xl p-6 flex flex-col">
       <h2 className="text-base font-semibold text-foreground mb-4">
         Misiones activas
       </h2>
@@ -41,7 +78,15 @@ export default function ActiveMissions({ missions }: ActiveMissionsProps) {
           No hay misiones activas en este momento
         </p>
       ) : (
-        <div className="space-y-4">
+        <div
+          ref={drag.ref}
+          onMouseDown={drag.onMouseDown}
+          onMouseMove={drag.onMouseMove}
+          onMouseUp={drag.onMouseUp}
+          onMouseLeave={drag.onMouseLeave}
+          className="overflow-y-auto space-y-4 cursor-grab select-none"
+          style={{ maxHeight: '280px' }}
+        >
           {missions.map(({ id, progress, missions: mission }) => {
             if (!mission) return null
             const pct = Math.min((progress / mission.target_count) * 100, 100)
@@ -79,6 +124,7 @@ export default function ActiveMissions({ missions }: ActiveMissionsProps) {
               </div>
             )
           })}
+        </div>
         </div>
       )}
     </div>

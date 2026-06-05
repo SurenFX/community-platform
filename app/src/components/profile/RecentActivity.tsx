@@ -1,3 +1,6 @@
+'use client'
+
+import { useRef, useCallback } from 'react'
 import { timeAgo } from '@/lib/utils'
 import type { XpEvent } from '@/types/database'
 
@@ -26,9 +29,43 @@ interface RecentActivityProps {
   events: XpEvent[]
 }
 
+function useDragScroll() {
+  const ref = useRef<HTMLDivElement>(null)
+  const isDragging = useRef(false)
+  const startY = useRef(0)
+  const startScrollTop = useRef(0)
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    const el = ref.current
+    if (!el) return
+    isDragging.current = true
+    startY.current = e.clientY
+    startScrollTop.current = el.scrollTop
+    el.style.cursor = 'grabbing'
+    el.style.userSelect = 'none'
+  }, [])
+
+  const onMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging.current || !ref.current) return
+    const dy = e.clientY - startY.current
+    ref.current.scrollTop = startScrollTop.current - dy
+  }, [])
+
+  const onMouseUp = useCallback(() => {
+    if (!ref.current) return
+    isDragging.current = false
+    ref.current.style.cursor = 'grab'
+    ref.current.style.userSelect = ''
+  }, [])
+
+  return { ref, onMouseDown, onMouseMove, onMouseUp, onMouseLeave: onMouseUp }
+}
+
 export default function RecentActivity({ events }: RecentActivityProps) {
+  const drag = useDragScroll()
+
   return (
-    <div className="bg-card border border-border rounded-xl p-6">
+    <div className="bg-card border border-border rounded-xl p-6 flex flex-col">
       <h2 className="text-base font-semibold text-foreground mb-4">
         Actividad reciente
       </h2>
@@ -38,14 +75,22 @@ export default function RecentActivity({ events }: RecentActivityProps) {
           Todavía no hay actividad registrada
         </p>
       ) : (
-        <div className="space-y-3">
+        <div
+          ref={drag.ref}
+          onMouseDown={drag.onMouseDown}
+          onMouseMove={drag.onMouseMove}
+          onMouseUp={drag.onMouseUp}
+          onMouseLeave={drag.onMouseLeave}
+          className="overflow-y-auto space-y-3 cursor-grab select-none"
+          style={{ maxHeight: '280px' }}
+        >
           {events.map((event) => {
             const meta = EVENT_LABELS[event.event_type] ?? {
               label: event.event_type,
               color: 'text-muted-foreground',
             }
             return (
-              <div key={event.id} className="flex items-center justify-between">
+              <div key={event.id} className="flex items-center justify-between pr-1">
                 <div>
                   <p className={`text-sm font-medium ${meta.color}`}>
                     {meta.label}
