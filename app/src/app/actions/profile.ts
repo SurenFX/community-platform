@@ -1,42 +1,53 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
+
+function getAdmin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 export async function updateProfile(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const username = formData.get('username') as string
-  const bio      = (formData.get('bio') as string) || null
+  const username = (formData.get('username') as string)?.trim()
+  const bio      = ((formData.get('bio') as string) || '').trim() || null
 
-  if (!username || username.length < 3 || username.length > 30) {
-    return { error: 'El username debe tener entre 3 y 30 caracteres' }
+  if (!username || username.length < 3 || username.length > 20) {
+    return { error: 'El username debe tener entre 3 y 20 caracteres' }
   }
   if (!/^[a-zA-Z0-9_]+$/.test(username)) {
     return { error: 'El username solo puede contener letras, números y _' }
   }
 
-  const { data: existing } = await supabase
+  const admin = getAdmin()
+
+  const { data: existing } = await admin
     .from('profiles')
     .select('id')
     .eq('username', username)
     .neq('id', user.id)
-    .single()
+    .maybeSingle()
 
   if (existing) {
     return { error: 'Ese username ya está en uso' }
   }
 
-  // @ts-ignore — tipos generados manualmente no coinciden exactamente con el schema
-  const { error } = await (supabase
+  const { error } = await admin
     .from('profiles')
-    .update({ username, bio } as unknown as never)
-    .eq('id', user.id) as any)
+    .update({ username, bio })
+    .eq('id', user.id)
 
   if (error) {
-    return { error: 'No se pudo actualizar el perfil' }
+    console.error('updateProfile error:', error)
+    return { error: `No se pudo actualizar el perfil: ${error.message}` }
   }
 
   return { success: true }
