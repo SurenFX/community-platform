@@ -60,6 +60,20 @@ export class NotificationsService {
     )
   }
 
+  @OnEvent('mission.ready_to_claim')
+  async onMissionReadyToClaim(payload: { userId: string; missionTitle: string; xpReward: number; coinReward: number }) {
+    const extras: string[] = []
+    if (payload.xpReward   > 0) extras.push(`+${payload.xpReward} XP`)
+    if (payload.coinReward > 0) extras.push(`+${payload.coinReward} SC`)
+
+    await this.create(
+      payload.userId,
+      'MISSION_COMPLETED',
+      `🎯 ¡Misión lista para reclamar!`,
+      `Completaste "${payload.missionTitle}"${extras.length ? `. Recompensa: ${extras.join(', ')}` : ''}. ¡Reclamala en Misiones!`,
+    )
+  }
+
   @OnEvent('mission.completed')
   async onMissionCompleted(payload: { userId: string; missionTitle: string; xpReward: number; coinReward: number }) {
     const extras: string[] = []

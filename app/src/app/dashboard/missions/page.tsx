@@ -26,6 +26,7 @@ export default async function MissionsPage() {
     <MissionsClient
       missions={(missionsRaw ?? []) as any}
       userMissions={(userMissionsRaw ?? []) as any}
+      userId={user.id}
     />
   )
 }
