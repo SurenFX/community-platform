@@ -65,7 +65,7 @@ export default function RecentActivity({ events }: RecentActivityProps) {
   const drag = useDragScroll()
 
   return (
-    <div className="bg-card border border-border rounded-xl p-6 flex flex-col" style={{ height: '424px' }}>
+    <div className="bg-card border border-border rounded-xl p-6 flex flex-col">
       <h2 className="text-base font-semibold text-foreground mb-4">
         Actividad reciente
       </h2>
@@ -82,7 +82,7 @@ export default function RecentActivity({ events }: RecentActivityProps) {
           onMouseUp={drag.onMouseUp}
           onMouseLeave={drag.onMouseLeave}
           className="overflow-y-auto space-y-3 cursor-grab select-none"
-          style={{ maxHeight: '360px' }}
+          style={{ maxHeight: '230px' }}
         >
           {events.map((event) => {
             const meta = EVENT_LABELS[event.event_type] ?? {
