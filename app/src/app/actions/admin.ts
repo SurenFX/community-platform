@@ -244,3 +244,34 @@ export async function deleteRaffle(raffleId: string): Promise<{ error?: string }
   if (error) return { error: 'No se pudo borrar' }
   return {}
 }
+
+export async function resetUserProgress(targetUserId: string): Promise<{ error?: string }> {
+  const { error: authError, admin } = await getAdminClient()
+  if (authError || !admin) return { error: authError ?? 'Error' }
+
+  // Resetear reputación (XP, nivel, racha, tickets)
+  await admin
+    .from('user_reputation')
+    .update({
+      total_xp:       0,
+      weekly_xp:      0,
+      monthly_xp:     0,
+      level:          1,
+      current_streak: 0,
+      longest_streak: 0,
+      raffle_tickets: 0,
+      last_active_date: null,
+    })
+    .eq('user_id', targetUserId)
+
+  // Borrar badges
+  await admin.from('user_badges').delete().eq('user_id', targetUserId)
+
+  // Borrar progreso de misiones
+  await admin.from('user_missions').delete().eq('user_id', targetUserId)
+
+  // Borrar historial de XP
+  await admin.from('xp_events').delete().eq('user_id', targetUserId)
+
+  return {}
+}

@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Shield, Ban, ShieldOff, User, Search, Loader2, Zap } from 'lucide-react'
+import { Shield, Ban, ShieldOff, User, Search, Loader2, Zap, RotateCcw } from 'lucide-react'
 import GrantXpModal from './GrantXpModal'
 import { getLevelColor, getLevelTitle, formatNumber, timeAgo } from '@/lib/utils'
 import { setUserAdmin, setUserBanned } from '@/app/actions/social'
+import { resetUserProgress } from '@/app/actions/admin'
 
 interface UserRow {
   id:               string
@@ -30,11 +31,26 @@ const PLATFORM_ICONS: Record<string, string> = {
 }
 
 export default function UsersTable({ users: initialUsers }: UsersTableProps) {
-  const [users,  setUsers]  = useState(initialUsers)
-  const [search, setSearch] = useState('')
-  const [isPending, startTransition] = useTransition()
+  const [users,       setUsers]       = useState(initialUsers)
+  const [search,      setSearch]      = useState('')
+  const [isPending,   startTransition] = useTransition()
   const [actionUserId, setActionUserId] = useState<string | null>(null)
-  const [grantTarget, setGrantTarget] = useState<{ id: string; username: string } | null>(null)
+  const [grantTarget,  setGrantTarget]  = useState<{ id: string; username: string } | null>(null)
+  const [resetConfirm, setResetConfirm] = useState<string | null>(null)
+
+  async function handleReset(userId: string) {
+    setActionUserId(userId)
+    startTransition(async () => {
+      await resetUserProgress(userId)
+      setUsers(prev => prev.map(u =>
+        u.id === userId
+          ? { ...u, user_reputation: { total_xp: 0, level: 1, current_streak: 0 } }
+          : u
+      ))
+      setResetConfirm(null)
+      setActionUserId(null)
+    })
+  }
 
   const filtered = users.filter(u =>
     u.username.toLowerCase().includes(search.toLowerCase()) ||
@@ -192,6 +208,13 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
                             >
                               <Zap className="w-4 h-4" />
                             </button>
+                            <button
+                              onClick={() => setResetConfirm(user.id)}
+                              title="Resetear progreso"
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-all"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </button>
                           </>
                         )}
                       </div>
@@ -227,6 +250,39 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
           ))
         }}
       />
+    )}
+
+    {/* Modal confirmación reset */}
+    {resetConfirm && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+        <div className="bg-card border border-destructive/30 rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+          <div>
+            <h3 className="text-base font-bold text-foreground mb-1">⚠️ Resetear progreso</h3>
+            <p className="text-sm text-muted-foreground">
+              Esto borrará todo el XP, nivel, badges, misiones y rachas del usuario. <strong className="text-foreground">Esta acción no se puede deshacer.</strong>
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setResetConfirm(null)}
+              className="flex-1 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => handleReset(resetConfirm)}
+              disabled={actionUserId === resetConfirm}
+              className="flex-1 py-2.5 rounded-xl bg-destructive hover:bg-destructive/90 disabled:opacity-50 text-sm font-semibold text-white transition-all flex items-center justify-center gap-2"
+            >
+              {actionUserId === resetConfirm
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <RotateCcw className="w-4 h-4" />
+              }
+              Resetear
+            </button>
+          </div>
+        </div>
+      </div>
     )}
     </>
   )
