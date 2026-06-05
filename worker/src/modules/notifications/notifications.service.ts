@@ -61,9 +61,10 @@ export class NotificationsService {
   }
 
   @OnEvent('mission.completed')
-  async onMissionCompleted(payload: { userId: string; missionTitle: string; xpReward: number; ticketReward: number }) {
+  async onMissionCompleted(payload: { userId: string; missionTitle: string; xpReward: number; coinReward: number; ticketReward: number }) {
     const extras: string[] = []
     if (payload.xpReward    > 0) extras.push(`+${payload.xpReward} XP`)
+    if (payload.coinReward  > 0) extras.push(`+${payload.coinReward} SC`)
     if (payload.ticketReward > 0) extras.push(`+${payload.ticketReward} tickets`)
 
     await this.create(

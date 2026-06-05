@@ -23,7 +23,7 @@ export class MissionsService {
       // 2. Buscar user_missions activas con objetivo = este tipo de evento
       const { data: userMissions } = await this.supabase.db
         .from('user_missions')
-        .select('id, progress, missions!inner(id, title, target_count, xp_reward, ticket_reward, ends_at)')
+        .select('id, progress, missions!inner(id, title, target_count, xp_reward, coin_reward, ticket_reward, ends_at)')
         .eq('user_id',                  payload.userId)
         .eq('is_completed',             false)
         .eq('missions.objective_type',  payload.eventType)
@@ -56,7 +56,7 @@ export class MissionsService {
   private async completeMission(
     userId:        string,
     userMissionId: string,
-    mission:       { id: string; title?: string; xp_reward: number; ticket_reward: number; target_count: number }
+    mission:       { id: string; title?: string; xp_reward: number; coin_reward: number; ticket_reward: number; target_count: number }
   ) {
     // Marcar completada
     await this.supabase.db
@@ -84,6 +84,23 @@ export class MissionsService {
       })
     }
 
+    // Otorgar SalchiCoins
+    if ((mission.coin_reward ?? 0) > 0) {
+      const { data: rep } = await this.supabase.db
+        .from('user_reputation')
+        .select('salchi_coins')
+        .eq('user_id', userId)
+        .single()
+
+      const current = (rep as any)?.salchi_coins ?? 0
+      await this.supabase.db
+        .from('user_reputation')
+        .update({ salchi_coins: current + mission.coin_reward })
+        .eq('user_id', userId)
+
+      this.logger.log(`🪙 SC: user=${userId} +${mission.coin_reward} SalchiCoins`)
+    }
+
     // Otorgar tickets: fetch actual + increment
     if (mission.ticket_reward > 0) {
       const { data: rep } = await this.supabase.db
@@ -107,6 +124,7 @@ export class MissionsService {
       userId,
       missionTitle: mission.title ?? 'Misión',
       xpReward:     mission.xp_reward,
+      coinReward:   mission.coin_reward ?? 0,
       ticketReward: mission.ticket_reward,
     })
   }

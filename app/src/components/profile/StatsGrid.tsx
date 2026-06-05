@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Zap, Flame, Ticket, TrendingUp } from 'lucide-react'
+import { Zap, Flame, Ticket, TrendingUp, CircleDollarSign } from 'lucide-react'
 import { formatNumber } from '@/lib/utils'
 import type { UserReputation } from '@/types/database'
 
@@ -92,12 +92,12 @@ export default function StatsGrid({ reputation }: StatsGridProps) {
       bg:    'bg-orange-400/10',
     },
     {
-      label: 'Tickets de sorteo',
-      value: reputation?.raffle_tickets ?? 0,
-      sub:   'Disponibles',
-      icon:  Ticket,
-      color: 'text-green-400',
-      bg:    'bg-green-400/10',
+      label: 'SalchiCoins',
+      value: reputation?.salchi_coins ?? 0,
+      sub:   'SC disponibles',
+      icon:  CircleDollarSign,
+      color: 'text-yellow-400',
+      bg:    'bg-yellow-400/10',
     },
     {
       label: 'XP del mes',

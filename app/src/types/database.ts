@@ -65,6 +65,7 @@ export interface UserReputation {
   longest_streak: number
   last_active_date: string | null
   raffle_tickets: number
+  salchi_coins:   number
   updated_at: string
 }
 
@@ -113,7 +114,8 @@ export interface Mission {
   is_active: boolean
   objective_type: XpEventType
   target_count: number
-  xp_reward: number
+  xp_reward:   number
+  coin_reward: number
   ticket_reward: number
   badge_reward: string | null
   starts_at: string

@@ -37,6 +37,7 @@ const EMPTY_FORM = {
   objective_type:'DISCORD_MESSAGE' as XpEventType,
   target_count:  5,
   xp_reward:     50,
+  coin_reward:   0,
   ticket_reward: 0,
   starts_at:     new Date().toISOString().slice(0, 16),
   ends_at:       new Date(Date.now() + 86400000).toISOString().slice(0, 16),
@@ -161,6 +162,10 @@ export default function MissionsAdmin({ missions: initialMissions }: MissionsAdm
                 <input type="number" min={0} value={form.xp_reward} onChange={e => setForm(f => ({ ...f, xp_reward: parseInt(e.target.value) }))} className={inputClass} />
               </div>
               <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">SalchiCoins (SC)</label>
+                <input type="number" min={0} value={form.coin_reward} onChange={e => setForm(f => ({ ...f, coin_reward: parseInt(e.target.value) }))} className={inputClass} />
+              </div>
+              <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Tickets de recompensa</label>
                 <input type="number" min={0} value={form.ticket_reward} onChange={e => setForm(f => ({ ...f, ticket_reward: parseInt(e.target.value) }))} className={inputClass} />
               </div>
@@ -205,6 +210,7 @@ export default function MissionsAdmin({ missions: initialMissions }: MissionsAdm
                 <p className="text-sm font-semibold text-foreground">{mission.title}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {mission.target_count} acciones · +{mission.xp_reward} XP
+                  {(mission as any).coin_reward > 0 && ` · +${(mission as any).coin_reward} SC`}
                   {mission.ticket_reward > 0 && ` · +${mission.ticket_reward} 🎟️`}
                 </p>
               </div>

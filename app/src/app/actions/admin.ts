@@ -260,6 +260,7 @@ export async function resetUserProgress(targetUserId: string): Promise<{ error?:
       current_streak: 0,
       longest_streak: 0,
       raffle_tickets: 0,
+      salchi_coins:   0,
       last_active_date: null,
     })
     .eq('user_id', targetUserId)
