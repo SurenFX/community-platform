@@ -125,7 +125,6 @@ export default function ActiveMissions({ missions }: ActiveMissionsProps) {
             )
           })}
         </div>
-        </div>
       )}
     </div>
   )
