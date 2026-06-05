@@ -169,7 +169,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
         {action === 'accept' && (
           <button
             onClick={() => handleAccept(mission.id)}
-            disabled={isPending}
+            disabled={actionId !== null}
             className="w-full mt-1 py-2 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 text-sm font-semibold text-primary-foreground transition-all flex items-center justify-center gap-2"
           >
             {isActioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
@@ -180,7 +180,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
         {action === 'claim' && !isClaimed && (
           <button
             onClick={() => handleClaim(userMission!.id)}
-            disabled={isPending}
+            disabled={actionId !== null}
             className="w-full mt-1 py-2 rounded-lg bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-sm font-bold text-black transition-all flex items-center justify-center gap-2"
           >
             {isActioning
