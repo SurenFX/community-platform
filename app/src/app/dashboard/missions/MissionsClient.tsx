@@ -12,6 +12,20 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   EVENT:   { label: 'Evento',   color: 'bg-pink-400/15 text-pink-400'    },
 }
 
+const PLATFORM_FROM_OBJECTIVE: Record<string, { label: string; color: string; bg: string }> = {
+  DISCORD_MESSAGE:           { label: 'Discord',  color: 'text-indigo-400', bg: 'bg-indigo-400/15' },
+  DISCORD_REACTION_RECEIVED: { label: 'Discord',  color: 'text-indigo-400', bg: 'bg-indigo-400/15' },
+  DISCORD_HELPED_USER:       { label: 'Discord',  color: 'text-indigo-400', bg: 'bg-indigo-400/15' },
+  TWITCH_CHAT_MESSAGE:       { label: 'Twitch',   color: 'text-purple-400', bg: 'bg-purple-400/15' },
+  TWITCH_WATCH_TIME:         { label: 'Twitch',   color: 'text-purple-400', bg: 'bg-purple-400/15' },
+  TWITCH_FOLLOW:             { label: 'Twitch',   color: 'text-purple-400', bg: 'bg-purple-400/15' },
+  TWITCH_SUBSCRIBE:          { label: 'Twitch',   color: 'text-purple-400', bg: 'bg-purple-400/15' },
+  TWITCH_RAID_PARTICIPATE:   { label: 'Twitch',   color: 'text-purple-400', bg: 'bg-purple-400/15' },
+  YOUTUBE_COMMENT:           { label: 'YouTube',  color: 'text-red-400',    bg: 'bg-red-400/15'    },
+  YOUTUBE_SUBSCRIBE:         { label: 'YouTube',  color: 'text-red-400',    bg: 'bg-red-400/15'    },
+  TELEGRAM_MESSAGE:          { label: 'Telegram', color: 'text-[#26A5E4]', bg: 'bg-[#26A5E4]/15' },
+}
+
 interface Props {
   missions:     Mission[]
   userMissions: UserMission[]
@@ -30,10 +44,15 @@ function MissionCard({ mission, userMission }: { mission: Mission; userMission?:
     }`}>
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${type?.color}`}>
               {type?.label}
             </span>
+            {PLATFORM_FROM_OBJECTIVE[mission.objective_type] && (
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${PLATFORM_FROM_OBJECTIVE[mission.objective_type].bg} ${PLATFORM_FROM_OBJECTIVE[mission.objective_type].color}`}>
+                {PLATFORM_FROM_OBJECTIVE[mission.objective_type].label}
+              </span>
+            )}
             {isCompleted && (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-green-500/15 text-green-400 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> Completada

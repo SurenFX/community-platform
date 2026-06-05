@@ -1,5 +1,19 @@
 import type { UserMission, Mission } from '@/types/database'
 
+const PLATFORM_FROM_OBJECTIVE: Record<string, { label: string; color: string; bg: string }> = {
+  DISCORD_MESSAGE:           { label: 'Discord',  color: 'text-indigo-400',  bg: 'bg-indigo-400/15'  },
+  DISCORD_REACTION_RECEIVED: { label: 'Discord',  color: 'text-indigo-400',  bg: 'bg-indigo-400/15'  },
+  DISCORD_HELPED_USER:       { label: 'Discord',  color: 'text-indigo-400',  bg: 'bg-indigo-400/15'  },
+  TWITCH_CHAT_MESSAGE:       { label: 'Twitch',   color: 'text-purple-400',  bg: 'bg-purple-400/15'  },
+  TWITCH_WATCH_TIME:         { label: 'Twitch',   color: 'text-purple-400',  bg: 'bg-purple-400/15'  },
+  TWITCH_FOLLOW:             { label: 'Twitch',   color: 'text-purple-400',  bg: 'bg-purple-400/15'  },
+  TWITCH_SUBSCRIBE:          { label: 'Twitch',   color: 'text-purple-400',  bg: 'bg-purple-400/15'  },
+  TWITCH_RAID_PARTICIPATE:   { label: 'Twitch',   color: 'text-purple-400',  bg: 'bg-purple-400/15'  },
+  YOUTUBE_COMMENT:           { label: 'YouTube',  color: 'text-red-400',     bg: 'bg-red-400/15'     },
+  YOUTUBE_SUBSCRIBE:         { label: 'YouTube',  color: 'text-red-400',     bg: 'bg-red-400/15'     },
+  TELEGRAM_MESSAGE:          { label: 'Telegram', color: 'text-[#26A5E4]',  bg: 'bg-[#26A5E4]/15'  },
+}
+
 interface MissionWithData extends UserMission {
   missions: Mission | null
 }
@@ -35,12 +49,15 @@ export default function ActiveMissions({ missions }: ActiveMissionsProps) {
               <div key={id} className="space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span
-                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${TYPE_LABELS[mission.type]?.color ?? 'bg-secondary text-muted-foreground'}`}
-                      >
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${TYPE_LABELS[mission.type]?.color ?? 'bg-secondary text-muted-foreground'}`}>
                         {TYPE_LABELS[mission.type]?.label ?? mission.type}
                       </span>
+                      {PLATFORM_FROM_OBJECTIVE[mission.objective_type] && (
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${PLATFORM_FROM_OBJECTIVE[mission.objective_type].bg} ${PLATFORM_FROM_OBJECTIVE[mission.objective_type].color}`}>
+                          {PLATFORM_FROM_OBJECTIVE[mission.objective_type].label}
+                        </span>
+                      )}
                       <p className="text-sm font-medium text-foreground">
                         {mission.title}
                       </p>
