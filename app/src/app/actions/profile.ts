@@ -50,7 +50,7 @@ export async function updateProfile(formData: FormData) {
     return { error: `No se pudo actualizar el perfil: ${error.message}` }
   }
 
-  return { success: true }
+  return { success: true, username }
 }
 
 export const updateProfileAction = updateProfile

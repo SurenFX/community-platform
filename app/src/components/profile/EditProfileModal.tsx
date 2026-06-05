@@ -25,8 +25,10 @@ export default function EditProfileModal({ username, bio, onClose }: EditProfile
         setError(result.error)
       } else {
         setSuccess(true)
-        router.refresh()
-        setTimeout(onClose, 800)
+        setTimeout(() => {
+          onClose()
+          router.push(`/dashboard/profile/${result.username}`)
+        }, 800)
       }
     })
   }
