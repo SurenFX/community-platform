@@ -74,7 +74,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
           completed_at: null,
         }
         setLocalUserMissions(prev => [...prev, newUm])
-        setTab('inprogress')
+        // No cambia de pestaña — el usuario puede seguir aceptando más misiones
       }
       setActionId(null)
     })
