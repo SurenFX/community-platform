@@ -68,9 +68,6 @@ function MissionCard({ mission, userMission }: { mission: Mission; userMission?:
           {(mission as any).coin_reward > 0 && (
             <p className="text-xs text-yellow-400 mt-0.5">+{(mission as any).coin_reward} SC</p>
           )}
-          {mission.ticket_reward > 0 && (
-            <p className="text-xs text-green-400 mt-0.5">+{mission.ticket_reward} 🎟️</p>
-          )}
         </div>
       </div>
 

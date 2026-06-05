@@ -166,10 +166,6 @@ export default function MissionsAdmin({ missions: initialMissions }: MissionsAdm
                 <input type="number" min={0} value={form.coin_reward} onChange={e => setForm(f => ({ ...f, coin_reward: parseInt(e.target.value) }))} className={inputClass} />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Tickets de recompensa</label>
-                <input type="number" min={0} value={form.ticket_reward} onChange={e => setForm(f => ({ ...f, ticket_reward: parseInt(e.target.value) }))} className={inputClass} />
-              </div>
-              <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Inicio</label>
                 <input type="datetime-local" value={form.starts_at} onChange={e => setForm(f => ({ ...f, starts_at: e.target.value }))} className={inputClass} />
               </div>
@@ -211,7 +207,6 @@ export default function MissionsAdmin({ missions: initialMissions }: MissionsAdm
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {mission.target_count} acciones · +{mission.xp_reward} XP
                   {(mission as any).coin_reward > 0 && ` · +${(mission as any).coin_reward} SC`}
-                  {mission.ticket_reward > 0 && ` · +${mission.ticket_reward} 🎟️`}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">

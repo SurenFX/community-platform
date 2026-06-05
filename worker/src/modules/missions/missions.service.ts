@@ -101,23 +101,8 @@ export class MissionsService {
       this.logger.log(`🪙 SC: user=${userId} +${mission.coin_reward} SalchiCoins`)
     }
 
-    // Otorgar tickets: fetch actual + increment
-    if (mission.ticket_reward > 0) {
-      const { data: rep } = await this.supabase.db
-        .from('user_reputation')
-        .select('raffle_tickets')
-        .eq('user_id', userId)
-        .single()
-
-      const current = (rep as any)?.raffle_tickets ?? 0
-      await this.supabase.db
-        .from('user_reputation')
-        .update({ raffle_tickets: current + mission.ticket_reward })
-        .eq('user_id', userId)
-    }
-
     this.logger.log(
-      `✅ Misión completada: user=${userId} xp=+${mission.xp_reward} tickets=+${mission.ticket_reward}`
+      `✅ Misión completada: user=${userId} xp=+${mission.xp_reward} sc=+${mission.coin_reward}`
     )
 
     this.eventEmitter.emit('mission.completed', {
@@ -125,7 +110,6 @@ export class MissionsService {
       missionTitle: mission.title ?? 'Misión',
       xpReward:     mission.xp_reward,
       coinReward:   mission.coin_reward ?? 0,
-      ticketReward: mission.ticket_reward,
     })
   }
 
