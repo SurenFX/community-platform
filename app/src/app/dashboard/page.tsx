@@ -20,13 +20,12 @@ export default async function DashboardPage() {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(10),
+      .limit(50),
     supabase
       .from('user_missions')
       .select('*, missions(*)')
       .eq('user_id', user.id)
-      .eq('is_completed', false)
-      .limit(3),
+      .eq('is_completed', false),
     supabase
       .from('badges')
       .select('id, slug, name, description, image_url, tier, family, family_order')
