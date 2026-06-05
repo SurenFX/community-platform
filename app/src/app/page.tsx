@@ -220,11 +220,17 @@ export default async function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/50 py-8 px-6 text-center space-y-2">
+      <footer className="border-t border-border/50 py-8 px-6 text-center space-y-3">
         <p className="text-xs text-muted-foreground">Community Platform · Hecho con ❤️ para la comunidad</p>
-        <Link href="/privacidad" className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">
-          Política de Privacidad
-        </Link>
+        <div className="flex items-center justify-center gap-4">
+          <Link href="/privacidad" className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">
+            Política de Privacidad
+          </Link>
+          <span className="text-border">·</span>
+          <Link href="/terminos" className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">
+            Términos de Uso
+          </Link>
+        </div>
       </footer>
 
     </div>
