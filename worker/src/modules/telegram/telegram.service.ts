@@ -25,7 +25,16 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     this.bot = new Telegraf(token)
     this.registerListeners()
 
-    this.bot.launch().catch(err => {
+    this.bot.launch({
+      allowedUpdates: [
+        'message',
+        'edited_message',
+        'chat_member',
+        'message_reaction',
+        'callback_query',
+        'my_chat_member',
+      ],
+    }).catch(err => {
       this.logger.error(`Error lanzando bot de Telegram: ${err}`)
     })
 
@@ -163,6 +172,96 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
       } catch (err) {
         this.logger.warn(`Error procesando mensaje Telegram: ${err}`)
+      }
+    })
+
+    // ── Nuevo miembro se une al grupo ─────────────────────────────────────────
+    this.bot.on('chat_member', async (ctx: Context) => {
+      try {
+        const update = (ctx as any).chatMember
+        if (!update) return
+
+        const newStatus = update.new_chat_member?.status
+        const oldStatus = update.old_chat_member?.status
+
+        // Solo cuando realmente se une (no cuando ya era miembro)
+        if (newStatus !== 'member' && newStatus !== 'administrator') return
+        if (oldStatus === 'member' || oldStatus === 'administrator') return
+
+        const from = update.new_chat_member?.user
+        if (!from || from.is_bot) return
+
+        const telegramUserId   = String(from.id)
+        const configuredChatId = this.config.get<string>('TELEGRAM_GROUP_ID')
+        const chatId           = String(update.chat?.id)
+        if (configuredChatId && chatId !== configuredChatId) return
+
+        const { data: socialLink } = await this.supabase.db
+          .from('user_social_links')
+          .select('user_id, profiles!inner(discord_id)')
+          .eq('platform', 'TELEGRAM')
+          .eq('external_id', telegramUserId)
+          .single()
+
+        if (!socialLink) return
+        const discordId = (socialLink as any).profiles?.discord_id
+        if (!discordId) return
+
+        await this.reputation.processXpEvent({
+          discordId,
+          eventType:   'TELEGRAM_JOIN',
+          platform:    'TELEGRAM',
+          externalRef: `tg_join_${telegramUserId}`,
+          metadata:    { telegram_user_id: telegramUserId, chat_id: chatId },
+        })
+
+        this.logger.log(`👋 Nuevo miembro Telegram: @${from.username ?? from.first_name}`)
+
+      } catch (err) {
+        this.logger.warn(`Error procesando chat_member: ${err}`)
+      }
+    })
+
+    // ── Reacción a un mensaje ─────────────────────────────────────────────────
+    this.bot.on('message_reaction', async (ctx: Context) => {
+      try {
+        const update = (ctx as any).messageReaction
+        if (!update) return
+
+        const from = update.user
+        if (!from || from.is_bot) return
+
+        // Solo reacciones nuevas (new_reaction tiene items, old_reaction puede estar vacío)
+        const newReactions = update.new_reaction ?? []
+        const oldReactions = update.old_reaction ?? []
+        if (newReactions.length <= oldReactions.length) return  // removió reacción, no agregó
+
+        const telegramUserId   = String(from.id)
+        const configuredChatId = this.config.get<string>('TELEGRAM_GROUP_ID')
+        const chatId           = String(update.chat?.id)
+        if (configuredChatId && chatId !== configuredChatId) return
+
+        const { data: socialLink } = await this.supabase.db
+          .from('user_social_links')
+          .select('user_id, profiles!inner(discord_id)')
+          .eq('platform', 'TELEGRAM')
+          .eq('external_id', telegramUserId)
+          .single()
+
+        if (!socialLink) return
+        const discordId = (socialLink as any).profiles?.discord_id
+        if (!discordId) return
+
+        await this.reputation.processXpEvent({
+          discordId,
+          eventType:   'TELEGRAM_REACTION',
+          platform:    'TELEGRAM',
+          externalRef: `tg_reaction_${telegramUserId}_${update.message_id}`,
+          metadata:    { telegram_user_id: telegramUserId, message_id: String(update.message_id) },
+        })
+
+      } catch (err) {
+        this.logger.warn(`Error procesando message_reaction: ${err}`)
       }
     })
 

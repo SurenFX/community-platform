@@ -6,19 +6,25 @@ import {
   Client, GatewayIntentBits, Events,
   Message, MessageReaction, PartialMessageReaction,
   User, PartialUser, EmbedBuilder, TextChannel,
+  GuildMember,
 } from 'discord.js'
 import { ReputationService } from '../reputation/reputation.service'
+import { RedisService } from '../../infrastructure/redis/redis.service'
 
 @Injectable()
 export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DiscordBotService.name)
   private client: Client
 
+  // voiceJoinedAt: discordId → timestamp de cuando entró al canal de voz
+  private readonly voiceJoinedAt = new Map<string, number>()
+
   constructor(
     private config:       ConfigService,
     private reputation:   ReputationService,
     private eventEmitter: EventEmitter2,
     private supabase:     SupabaseService,
+    private redis:        RedisService,
   ) {}
 
   async onModuleInit() {
@@ -34,6 +40,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildVoiceStates,
       ],
       partials: ['MESSAGE', 'CHANNEL', 'REACTION'],
     } as any)
@@ -91,6 +98,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         if (!author || author.bot)  return
         if (author.id === user.id)  return
 
+        // XP para el autor del mensaje (reacción recibida)
         await this.reputation.processXpEvent({
           discordId:   author.id,
           eventType:   'DISCORD_REACTION_RECEIVED',
@@ -102,8 +110,80 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
             reaction_count: reaction.count ?? 1,
           },
         })
+
+        // XP para quien reaccionó (reacción dada)
+        await this.reputation.processXpEvent({
+          discordId:   user.id,
+          eventType:   'DISCORD_REACTION_GIVEN',
+          platform:    'DISCORD',
+          externalRef: `reaction_given_${user.id}_${reaction.message.id}`,
+          metadata: {
+            emoji:      reaction.emoji.name,
+            message_id: reaction.message.id,
+          },
+        })
       }
     )
+
+    // ── Nuevo miembro se une al servidor ─────────────────────────────────────
+    this.client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
+      if (member.user.bot) return
+
+      const configuredGuildId = this.config.get<string>('DISCORD_GUILD_ID')
+      if (configuredGuildId && member.guild.id !== configuredGuildId) return
+
+      // Verificar que no hayamos recompensado este join antes (lifetime)
+      const dedupKey = `discord:join:${member.user.id}`
+      const isFirst  = await this.redis.setNX(dedupKey, '1', 365 * 24 * 60 * 60)
+      if (!isFirst) return
+
+      await this.reputation.processXpEvent({
+        discordId:   member.user.id,
+        eventType:   'DISCORD_JOIN',
+        platform:    'DISCORD',
+        externalRef: `discord_join_${member.user.id}`,
+        metadata:    { guild_id: member.guild.id },
+      })
+
+      this.logger.log(`👋 Nuevo miembro: ${member.user.tag}`)
+    })
+
+    // ── Tiempo en canal de voz ────────────────────────────────────────────────
+    this.client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
+      const member = newState.member ?? oldState.member
+      if (!member || member.user.bot) return
+
+      const discordId = member.user.id
+
+      // Entró a un canal de voz
+      if (!oldState.channelId && newState.channelId) {
+        this.voiceJoinedAt.set(discordId, Date.now())
+        return
+      }
+
+      // Salió de un canal de voz (o fue movido fuera)
+      if (oldState.channelId && !newState.channelId) {
+        const joinedAt = this.voiceJoinedAt.get(discordId)
+        this.voiceJoinedAt.delete(discordId)
+        if (!joinedAt) return
+
+        const minutes = Math.floor((Date.now() - joinedAt) / 60000)
+        const blocks  = Math.floor(minutes / 10)   // 1 evento cada 10 minutos
+        if (blocks < 1) return
+
+        for (let i = 0; i < blocks; i++) {
+          await this.reputation.processXpEvent({
+            discordId,
+            eventType:   'DISCORD_VOICE_TIME',
+            platform:    'DISCORD',
+            externalRef: `voice_${discordId}_${joinedAt}_block${i}`,
+            metadata:    { minutes: 10, channel_id: oldState.channelId },
+          })
+        }
+
+        this.logger.log(`🎙️ Voice time: ${member.user.tag} — ${minutes} min → ${blocks} bloques XP`)
+      }
+    })
   }
 
   // ── Badge de antigüedad en el servidor ────────────────────────────────────

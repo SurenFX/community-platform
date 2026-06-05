@@ -3,7 +3,10 @@ import { Injectable } from '@nestjs/common'
 export type XpEventType =
   | 'DISCORD_MESSAGE'
   | 'DISCORD_REACTION_RECEIVED'
+  | 'DISCORD_REACTION_GIVEN'
   | 'DISCORD_HELPED_USER'
+  | 'DISCORD_VOICE_TIME'
+  | 'DISCORD_JOIN'
   | 'TWITCH_WATCH_TIME'
   | 'TWITCH_RAID_PARTICIPATE'
   | 'TWITCH_CHAT_MESSAGE'
@@ -19,6 +22,8 @@ export type XpEventType =
   | 'BADGE_EARNED'
   | 'ADMIN_MANUAL_GRANT'
   | 'TELEGRAM_MESSAGE'
+  | 'TELEGRAM_JOIN'
+  | 'TELEGRAM_REACTION'
 
 export type SocialPlatform = 'DISCORD' | 'TWITCH' | 'YOUTUBE' | 'TWITTER' | 'TELEGRAM'
 

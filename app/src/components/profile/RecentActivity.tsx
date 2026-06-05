@@ -5,24 +5,33 @@ import { timeAgo } from '@/lib/utils'
 import type { XpEvent } from '@/types/database'
 
 const EVENT_LABELS: Record<string, { label: string; color: string }> = {
-  DISCORD_MESSAGE:           { label: 'Mensaje en Discord', color: 'text-indigo-400' },
-  DISCORD_REACTION_RECEIVED: { label: 'Reacción recibida', color: 'text-yellow-400' },
-  DISCORD_HELPED_USER:       { label: 'Ayudaste a alguien', color: 'text-green-400' },
+  // Discord
+  DISCORD_MESSAGE:           { label: 'Mensaje en Discord',     color: 'text-indigo-400' },
+  DISCORD_REACTION_RECEIVED: { label: 'Reacción recibida',      color: 'text-yellow-400' },
+  DISCORD_REACTION_GIVEN:    { label: 'Reacción dada',          color: 'text-yellow-300' },
+  DISCORD_HELPED_USER:       { label: 'Ayudaste a alguien',     color: 'text-green-400' },
+  DISCORD_VOICE_TIME:        { label: 'Tiempo en voz',          color: 'text-indigo-300' },
+  DISCORD_JOIN:              { label: 'Te uniste al servidor',  color: 'text-indigo-500' },
+  // Twitch
   TWITCH_WATCH_TIME:         { label: 'Viste el stream',        color: 'text-purple-400' },
   TWITCH_CHAT_MESSAGE:       { label: 'Chat en el stream',      color: 'text-purple-300' },
   TWITCH_FOLLOW:             { label: 'Seguiste el canal',      color: 'text-purple-400' },
   TWITCH_SUBSCRIBE:          { label: 'Sub al canal',           color: 'text-purple-500' },
   TWITCH_GIFT_SUB:           { label: 'Gift sub',               color: 'text-pink-300' },
   TWITCH_RAID_PARTICIPATE:   { label: 'Participaste en raid',   color: 'text-pink-400' },
-  TELEGRAM_MESSAGE:          { label: 'Mensaje en Telegram',    color: 'text-[#26A5E4]' },
+  // YouTube
   YOUTUBE_SUBSCRIBE:         { label: 'Sub en YouTube',         color: 'text-red-400' },
-  YOUTUBE_COMMENT:           { label: 'Comentaste en YouTube', color: 'text-red-400' },
-  YOUTUBE_SHARE:             { label: 'Compartiste video', color: 'text-red-300' },
-  TWITTER_SHARE:             { label: 'Compartiste en Twitter', color: 'text-sky-400' },
-  MISSION_COMPLETED:         { label: 'Misión completada', color: 'text-amber-400' },
-  STREAK_BONUS:              { label: 'Bonus de racha', color: 'text-orange-400' },
-  BADGE_EARNED:              { label: 'Badge desbloqueado', color: 'text-cyan-400' },
-  ADMIN_MANUAL_GRANT:        { label: 'XP otorgado por admin', color: 'text-violet-400' },
+  YOUTUBE_COMMENT:           { label: 'Comentaste en YouTube',  color: 'text-red-400' },
+  YOUTUBE_SHARE:             { label: 'Compartiste video',      color: 'text-red-300' },
+  // Telegram
+  TELEGRAM_MESSAGE:          { label: 'Mensaje en Telegram',    color: 'text-[#26A5E4]' },
+  TELEGRAM_JOIN:             { label: 'Te uniste al grupo',     color: 'text-sky-400' },
+  TELEGRAM_REACTION:         { label: 'Reacción en Telegram',   color: 'text-sky-300' },
+  // Sistema
+  MISSION_COMPLETED:         { label: 'Misión completada',      color: 'text-amber-400' },
+  STREAK_BONUS:              { label: 'Bonus de racha',         color: 'text-orange-400' },
+  BADGE_EARNED:              { label: 'Badge desbloqueado',     color: 'text-cyan-400' },
+  ADMIN_MANUAL_GRANT:        { label: 'XP otorgado por admin',  color: 'text-violet-400' },
 }
 
 interface RecentActivityProps {

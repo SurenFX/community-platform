@@ -97,6 +97,12 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
       return
     }
 
+    // ── Suscripciones (sub, resub, giftsub) ──────────────────────────────────
+    if (line.includes('USERNOTICE')) {
+      await this.handleUserNotice(line)
+      return
+    }
+
     if (!line.includes('PRIVMSG')) return
 
     const usernameMatch = line.match(/:(\w+)!\w+@\w+\.tmi\.twitch\.tv PRIVMSG/)
@@ -144,7 +150,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
             user_id: socialLink.user_id,
             type:    'FIRST_GREETER',
             title:   '🎉 ¡Primero en saludar!',
-            message: `Fuiste el primero en escribir en el chat del stream. ¡+100 XP y 3 tickets!`,
+            message: `Fuiste el primero en escribir en el chat del stream. ¡+100 XP y +50 SC!`,
           })
 
         await this.supabase.db.rpc('award_xp', {
@@ -161,13 +167,13 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
 
         const { data: rep } = await this.supabase.db
           .from('user_reputation')
-          .select('raffle_tickets')
+          .select('salchi_coins')
           .eq('user_id', socialLink.user_id)
           .single()
 
         await this.supabase.db
           .from('user_reputation')
-          .update({ raffle_tickets: ((rep as any)?.raffle_tickets ?? 0) + 3 })
+          .update({ salchi_coins: ((rep as any)?.salchi_coins ?? 0) + 50 })
           .eq('user_id', socialLink.user_id)
 
         // No spamear el chat — la notificación llega por la plataforma
@@ -178,6 +184,66 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     }
 
     this.activeViewers.set(twitchUsername, Date.now())
+  }
+
+  private async handleUserNotice(line: string) {
+    try {
+      // Extraer tags del mensaje IRC
+      const tagsMatch = line.match(/^@([^ ]+)/)
+      if (!tagsMatch) return
+      const tags: Record<string, string> = {}
+      tagsMatch[1].split(';').forEach(t => {
+        const [k, v] = t.split('=')
+        tags[k] = v ?? ''
+      })
+
+      const msgId   = tags['msg-id']
+      const login   = tags['login'] ?? tags['display-name']?.toLowerCase()
+      const isGift  = msgId === 'subgift' || msgId === 'submysterygift'
+      const isSub   = msgId === 'sub' || msgId === 'resub' || isGift
+
+      if (!isSub || !login) return
+
+      // Para giftsub, recompensar al que regala (login = quien regala)
+      const twitchUsername = login.toLowerCase()
+
+      const { data: socialLink } = await this.supabase.db
+        .from('user_social_links')
+        .select('user_id, profiles!inner(discord_id)')
+        .eq('platform', 'TWITCH')
+        .ilike('username', twitchUsername)
+        .single()
+
+      if (!socialLink) return
+      const discordId = (socialLink as any).profiles?.discord_id
+      if (!discordId) return
+
+      // Evitar duplicar para el mismo mes
+      const monthKey = new Date().toISOString().slice(0, 7) // YYYY-MM
+      const dedupKey = `twitch:sub:${twitchUsername}:${monthKey}`
+      const isFirst  = await this.redis.setNX(dedupKey, '1', 31 * 24 * 60 * 60)
+      if (!isFirst) return
+
+      await this.reputation.processXpEvent({
+        discordId,
+        eventType:   isGift ? 'TWITCH_GIFT_SUB' : 'TWITCH_SUBSCRIBE',
+        platform:    'TWITCH',
+        externalRef: `twitch_sub_${twitchUsername}_${monthKey}`,
+        metadata:    { twitch_username: twitchUsername, msg_id: msgId },
+      })
+
+      const subType = msgId === 'resub' ? 'resub' : isGift ? 'gift sub' : 'sub'
+      this.logger.log(`🎉 ${subType}: ${twitchUsername}`)
+
+      // Anunciar en el chat
+      const displayName = tags['display-name'] || twitchUsername
+      if (msgId === 'sub')    this.sendChat(`🎉 ¡Bienvenido @${displayName}! Gracias por suscribirte 💜`)
+      if (msgId === 'resub')  this.sendChat(`🔁 ¡Gracias @${displayName} por renovar tu sub! 💜`)
+      if (isGift)             this.sendChat(`🎁 ¡Gracias @${displayName} por regalar subs! 💜`)
+
+    } catch (err) {
+      this.logger.warn(`handleUserNotice error: ${err}`)
+    }
   }
 
   private async checkRaffleKeyword(twitchUsername: string, message: string) {
