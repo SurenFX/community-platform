@@ -43,7 +43,7 @@ function useAnimatedNumber(value: number) {
 }
 
 function StatCard({
-  label, value, sub, icon: Icon, color, bg,
+  label, value, sub, icon: Icon, color, bg, index,
 }: {
   label: string
   value: number
@@ -51,6 +51,7 @@ function StatCard({
   icon:  React.ElementType
   color: string
   bg:    string
+  index: number
 }) {
   const { display, flashing } = useAnimatedNumber(value)
 
@@ -59,7 +60,10 @@ function StatCard({
       bg-card border rounded-xl p-5 card-hover transition-all duration-300 fade-in-up
       ${flashing ? 'border-primary/50' : 'border-border'}
     `}
-    style={{ boxShadow: flashing ? '0 0 20px hsl(185 100% 45% / 0.15)' : undefined }}
+    style={{
+      animationDelay: `${index * 70}ms`,
+      boxShadow: flashing ? '0 0 20px hsl(185 100% 45% / 0.15)' : undefined,
+    }}
     >
       <div className={`inline-flex p-2.5 rounded-xl ${bg} mb-3 transition-transform duration-200 group-hover:scale-110`}>
         <Icon className={`w-5 h-5 ${color}`} />
@@ -111,7 +115,7 @@ export default function StatsGrid({ reputation }: StatsGridProps) {
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {stats.map(s => <StatCard key={s.label} {...s} />)}
+      {stats.map((s, i) => <StatCard key={s.label} {...s} index={i} />)}
     </div>
   )
 }

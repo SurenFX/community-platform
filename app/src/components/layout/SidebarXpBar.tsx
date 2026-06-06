@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelColor, getLevelTitle, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'
 import type { UserReputation } from '@/types/database'
@@ -14,7 +14,9 @@ interface SidebarXpBarProps {
 }
 
 export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, compact }: SidebarXpBarProps) {
-  const [rep, setRep] = useState(initialRep)
+  const [rep,      setRep]      = useState(initialRep)
+  const [flashing, setFlashing] = useState(false)
+  const prevXpRef = useRef(initialRep?.total_xp ?? 0)
 
   useEffect(() => {
     const supabase = createClient()
@@ -26,7 +28,13 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
         table:  'user_reputation',
         filter: `user_id=eq.${userId}`,
       }, (payload) => {
-        setRep(payload.new as UserReputation)
+        const newRep = payload.new as UserReputation
+        if (newRep.total_xp > prevXpRef.current) {
+          prevXpRef.current = newRep.total_xp
+          setFlashing(true)
+          setTimeout(() => setFlashing(false), 1000)
+        }
+        setRep(newRep)
       })
       .subscribe()
 
@@ -49,7 +57,10 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
           <span>{totalXp.toLocaleString('es-AR')} XP</span>
         </div>
         <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-          <div className="h-full xp-bar rounded-full transition-all duration-700" style={{ width: `${progressPct}%` }} />
+          <div
+            className={`h-full xp-bar rounded-full transition-all duration-700 ${flashing ? 'xp-bar-flash' : ''}`}
+            style={{ width: `${progressPct}%` }}
+          />
         </div>
       </div>
     )
@@ -81,7 +92,10 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
           <span>Nv. {level} → {level + 1}</span>
         </div>
         <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-          <div className="h-full xp-bar rounded-full transition-all duration-700" style={{ width: `${progressPct}%` }} />
+          <div
+            className={`h-full xp-bar rounded-full transition-all duration-700 ${flashing ? 'xp-bar-flash' : ''}`}
+            style={{ width: `${progressPct}%` }}
+          />
         </div>
       </div>
     </div>

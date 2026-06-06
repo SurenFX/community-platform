@@ -267,15 +267,16 @@ export default function DashboardClient({
                     <span className="text-xs text-muted-foreground">{earned.length}/{fBadges.length}</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {fBadges.map(badge => {
+                    {fBadges.map((badge, bi) => {
                       const isEarned = earnedSet.has(badge.id)
                       return (
                         <div key={badge.id}
-                          className={`border rounded-xl p-3 flex items-center gap-3 transition-all duration-200 ${
+                          className={`border rounded-xl p-3 flex items-center gap-3 transition-all duration-200 fade-in-up ${
                             isEarned
                               ? `${TIER_COLORS[badge.tier] ?? 'border-border bg-secondary/30'} badge-earned card-hover cursor-default`
                               : 'border-border bg-secondary/20 opacity-40 grayscale'
                           }`}
+                          style={{ animationDelay: `${bi * 40}ms` }}
                         >
                           <span className="text-2xl">{badge.image_url || '🏅'}</span>
                           <div className="min-w-0">

@@ -118,7 +118,50 @@
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.fade-in-up { animation: fade-in-up 0.3s ease-out forwards; }
+.fade-in-up { animation: fade-in-up 0.35s ease-out both; }
+
+/* Float suave para íconos destacados */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-7px); }
+}
+.float { animation: float 3s ease-in-out infinite; }
+
+/* Scale-in pop con spring para entradas */
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.75); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.scale-in { animation: scale-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* Sparkle para level up */
+@keyframes sparkle {
+  0%   { opacity: 0; transform: scale(0) rotate(0deg) translate(0, 0); }
+  40%  { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.2) rotate(180deg) translate(var(--tx), var(--ty)); }
+}
+
+/* Glow pulse en XP bar cuando sube */
+@keyframes xp-flash {
+  0%, 100% { filter: brightness(1); }
+  50%       { filter: brightness(1.5) drop-shadow(0 0 6px hsl(185 100% 45% / 0.8)); }
+}
+.xp-bar-flash { animation: xp-flash 0.5s ease-in-out 2; }
+
+/* Countdown shrink para toast */
+@keyframes shrink-x {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
+/* Stagger delays */
+.delay-0   { animation-delay: 0ms; }
+.delay-75  { animation-delay: 75ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-225 { animation-delay: 225ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-375 { animation-delay: 375ms; }
+.delay-450 { animation-delay: 450ms; }
 
 /* Glow primario en hover para botones */
 .btn-glow {

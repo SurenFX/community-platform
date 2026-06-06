@@ -259,13 +259,14 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
         </div>
       ) : (
         <div className="grid gap-4">
-          {currentList.map(mission => (
-            <MissionCard
-              key={mission.id}
-              mission={mission}
-              userMission={progressMap.get(mission.id)}
-              showClaim={tab === 'claim'}
-            />
+          {currentList.map((mission, i) => (
+            <div key={mission.id} className="fade-in-up" style={{ animationDelay: `${i * 50}ms` }}>
+              <MissionCard
+                mission={mission}
+                userMission={progressMap.get(mission.id)}
+                showClaim={tab === 'claim'}
+              />
+            </div>
           ))}
         </div>
       )}
