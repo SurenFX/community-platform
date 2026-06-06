@@ -167,7 +167,7 @@ export default async function PublicProfilePage({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, username, discord_tag, avatar_url, bio, created_at, is_admin')
+    .select('id, username, discord_tag, avatar_url, bio, created_at, is_admin, equipped_border_color, equipped_name_emoji, equipped_title_override')
     .eq('username', decodeURIComponent(username))
     .single()
 
@@ -255,6 +255,15 @@ export default async function PublicProfilePage({
   const level   = rep?.level ?? 1
   const totalXp = rep?.total_xp ?? 0
 
+  const BORDER_COLOR_HEX: Record<string, string> = {
+    'cyan-400':   '#22d3ee', 'green-400':  '#4ade80', 'violet-400': '#a78bfa',
+    'red-500':    '#ef4444', 'pink-400':   '#f472b6', 'yellow-400': '#facc15',
+    'orange-400': '#fb923c', 'purple-500': '#a855f7',
+  }
+  const borderHex = BORDER_COLOR_HEX[(profile as any).equipped_border_color ?? '']
+  const nameEmoji = (profile as any).equipped_name_emoji as string | null
+  const titleOverride = (profile as any).equipped_title_override as string | null
+
   const xpCurrent = totalXp - xpForCurrentLevel(level)
   const xpNeeded  = xpForNextLevel(level) - xpForCurrentLevel(level)
   const xpPercent = xpNeeded > 0 ? Math.min(100, Math.round((xpCurrent / xpNeeded) * 100)) : 0
@@ -286,9 +295,11 @@ export default async function PublicProfilePage({
           <div className="flex items-end gap-4 -mt-12 mb-4">
             {profile.avatar_url ? (
               <img src={profile.avatar_url} alt={profile.username}
-                className="w-24 h-24 rounded-2xl ring-4 ring-card border-2 border-border shadow-xl" />
+                className="w-24 h-24 rounded-2xl ring-4 ring-card shadow-xl"
+                style={borderHex ? { border: `3px solid ${borderHex}`, boxShadow: `0 0 20px ${borderHex}50` } : { border: '2px solid hsl(var(--border))' }} />
             ) : (
-              <div className="w-24 h-24 rounded-2xl ring-4 ring-card border-2 border-border bg-primary/20 flex items-center justify-center shadow-xl">
+              <div className="w-24 h-24 rounded-2xl ring-4 ring-card bg-primary/20 flex items-center justify-center shadow-xl"
+                style={borderHex ? { border: `3px solid ${borderHex}`, boxShadow: `0 0 20px ${borderHex}50` } : { border: '2px solid hsl(var(--border))' }}>
                 <span className="text-3xl font-bold text-primary">
                   {profile.username[0].toUpperCase()}
                 </span>
@@ -296,7 +307,10 @@ export default async function PublicProfilePage({
             )}
             <div className="mb-1 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-black text-foreground">{profile.username}</h1>
+                <h1 className="text-xl font-black text-foreground">
+                  {nameEmoji && <span className="mr-1">{nameEmoji}</span>}
+                  {profile.username}
+                </h1>
                 {isOwner && (
                   <ProfileEditButton username={profile.username} bio={profile.bio} />
                 )}
@@ -307,7 +321,7 @@ export default async function PublicProfilePage({
                   </span>
                 )}
                 <span className={`text-xs font-bold ${getLevelColor(level)}`}>
-                  Nv. {level} — {getLevelTitle(level)}
+                  Nv. {level} — {titleOverride ?? getLevelTitle(level)}
                 </span>
               </div>
               <p className="text-sm text-muted-foreground">{profile.discord_tag}</p>

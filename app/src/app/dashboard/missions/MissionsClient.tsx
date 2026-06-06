@@ -92,9 +92,9 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
   }
 
   const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: 'active',    label: 'Misiones activas', count: active.length    },
-    { key: 'claim',     label: 'Por reclamar',      count: toClaim.length  },
-    { key: 'completed', label: 'Completadas',        count: completed.length },
+    { key: 'active',    label: 'Quests activas', count: active.length    },
+    { key: 'claim',     label: 'Por reclamar',   count: toClaim.length  },
+    { key: 'completed', label: 'Completadas',     count: completed.length },
   ]
 
   function MissionCard({ mission, userMission, showClaim }: {

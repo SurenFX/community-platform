@@ -14,7 +14,13 @@ interface Entry {
   monthly_xp:     number
   level:          number
   current_streak: number
-  profiles:       { username: string; avatar_url: string | null } | null
+  profiles:       {
+    username:               string
+    avatar_url:             string | null
+    equipped_border_color?: string | null
+    equipped_name_emoji?:   string | null
+    equipped_title_override?: string | null
+  } | null
 }
 
 interface MyRank {
@@ -30,16 +36,28 @@ interface LeaderboardTableProps {
   entries:       Entry[]
   currentUserId?: string
   myRank?:       MyRank | null
+  seasonName?:   string | null
 }
 
-export default function LeaderboardTable({ entries, currentUserId, myRank }: LeaderboardTableProps) {
+const BORDER_COLOR_HEX: Record<string, string> = {
+  'cyan-400':   '#22d3ee',
+  'green-400':  '#4ade80',
+  'violet-400': '#a78bfa',
+  'red-500':    '#ef4444',
+  'pink-400':   '#f472b6',
+  'yellow-400': '#facc15',
+  'orange-400': '#fb923c',
+  'purple-500': '#a855f7',
+}
+
+export default function LeaderboardTable({ entries, currentUserId, myRank, seasonName }: LeaderboardTableProps) {
   const [period, setPeriod]   = useState<Period>('total_xp')
   const [search, setSearch]   = useState('')
 
   const periodLabels: Record<Period, string> = {
     total_xp:   'Global',
     weekly_xp:  'Esta semana',
-    monthly_xp: 'Este mes',
+    monthly_xp: seasonName ?? 'Este mes',
   }
 
   const rankField: Record<Period, keyof MyRank> = {
@@ -145,18 +163,27 @@ export default function LeaderboardTable({ entries, currentUserId, myRank }: Lea
                     : <span className="text-sm font-bold text-muted-foreground">{rank}</span>}
                 </div>
 
-                {entry.profiles?.avatar_url ? (
-                  <img src={entry.profiles.avatar_url} alt={entry.profiles.username}
-                    className="w-9 h-9 rounded-full shrink-0" />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                    <User className="w-4 h-4 text-primary" />
-                  </div>
-                )}
+                {(() => {
+                  const borderHex = BORDER_COLOR_HEX[entry.profiles?.equipped_border_color ?? '']
+                  const borderStyle = borderHex ? { border: `2.5px solid ${borderHex}`, boxShadow: `0 0 8px ${borderHex}50` } : undefined
+                  return entry.profiles?.avatar_url ? (
+                    <img src={entry.profiles.avatar_url} alt={entry.profiles.username}
+                      className="w-9 h-9 rounded-full shrink-0"
+                      style={borderStyle} />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0"
+                      style={borderStyle}>
+                      <User className="w-4 h-4 text-primary" />
+                    </div>
+                  )
+                })()}
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-foreground truncate">
+                      {entry.profiles?.equipped_name_emoji && (
+                        <span className="mr-1">{entry.profiles.equipped_name_emoji}</span>
+                      )}
                       {entry.profiles?.username ?? 'Usuario'}
                     </p>
                     {isCurrentUser && (
@@ -169,7 +196,7 @@ export default function LeaderboardTable({ entries, currentUserId, myRank }: Lea
                     )}
                   </div>
                   <p className={cn('text-xs font-medium', getLevelColor(entry.level))}>
-                    Nv. {entry.level} · {getLevelTitle(entry.level)}
+                    Nv. {entry.level} · {entry.profiles?.equipped_title_override ?? getLevelTitle(entry.level)}
                   </p>
                 </div>
 

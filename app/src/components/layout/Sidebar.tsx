@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { signOut } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
 import {
-  Home, Trophy, Target, Settings, LogOut, Shield, Ticket, CircleDollarSign,
+  Home, Trophy, Sword, Settings, LogOut, Shield, Ticket, CircleDollarSign, ShoppingBag, Swords,
 } from 'lucide-react'
 
 import SidebarXpBar from './SidebarXpBar'
@@ -17,12 +17,14 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { href: '/dashboard',               label: 'Inicio',         icon: Home,    exact: true },
-  { href: '/dashboard/comunidad',     label: 'Ranking',        icon: Trophy               },
-  { href: '/dashboard/missions',      label: 'Misiones',       icon: Target               },
-  { href: '/dashboard/raffles',       label: 'Sorteos',        icon: Ticket               },
-  { href: '/dashboard/coins',         label: 'SalchiCoins',    icon: CircleDollarSign     },
-  { href: '/dashboard/configuracion', label: 'Configuración',  icon: Settings             },
+  { href: '/dashboard',               label: 'Inicio',         icon: Home,              exact: true },
+  { href: '/dashboard/comunidad',     label: 'Ranking',        icon: Trophy                         },
+  { href: '/dashboard/missions',      label: 'Quests',         icon: Sword                          },
+  { href: '/dashboard/challenges',    label: 'Desafíos',       icon: Swords                         },
+  { href: '/dashboard/raffles',       label: 'Sorteos',        icon: Ticket                         },
+  { href: '/dashboard/shop',          label: 'Tienda',         icon: ShoppingBag                    },
+  { href: '/dashboard/coins',         label: 'SalchiCoins',    icon: CircleDollarSign               },
+  { href: '/dashboard/configuracion', label: 'Configuración',  icon: Settings                       },
 ]
 
 export default function Sidebar({ profile }: SidebarProps) {

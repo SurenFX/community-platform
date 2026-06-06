@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import OnboardingModal from '@/components/dashboard/OnboardingModal'
+import DailyBonusCard from '@/components/dashboard/DailyBonusCard'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -43,6 +44,15 @@ export default async function DashboardPage() {
   const earnedIds      = new Set((earnedBadgesRes.data ?? []).map((b: any) => b.badge_id))
   const allBadges      = allBadgesRes.data ?? []
 
+  // Daily bonus
+  const lastBonusAt = (profile as any)?.user_reputation?.last_daily_bonus_at ?? null
+  const now = Date.now()
+  const msUntilNext = lastBonusAt
+    ? Math.max(0, new Date(lastBonusAt).getTime() + 23 * 3_600_000 - now)
+    : 0
+  const canClaimBonus = msUntilNext === 0
+  const streak = (profile as any)?.user_reputation?.current_streak ?? 0
+
   return (
     <>
       {showOnboarding && (
@@ -51,6 +61,9 @@ export default async function DashboardPage() {
           avatarUrl={profile.avatar_url}
         />
       )}
+      <div className="mb-4">
+        <DailyBonusCard canClaim={canClaimBonus} streak={streak} nextClaimMs={msUntilNext} />
+      </div>
       <DashboardClient
         initialProfile={profile}
         initialEvents={activityRes.data ?? []}
