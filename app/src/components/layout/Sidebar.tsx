@@ -18,7 +18,7 @@ interface SidebarProps {
 
 const navItems = [
   { href: '/dashboard',               label: 'Inicio',         icon: Home,    exact: true },
-  { href: '/dashboard/comunidad',     label: 'Comunidad',      icon: Trophy               },
+  { href: '/dashboard/comunidad',     label: 'Ranking',        icon: Trophy               },
   { href: '/dashboard/missions',      label: 'Misiones',       icon: Target               },
   { href: '/dashboard/raffles',       label: 'Sorteos',        icon: Ticket               },
   { href: '/dashboard/configuracion', label: 'Configuración',  icon: Settings             },

@@ -39,8 +39,8 @@ export default async function ComunidadPage() {
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Comunidad</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Los miembros más activos</p>
+        <h1 className="text-2xl font-bold text-foreground">Ranking</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Los miembros más activos de la comunidad</p>
       </div>
       <LeaderboardTable
         entries={(entries ?? []) as any}

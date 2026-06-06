@@ -1,26 +1,27 @@
-import type { XpEvent } from '@/types/database'
 import { createClient } from '@/lib/supabase/server'
 import { Users, Zap, Trophy, Target } from 'lucide-react'
 
 export default async function AdminOverviewPage() {
   const supabase = await createClient()
 
-  const [usersRes, xpRes, missionsRes, topUserRes] = await Promise.all([
+  const day7 = new Date(Date.now() - 7 * 86400000).toISOString()
+
+  const [usersRes, weeklyXpRes, missionsRes, topUserRes] = await Promise.all([
     supabase.from('profiles').select('id', { count: 'exact', head: true }),
-    (supabase.from('xp_events').select('xp_awarded').gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString())) as any as Promise<{ data: Pick<XpEvent,'xp_awarded'>[] | null }>,
+    supabase.rpc('get_xp_sum_since', { since_ts: day7 }),
     supabase.from('missions').select('id', { count: 'exact', head: true }).eq('is_active', true),
     supabase.from('user_reputation').select('user_id, total_xp, profiles!inner(username)').order('total_xp', { ascending: false }).limit(5),
   ])
 
-  const totalUsers    = usersRes.count ?? 0
-  const weeklyXp      = xpRes.data?.reduce((sum, e) => sum + e.xp_awarded, 0) ?? 0
+  const totalUsers     = usersRes.count ?? 0
+  const weeklyXp       = (weeklyXpRes.data as unknown as number) ?? 0
   const activeMissions = missionsRes.count ?? 0
 
   const stats = [
-    { label: 'Usuarios totales',    value: totalUsers,    icon: Users,   color: 'text-blue-400',   bg: 'bg-blue-400/10'   },
-    { label: 'XP otorgado (7d)',     value: weeklyXp,      icon: Zap,     color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-    { label: 'Misiones activas',     value: activeMissions,icon: Target,  color: 'text-green-400',  bg: 'bg-green-400/10'  },
-    { label: 'Top XP total',         value: topUserRes.data?.[0] ? (topUserRes.data[0] as any).total_xp : 0, icon: Trophy, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+    { label: 'Usuarios totales',  value: totalUsers,     icon: Users,   color: 'text-blue-400',   bg: 'bg-blue-400/10'   },
+    { label: 'XP otorgado (7d)',  value: weeklyXp,       icon: Zap,     color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+    { label: 'Misiones activas',  value: activeMissions, icon: Target,  color: 'text-green-400',  bg: 'bg-green-400/10'  },
+    { label: 'Top XP total',      value: topUserRes.data?.[0] ? (topUserRes.data[0] as any).total_xp : 0, icon: Trophy, color: 'text-purple-400', bg: 'bg-purple-400/10' },
   ]
 
   return (
@@ -42,7 +43,6 @@ export default async function AdminOverviewPage() {
         ))}
       </div>
 
-      {/* Top usuarios */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="px-6 py-4 border-b border-border">
           <h2 className="text-base font-semibold text-foreground">Top 5 usuarios</h2>
