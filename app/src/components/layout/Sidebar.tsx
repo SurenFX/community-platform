@@ -1,11 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
 import {
-  Home, Trophy, Sword, Settings, LogOut, Shield, Ticket, CircleDollarSign, ShoppingBag, Swords,
+  Home, Trophy, Sword, Settings, LogOut, Shield, Ticket,
+  CircleDollarSign, ShoppingBag, Swords, Menu, X,
 } from 'lucide-react'
 
 import SidebarXpBar from './SidebarXpBar'
@@ -13,7 +15,22 @@ import NotificationBell from './NotificationBell'
 import type { Profile, UserReputation } from '@/types/database'
 
 interface SidebarProps {
-  profile: (Profile & { user_reputation: UserReputation | null }) | null
+  profile: (Profile & { user_reputation: UserReputation | null } & {
+    equipped_border_color?: string | null
+    equipped_name_emoji?: string | null
+    equipped_title_override?: string | null
+  }) | null
+}
+
+const BORDER_COLOR_HEX: Record<string, string> = {
+  'cyan-400':   '#22d3ee',
+  'green-400':  '#4ade80',
+  'violet-400': '#a78bfa',
+  'red-500':    '#ef4444',
+  'pink-400':   '#f472b6',
+  'yellow-400': '#facc15',
+  'orange-400': '#fb923c',
+  'purple-500': '#a855f7',
 }
 
 const navItems = [
@@ -29,9 +46,23 @@ const navItems = [
 
 export default function Sidebar({ profile }: SidebarProps) {
   const pathname = usePathname()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
-  return (
-    <aside className="fixed left-0 top-0 h-screen w-64 bg-card border-r border-border flex flex-col z-40">
+  const p = profile as any
+  const borderHex  = BORDER_COLOR_HEX[p?.equipped_border_color ?? '']
+  const nameEmoji  = p?.equipped_name_emoji ?? null
+
+  const avatarStyle = borderHex
+    ? { border: `2.5px solid ${borderHex}`, boxShadow: `0 0 10px ${borderHex}50` }
+    : undefined
+
+  const sidebarContent = (
+    <aside className={cn(
+      'fixed left-0 top-0 h-screen w-64 bg-card border-r border-border flex flex-col z-40',
+      'transition-transform duration-300 ease-in-out',
+      'md:translate-x-0',
+      mobileOpen ? 'translate-x-0' : '-translate-x-full'
+    )}>
 
       {/* Logo */}
       <div className="p-5 border-b border-border">
@@ -43,32 +74,49 @@ export default function Sidebar({ profile }: SidebarProps) {
               BETA
             </span>
           </div>
-          <NotificationBell userId={profile?.id} />
+          <div className="flex items-center gap-1">
+            <NotificationBell userId={profile?.id} />
+            {/* Close button — mobile only */}
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="md:hidden p-1 rounded-lg hover:bg-secondary transition-colors"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Avatar + XP — clickeable al perfil propio */}
+      {/* Avatar + XP */}
       {profile && (
         <div className="p-4 border-b border-border">
           <Link
             href={`/dashboard/profile/${profile.username}`}
             className="flex items-center gap-3 mb-3 group rounded-xl hover:bg-secondary/60 transition-all p-1 -m-1"
+            onClick={() => setMobileOpen(false)}
           >
             {profile.avatar_url ? (
               <img
                 src={profile.avatar_url}
                 alt={profile.username}
-                className="w-9 h-9 rounded-xl ring-2 ring-border group-hover:ring-primary/50 transition-all"
+                className="w-9 h-9 rounded-xl transition-all"
+                style={avatarStyle ?? { border: '2px solid hsl(var(--border))' }}
               />
             ) : (
-              <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center ring-2 ring-border group-hover:ring-primary/50 transition-all">
+              <div
+                className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center transition-all"
+                style={avatarStyle ?? { border: '2px solid hsl(var(--border))' }}
+              >
                 <span className="text-sm font-bold text-primary">
                   {profile.username?.[0]?.toUpperCase()}
                 </span>
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{profile.username}</p>
+              <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                {nameEmoji && <span className="mr-1">{nameEmoji}</span>}
+                {profile.username}
+              </p>
               <p className="text-xs text-muted-foreground">Ver perfil</p>
             </div>
           </Link>
@@ -85,15 +133,11 @@ export default function Sidebar({ profile }: SidebarProps) {
       {/* Navegación */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {navItems.map(({ href, label, icon: Icon, exact }) => {
-          const isActive = exact
-            ? pathname === href
-            : pathname.startsWith(href)
+          const isActive = exact ? pathname === href : pathname.startsWith(href)
           return (
             <Link key={href} href={href}
-              className={cn(
-                'nav-item',
-                isActive ? 'active' : 'text-muted-foreground'
-              )}
+              onClick={() => setMobileOpen(false)}
+              className={cn('nav-item', isActive ? 'active' : 'text-muted-foreground')}
             >
               <Icon className="w-4 h-4 shrink-0" />
               {label}
@@ -109,6 +153,7 @@ export default function Sidebar({ profile }: SidebarProps) {
               </p>
             </div>
             <Link href="/admin"
+              onClick={() => setMobileOpen(false)}
               className={cn('nav-item', pathname.startsWith('/admin') ? 'active' : 'text-muted-foreground')}
             >
               <Shield className="w-4 h-4 shrink-0" />
@@ -118,7 +163,7 @@ export default function Sidebar({ profile }: SidebarProps) {
         )}
       </nav>
 
-      {/* Footer — solo cerrar sesión */}
+      {/* Footer */}
       <div className="p-3 border-t border-border">
         <form action={signOut}>
           <button type="submit"
@@ -131,5 +176,35 @@ export default function Sidebar({ profile }: SidebarProps) {
       </div>
 
     </aside>
+  )
+
+  return (
+    <>
+      {/* Mobile top bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-card border-b border-border flex items-center gap-3 px-4 z-30">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
+          aria-label="Abrir menú"
+        >
+          <Menu className="w-5 h-5 text-foreground" />
+        </button>
+        <span className="text-xl">🌭</span>
+        <span className="font-extrabold text-foreground text-sm tracking-tight">SalchiNeta</span>
+        <div className="ml-auto">
+          <NotificationBell userId={profile?.id} />
+        </div>
+      </div>
+
+      {/* Backdrop — mobile only */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {sidebarContent}
+    </>
   )
 }

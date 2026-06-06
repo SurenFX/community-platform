@@ -53,10 +53,15 @@ export async function claimDailyBonus(): Promise<{
       last_daily_bonus_at:  new Date().toISOString(),
     }).eq('user_id', user.id),
     db.from('xp_events').insert({
-      user_id:     user.id,
-      event_type:  'DAILY_BONUS',
-      xp_awarded:  xp,
-      platform:    'SYSTEM',
+      user_id:       user.id,
+      event_type:    'ADMIN_MANUAL_GRANT',
+      xp_awarded:    xp,
+      base_xp:       xp,
+      multiplier:    1,
+      quality_score: 1,
+      streak_bonus:  0,
+      platform:      'DISCORD',
+      metadata:      { source: 'DAILY_BONUS', streak },
     }),
   ])
 

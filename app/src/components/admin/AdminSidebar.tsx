@@ -5,17 +5,19 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, Target, Zap,
-  BarChart3, ArrowLeft, Shield, Ticket, Award,
+  BarChart3, ArrowLeft, Shield, Ticket, Award, CalendarDays, Swords,
 } from 'lucide-react'
 
 const navItems = [
-  { href: '/admin',             label: 'Overview',  icon: LayoutDashboard, exact: true },
-  { href: '/admin/users',       label: 'Usuarios',  icon: Users            },
-  { href: '/admin/missions',    label: 'Misiones',  icon: Target           },
-  { href: '/admin/badges',      label: 'Badges',    icon: Award            },
-  { href: '/admin/xp-config',   label: 'Config XP', icon: Zap              },
-  { href: '/admin/raffles',     label: 'Sorteos',   icon: Ticket           },
-  { href: '/admin/analytics',   label: 'Analytics', icon: BarChart3        },
+  { href: '/admin',             label: 'Overview',    icon: LayoutDashboard, exact: true },
+  { href: '/admin/users',       label: 'Usuarios',    icon: Users            },
+  { href: '/admin/missions',    label: 'Misiones',    icon: Target           },
+  { href: '/admin/badges',      label: 'Badges',      icon: Award            },
+  { href: '/admin/xp-config',   label: 'Config XP',  icon: Zap              },
+  { href: '/admin/raffles',     label: 'Sorteos',     icon: Ticket           },
+  { href: '/admin/seasons',     label: 'Temporadas',  icon: CalendarDays     },
+  { href: '/admin/challenges',  label: 'Desafíos',    icon: Swords           },
+  { href: '/admin/analytics',   label: 'Analytics',   icon: BarChart3        },
 ]
 
 export default function AdminSidebar({ profile }: { profile: any }) {
