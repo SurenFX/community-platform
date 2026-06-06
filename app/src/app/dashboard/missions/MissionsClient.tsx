@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Target, CheckCircle2, Gift, Loader2, Zap } from 'lucide-react'
+import { Target, CheckCircle2, Gift, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Mission, UserMission } from '@/types/database'
-import { acceptMission, claimMission } from '@/app/actions/missions'
+import { claimMission } from '@/app/actions/missions'
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   DAILY:   { label: 'Diaria',   color: 'bg-blue-400/15 text-blue-400'    },
@@ -16,18 +16,24 @@ const TYPE_LABELS: Record<string, { label: string; color: string }> = {
 const PLATFORM_FROM_OBJECTIVE: Record<string, { label: string; color: string; bg: string }> = {
   DISCORD_MESSAGE:           { label: 'Discord',  color: 'text-indigo-400', bg: 'bg-indigo-400/15' },
   DISCORD_REACTION_RECEIVED: { label: 'Discord',  color: 'text-indigo-400', bg: 'bg-indigo-400/15' },
+  DISCORD_REACTION_GIVEN:    { label: 'Discord',  color: 'text-indigo-400', bg: 'bg-indigo-400/15' },
   DISCORD_HELPED_USER:       { label: 'Discord',  color: 'text-indigo-400', bg: 'bg-indigo-400/15' },
+  DISCORD_VOICE_TIME:        { label: 'Discord',  color: 'text-indigo-400', bg: 'bg-indigo-400/15' },
+  DISCORD_JOIN:              { label: 'Discord',  color: 'text-indigo-400', bg: 'bg-indigo-400/15' },
   TWITCH_CHAT_MESSAGE:       { label: 'Twitch',   color: 'text-purple-400', bg: 'bg-purple-400/15' },
   TWITCH_WATCH_TIME:         { label: 'Twitch',   color: 'text-purple-400', bg: 'bg-purple-400/15' },
   TWITCH_FOLLOW:             { label: 'Twitch',   color: 'text-purple-400', bg: 'bg-purple-400/15' },
   TWITCH_SUBSCRIBE:          { label: 'Twitch',   color: 'text-purple-400', bg: 'bg-purple-400/15' },
+  TWITCH_GIFT_SUB:           { label: 'Twitch',   color: 'text-purple-400', bg: 'bg-purple-400/15' },
   TWITCH_RAID_PARTICIPATE:   { label: 'Twitch',   color: 'text-purple-400', bg: 'bg-purple-400/15' },
   YOUTUBE_COMMENT:           { label: 'YouTube',  color: 'text-red-400',    bg: 'bg-red-400/15'    },
   YOUTUBE_SUBSCRIBE:         { label: 'YouTube',  color: 'text-red-400',    bg: 'bg-red-400/15'    },
   TELEGRAM_MESSAGE:          { label: 'Telegram', color: 'text-[#26A5E4]',  bg: 'bg-[#26A5E4]/15' },
+  TELEGRAM_JOIN:             { label: 'Telegram', color: 'text-[#26A5E4]',  bg: 'bg-[#26A5E4]/15' },
+  TELEGRAM_REACTION:         { label: 'Telegram', color: 'text-[#26A5E4]',  bg: 'bg-[#26A5E4]/15' },
 }
 
-type Tab = 'available' | 'inprogress' | 'claim' | 'completed'
+type Tab = 'active' | 'claim' | 'completed'
 
 interface Props {
   missions:     Mission[]
@@ -36,50 +42,31 @@ interface Props {
 }
 
 export default function MissionsClient({ missions, userMissions, userId }: Props) {
-  const [tab, setTab] = useState<Tab>('available')
+  const [tab, setTab] = useState<Tab>('active')
   const [localUserMissions, setLocalUserMissions] = useState<UserMission[]>(userMissions)
   const [isPending, startTransition] = useTransition()
   const [actionId, setActionId] = useState<string | null>(null)
   const [claimedIds, setClaimedIds] = useState<Set<string>>(new Set())
 
-  const progressMap  = new Map(localUserMissions.map(um => [um.mission_id, um]))
-  const acceptedIds  = new Set(localUserMissions.map(um => um.mission_id))
+  const progressMap = new Map(localUserMissions.map(um => [um.mission_id, um]))
 
-  const available  = missions.filter(m => !acceptedIds.has(m.id))
-  const inProgress = missions.filter(m => {
+  // Misiones activas: todas las misiones que no están completadas/reclamadas
+  // Incluye las que todavía no han empezado (progreso 0) y las en progreso
+  const active = missions.filter(m => {
     const um = progressMap.get(m.id)
-    return um && !um.is_completed
+    if (!um) return true                          // no iniciada — se muestra igual
+    return !um.is_completed                       // en progreso
   })
+
   const toClaim = missions.filter(m => {
     const um = progressMap.get(m.id)
     return um && um.is_completed && !um.is_claimed && !claimedIds.has(um.id)
   })
+
   const completed = missions.filter(m => {
     const um = progressMap.get(m.id)
     return um && um.is_completed && (um.is_claimed || claimedIds.has(um.id))
   })
-
-  function handleAccept(missionId: string) {
-    if (actionId !== null) return
-    setActionId(missionId)
-    startTransition(async () => {
-      const result = await acceptMission(missionId)
-      if (!result.error) {
-        const newUm: UserMission = {
-          id: `temp_${missionId}`,
-          user_id: userId,
-          mission_id: missionId,
-          progress: 0,
-          is_completed: false,
-          is_claimed: false,
-          completed_at: null,
-        }
-        setLocalUserMissions(prev => [...prev, newUm])
-        // No cambia de pestaña — el usuario puede seguir aceptando más misiones
-      }
-      setActionId(null)
-    })
-  }
 
   function handleClaim(userMissionId: string) {
     if (actionId !== null) return
@@ -97,32 +84,34 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
   }
 
   const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: 'available',  label: 'Disponibles',   count: available.length  },
-    { key: 'inprogress', label: 'En progreso',    count: inProgress.length },
-    { key: 'claim',      label: 'Por reclamar',   count: toClaim.length    },
-    { key: 'completed',  label: 'Completadas',    count: completed.length  },
+    { key: 'active',    label: 'Misiones activas', count: active.length    },
+    { key: 'claim',     label: 'Por reclamar',      count: toClaim.length  },
+    { key: 'completed', label: 'Completadas',        count: completed.length },
   ]
 
-  function MissionCard({ mission, userMission, action }: {
-    mission: Mission
+  function MissionCard({ mission, userMission, showClaim }: {
+    mission:      Mission
     userMission?: UserMission
-    action?: 'accept' | 'claim'
+    showClaim?:   boolean
   }) {
     const progress    = userMission?.progress ?? 0
     const isCompleted = userMission?.is_completed ?? false
     const isClaimed   = userMission?.is_claimed || claimedIds.has(userMission?.id ?? '')
+    const hasStarted  = !!userMission
     const pct         = mission.target_count > 0 ? Math.min((progress / mission.target_count) * 100, 100) : 0
     const type        = TYPE_LABELS[mission.type]
     const platform    = PLATFORM_FROM_OBJECTIVE[mission.objective_type]
     const endsIn      = Math.ceil((new Date(mission.ends_at).getTime() - Date.now()) / 86400000)
-    const isActioning = actionId === (action === 'claim' ? userMission?.id : mission.id)
+    const isActioning = actionId === userMission?.id
 
     return (
-      <div className={`bg-card border rounded-xl p-5 transition-all ${
-        isClaimed ? 'border-green-500/30 bg-green-500/5 opacity-70' :
-        isCompleted && !isClaimed ? 'border-yellow-400/40 bg-yellow-400/5' :
+      <div className={cn(
+        'bg-card border rounded-xl p-5 transition-all',
+        isClaimed          ? 'border-green-500/30 bg-green-500/5 opacity-70' :
+        isCompleted        ? 'border-yellow-400/40 bg-yellow-400/5' :
+        !hasStarted        ? 'border-border opacity-60' :
         'border-border'
-      }`}>
+      )}>
         <div className="flex items-start justify-between gap-4 mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -139,6 +128,11 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
                   <CheckCircle2 className="w-3 h-3" /> Reclamada
                 </span>
               )}
+              {!hasStarted && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-secondary text-muted-foreground">
+                  No iniciada
+                </span>
+              )}
             </div>
             <h3 className="text-sm font-semibold text-foreground">{mission.title}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">{mission.description}</p>
@@ -151,37 +145,27 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
           </div>
         </div>
 
-        {/* Barra de progreso — solo si está en progreso */}
-        {userMission && (
-          <div className="space-y-1 mb-3">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{progress} / {mission.target_count}</span>
-              {endsIn <= 365 && <span>Vence en {endsIn}d</span>}
-            </div>
-            <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${isClaimed ? 'bg-green-400' : isCompleted ? 'bg-yellow-400' : 'xp-bar'}`}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+        {/* Barra de progreso */}
+        <div className="space-y-1 mb-3">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{progress} / {mission.target_count}</span>
+            {endsIn <= 365 && <span>Vence en {endsIn}d</span>}
           </div>
-        )}
+          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+            <div
+              className={cn(
+                'h-full rounded-full transition-all duration-500',
+                isClaimed ? 'bg-green-400' : isCompleted ? 'bg-yellow-400' : 'xp-bar'
+              )}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
 
-        {/* Botones de acción */}
-        {action === 'accept' && (
+        {/* Botón reclamar */}
+        {showClaim && !isClaimed && userMission && (
           <button
-            onClick={() => handleAccept(mission.id)}
-            disabled={isActioning}
-            className="w-full mt-1 py-2 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 text-sm font-semibold text-primary-foreground transition-all flex items-center justify-center gap-2"
-          >
-            {isActioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Target className="w-4 h-4" />}
-            Aceptar misión
-          </button>
-        )}
-
-        {action === 'claim' && !isClaimed && (
-          <button
-            onClick={() => handleClaim(userMission!.id)}
+            onClick={() => handleClaim(userMission.id)}
             disabled={isActioning}
             className="w-full mt-1 py-2 rounded-lg bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-sm font-bold text-black transition-all flex items-center justify-center gap-2"
           >
@@ -196,17 +180,14 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
     )
   }
 
-  const currentList = tab === 'available' ? available
-    : tab === 'inprogress' ? inProgress
-    : tab === 'claim' ? toClaim
-    : completed
+  const currentList = tab === 'active' ? active : tab === 'claim' ? toClaim : completed
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Misiones</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Aceptá misiones, completalas y reclamá tus recompensas
+          Completá misiones para ganar XP y SalchiCoins. Se activan solas cuando empezás a participar.
         </p>
       </div>
 
@@ -229,9 +210,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
                 'text-[10px] px-1.5 py-0.5 rounded-full font-bold',
                 key === 'claim'
                   ? 'bg-yellow-400/20 text-yellow-400'
-                  : key === 'available'
-                  ? 'bg-primary/20 text-primary'
-                  : 'bg-green-500/20 text-green-400'
+                  : 'bg-primary/20 text-primary'
               )}>
                 {count}
               </span>
@@ -243,25 +222,23 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
       {/* Contenido */}
       {currentList.length === 0 ? (
         <div className="bg-card border border-border rounded-xl p-12 text-center">
-          {tab === 'available' ? (
-            <>
-              <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto mb-3 opacity-60" />
-              <p className="text-foreground font-semibold mb-1">¡Todo aceptado!</p>
-              <p className="text-sm text-muted-foreground">No hay misiones nuevas disponibles.</p>
-            </>
-          ) : tab === 'claim' ? (
+          {tab === 'claim' ? (
             <>
               <Gift className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
               <p className="text-foreground font-semibold mb-1">Nada por reclamar</p>
               <p className="text-sm text-muted-foreground">Completá misiones para ver tus recompensas acá.</p>
             </>
+          ) : tab === 'completed' ? (
+            <>
+              <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto mb-3 opacity-60" />
+              <p className="text-foreground font-semibold mb-1">Sin misiones completadas aún</p>
+              <p className="text-sm text-muted-foreground">Las misiones reclamadas aparecerán acá.</p>
+            </>
           ) : (
             <>
               <Target className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
-              <p className="text-foreground font-semibold mb-1">Sin misiones acá</p>
-              <p className="text-sm text-muted-foreground">
-                {tab === 'inprogress' ? 'Aceptá misiones desde la pestaña Disponibles.' : 'Las misiones completadas aparecerán acá.'}
-              </p>
+              <p className="text-foreground font-semibold mb-1">Sin misiones activas</p>
+              <p className="text-sm text-muted-foreground">Participá en Discord, Twitch, YouTube o Telegram para activar misiones.</p>
             </>
           )}
         </div>
@@ -272,11 +249,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
               key={mission.id}
               mission={mission}
               userMission={progressMap.get(mission.id)}
-              action={
-                tab === 'available' ? 'accept' :
-                tab === 'claim' ? 'claim' :
-                undefined
-              }
+              showClaim={tab === 'claim'}
             />
           ))}
         </div>

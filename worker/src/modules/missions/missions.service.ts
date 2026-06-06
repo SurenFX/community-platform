@@ -12,56 +12,102 @@ export class MissionsService {
   ) {}
 
   // ── Se dispara en cada evento de XP exitoso ─────────────────────────────
-  // Solo actualiza progreso de misiones que el usuario YA aceptó
+  // Auto-acepta misiones que el usuario no tenga y avanza las que ya tiene
   @OnEvent('xp.awarded')
   async updateMissionProgress(payload: { userId: string; eventType: string }) {
     try {
       const now = new Date().toISOString()
 
-      // Buscar user_missions aceptadas (is_completed=false) del tipo de evento
-      const { data: userMissions } = await this.supabase.db
+      // 1. Obtener todas las misiones activas del tipo de evento
+      const { data: allMissions } = await this.supabase.db
+        .from('missions')
+        .select('id, title, target_count, xp_reward, coin_reward, ends_at')
+        .eq('objective_type', payload.eventType)
+        .eq('is_active', true)
+        .gt('ends_at', now)
+
+      if (!allMissions?.length) return
+
+      // 2. Obtener user_missions existentes para este usuario y estas misiones
+      const missionIds = allMissions.map(m => m.id)
+      const { data: existingUMs } = await this.supabase.db
         .from('user_missions')
-        .select('id, progress, missions!inner(id, title, target_count, xp_reward, coin_reward, ends_at)')
-        .eq('user_id',                  payload.userId)
-        .eq('is_completed',             false)
-        .eq('missions.objective_type',  payload.eventType)
-        .eq('missions.is_active',       true)
-        .gt('missions.ends_at',         now)
+        .select('id, mission_id, progress, is_completed')
+        .eq('user_id', payload.userId)
+        .in('mission_id', missionIds)
 
-      if (!userMissions?.length) return
+      const existingMap = new Map((existingUMs ?? []).map(um => [um.mission_id, um]))
 
-      for (const um of userMissions as any[]) {
-        const mission     = um.missions
-        const newProgress = um.progress + 1
+      for (const mission of allMissions) {
+        const existing = existingMap.get(mission.id)
 
-        if (newProgress >= mission.target_count) {
-          // Marcar como completada — recompensas se dan al reclamar
-          await this.supabase.db
+        if (!existing) {
+          // ── Auto-aceptar: crear user_mission con progreso = 1 ────────────
+          const newProgress = 1
+          const completed   = newProgress >= mission.target_count
+
+          const { data: newUM, error } = await this.supabase.db
             .from('user_missions')
-            .update({
-              is_completed: true,
-              progress:     mission.target_count,
-              completed_at: new Date().toISOString(),
+            .insert({
+              user_id:      payload.userId,
+              mission_id:   mission.id,
+              progress:     completed ? mission.target_count : newProgress,
+              is_completed: completed,
+              is_claimed:   false,
+              completed_at: completed ? new Date().toISOString() : null,
             })
-            .eq('id', um.id)
+            .select('id')
+            .single()
 
-          this.logger.log(`🎯 Misión completada (por reclamar): user=${payload.userId} "${mission.title}"`)
+          if (error) {
+            this.logger.warn(`Auto-accept error mission=${mission.id}: ${error.message}`)
+            continue
+          }
 
-          // Notificar que hay una misión lista para reclamar
-          this.eventEmitter.emit('mission.ready_to_claim', {
-            userId:       payload.userId,
-            missionTitle: mission.title ?? 'Misión',
-            xpReward:     mission.xp_reward,
-            coinReward:   mission.coin_reward ?? 0,
-          })
-        } else {
-          await this.supabase.db
-            .from('user_missions')
-            .update({ progress: newProgress })
-            .eq('id', um.id)
+          if (completed) {
+            this.logger.log(`🎯 Misión auto-completada: user=${payload.userId} "${mission.title}"`)
+            this.eventEmitter.emit('mission.ready_to_claim', {
+              userId:       payload.userId,
+              missionTitle: mission.title ?? 'Misión',
+              xpReward:     mission.xp_reward,
+              coinReward:   mission.coin_reward ?? 0,
+            })
+          } else {
+            this.logger.debug(`Mission auto-accepted: user=${payload.userId} "${mission.title}" (1/${mission.target_count})`)
+          }
 
-          this.logger.debug(`Mission progress: user=${payload.userId} +1 (${newProgress}/${mission.target_count})`)
+        } else if (!existing.is_completed) {
+          // ── Avanzar progreso en misión ya existente ──────────────────────
+          const newProgress = existing.progress + 1
+
+          if (newProgress >= mission.target_count) {
+            await this.supabase.db
+              .from('user_missions')
+              .update({
+                is_completed: true,
+                progress:     mission.target_count,
+                completed_at: new Date().toISOString(),
+              })
+              .eq('id', existing.id)
+
+            this.logger.log(`🎯 Misión completada (por reclamar): user=${payload.userId} "${mission.title}"`)
+
+            this.eventEmitter.emit('mission.ready_to_claim', {
+              userId:       payload.userId,
+              missionTitle: mission.title ?? 'Misión',
+              xpReward:     mission.xp_reward,
+              coinReward:   mission.coin_reward ?? 0,
+            })
+          } else {
+            await this.supabase.db
+              .from('user_missions')
+              .update({ progress: newProgress })
+              .eq('id', existing.id)
+
+            this.logger.debug(`Mission progress: user=${payload.userId} "${mission.title}" (${newProgress}/${mission.target_count})`)
+          }
         }
+        // Si already is_completed → no hacer nada (esperando que reclame)
       }
     } catch (err) {
       this.logger.error(`updateMissionProgress error: ${err}`)
