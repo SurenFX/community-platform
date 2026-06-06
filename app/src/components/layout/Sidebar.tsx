@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { signOut } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
 import {
-  Home, Trophy, Target, Settings, LogOut, Shield, Ticket,
+  Home, Trophy, Target, Settings, LogOut, Shield, Ticket, CircleDollarSign,
 } from 'lucide-react'
 
 import SidebarXpBar from './SidebarXpBar'
@@ -21,6 +21,7 @@ const navItems = [
   { href: '/dashboard/comunidad',     label: 'Ranking',        icon: Trophy               },
   { href: '/dashboard/missions',      label: 'Misiones',       icon: Target               },
   { href: '/dashboard/raffles',       label: 'Sorteos',        icon: Ticket               },
+  { href: '/dashboard/coins',         label: 'SalchiCoins',    icon: CircleDollarSign     },
   { href: '/dashboard/configuracion', label: 'Configuración',  icon: Settings             },
 ]
 

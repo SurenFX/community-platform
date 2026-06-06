@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelColor, getLevelTitle, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'
 import type { UserReputation } from '@/types/database'
+import LevelUpModal from '@/components/profile/LevelUpModal'
 
 interface SidebarXpBarProps {
   userId:     string
@@ -14,9 +15,11 @@ interface SidebarXpBarProps {
 }
 
 export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, compact }: SidebarXpBarProps) {
-  const [rep,      setRep]      = useState(initialRep)
-  const [flashing, setFlashing] = useState(false)
-  const prevXpRef = useRef(initialRep?.total_xp ?? 0)
+  const [rep,        setRep]        = useState(initialRep)
+  const [flashing,   setFlashing]   = useState(false)
+  const [levelUp,    setLevelUp]    = useState<number | null>(null)
+  const prevXpRef    = useRef(initialRep?.total_xp ?? 0)
+  const prevLevelRef = useRef(initialRep?.level ?? 1)
 
   useEffect(() => {
     const supabase = createClient()
@@ -33,6 +36,10 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
           prevXpRef.current = newRep.total_xp
           setFlashing(true)
           setTimeout(() => setFlashing(false), 1000)
+        }
+        if (newRep.level > prevLevelRef.current) {
+          prevLevelRef.current = newRep.level
+          setLevelUp(newRep.level)
         }
         setRep(newRep)
       })
@@ -51,22 +58,27 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
 
   if (compact) {
     return (
-      <div className="space-y-1">
-        <div className="flex justify-between text-[10px] text-muted-foreground">
-          <span className={`font-medium ${getLevelColor(level)}`}>Nv. {level} — {getLevelTitle(level)}</span>
-          <span>{totalXp.toLocaleString('es-AR')} XP</span>
+      <>
+        {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
+        <div className="space-y-1">
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span className={`font-medium ${getLevelColor(level)}`}>Nv. {level} — {getLevelTitle(level)}</span>
+            <span>{totalXp.toLocaleString('es-AR')} XP</span>
+          </div>
+          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+            <div
+              className={`h-full xp-bar rounded-full transition-all duration-700 ${flashing ? 'xp-bar-flash' : ''}`}
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
         </div>
-        <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-          <div
-            className={`h-full xp-bar rounded-full transition-all duration-700 ${flashing ? 'xp-bar-flash' : ''}`}
-            style={{ width: `${progressPct}%` }}
-          />
-        </div>
-      </div>
+      </>
     )
   }
 
   return (
+    <>
+    {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-3">
         <div className="relative shrink-0">
@@ -99,5 +111,6 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
         </div>
       </div>
     </div>
+    </>
   )
 }

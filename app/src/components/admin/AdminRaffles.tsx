@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Trophy, Plus, Users, Ticket, Play, X, Check, Loader2, Crown, XCircle, Trash2 } from 'lucide-react'
+import { Trophy, Plus, Users, Ticket, Play, X, Check, Loader2, Crown, XCircle, Trash2, Eye } from 'lucide-react'
+import Link from 'next/link'
 import { createRaffle, drawRaffle, cancelRaffle, deleteRaffle } from '@/app/actions/admin'
 
 interface Raffle {
@@ -248,6 +249,13 @@ export default function AdminRafflesClient({ raffles: initial, poolMap }: AdminR
                   )}
 
                   <div className="flex items-center gap-2">
+                    <Link
+                      href={`/admin/raffles/${raffle.id}/participants`}
+                      title="Ver participantes"
+                      className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </Link>
                     {raffle.status === 'ACTIVE' && (
                       <>
                         <button onClick={() => handleDraw(raffle.id)} disabled={isDrawing}
