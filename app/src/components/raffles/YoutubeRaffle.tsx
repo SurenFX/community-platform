@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Youtube, MessageSquare, Eye, ArrowLeft, Trophy, Shuffle, Loader2, Check, Users, Hash, ExternalLink, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 const YOUTUBE_API_KEY = process.env.NEXT_PUBLIC_YOUTUBE_API_KEY
 const CHANNEL_ID      = 'UCrEPUgjVon78Htzr_ZrJ7ug'
@@ -178,6 +179,28 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
     }
   }
 
+  async function saveWinnerToDb(picked: Comment) {
+    try {
+      const supabase = createClient()
+      const winnerVideo = videos.find(v => v.id === picked.videoId)
+      const originalCommentId = picked.id.includes('_') ? picked.id.split('_')[0] : picked.id
+      const commentUrl = `https://youtube.com/watch?v=${picked.videoId}&lc=${originalCommentId}`
+
+      await supabase.from('youtube_raffles').insert({
+        video_id:            picked.videoId,
+        video_title:         winnerVideo?.title ?? null,
+        video_url:           winnerVideo?.url ?? null,
+        winner_youtube_name: picked.author,
+        winner_comment:      picked.text.slice(0, 500),
+        winner_comment_url:  commentUrl,
+        winner_photo_url:    picked.authorPhoto,
+        total_participants:  comments.length,
+      })
+    } catch (err) {
+      console.warn('Error guardando sorteo YouTube:', err)
+    }
+  }
+
   function startSpin() {
     if (!comments.length) return
     setStage('spinning')
@@ -194,6 +217,7 @@ export default function YoutubeRaffle({ backHref = '/dashboard/raffles' }: { bac
         const picked = comments[Math.floor(Math.random() * comments.length)]
         setWinner(picked)
         setSpinningName(picked.author)
+        saveWinnerToDb(picked)
         setTimeout(() => setStage('winner'), 400)
       } else {
         spinIntervalRef.current = setTimeout(tick, speed)

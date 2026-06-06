@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Youtube, Tv } from 'lucide-react'
+import { Youtube, Tv, History } from 'lucide-react'
 import AdminRafflesClient from '@/components/admin/AdminRaffles'
 
 export default async function AdminRafflesPage() {
@@ -27,9 +27,16 @@ export default async function AdminRafflesPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Sorteos</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Gestioná todos los tipos de sorteos</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Sorteos</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Gestioná todos los tipos de sorteos</p>
+        </div>
+        <Link href="/admin/raffles/history"
+          className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground bg-secondary hover:bg-secondary/80 border border-border px-4 py-2 rounded-xl transition-all">
+          <History className="w-4 h-4" />
+          Ver historial
+        </Link>
       </div>
 
       {/* Sorteos en vivo — YouTube y Twitch */}
