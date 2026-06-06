@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Zap, ArrowLeft } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 
 export default function TerminosPage() {
   const updated = '4 de junio de 2026'
@@ -11,10 +11,8 @@ export default function TerminosPage() {
       <nav className="border-b border-border/50 bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-primary" />
-            </div>
-            <span className="font-bold text-foreground tracking-wide">COMMUNITY</span>
+            <span className="text-xl">🌭</span>
+            <span className="font-extrabold text-foreground tracking-tight">SalchiNeta</span>
           </Link>
           <Link href="/" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="w-4 h-4" />
@@ -120,7 +118,7 @@ export default function TerminosPage() {
       </main>
 
       <footer className="border-t border-border/50 py-8 px-6 text-center">
-        <p className="text-xs text-muted-foreground">Community Platform · Términos de Uso</p>
+        <p className="text-xs text-muted-foreground">🌭 SalchiNeta · Términos de Uso</p>
       </footer>
 
     </div>

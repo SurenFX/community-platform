@@ -5,8 +5,19 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Community Platform',
-  description: 'Tu hub de engagement y reputación gaming',
+  title: 'SalchiNeta — Comunidad',
+  description: 'Ganá XP por participar en Discord, Twitch, YouTube y Telegram. Subí de nivel, desbloqueá badges y competí en el ranking.',
+  openGraph: {
+    title:       'SalchiNeta — Comunidad',
+    description: 'Ganá XP por participar en Discord, Twitch, YouTube y Telegram.',
+    type:        'website',
+    locale:      'es_AR',
+  },
+  twitter: {
+    card:        'summary',
+    title:       'SalchiNeta — Comunidad',
+    description: 'Ganá XP por participar en Discord, Twitch, YouTube y Telegram.',
+  },
 }
 
 export default function RootLayout({
