@@ -191,9 +191,6 @@ export default function Sidebar({ profile }: SidebarProps) {
         </button>
         <span className="text-xl">🌭</span>
         <span className="font-extrabold text-foreground text-sm tracking-tight">SalchiNeta</span>
-        <div className="ml-auto">
-          <NotificationBell userId={profile?.id} />
-        </div>
       </div>
 
       {/* Backdrop — mobile only */}
