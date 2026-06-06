@@ -31,7 +31,7 @@ export default function PrivacidadPage() {
         <section className="space-y-3">
           <h2 className="text-lg font-bold text-foreground">1. Quiénes somos</h2>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            Community Platform es una plataforma de comunidad que unifica la actividad de sus miembros en múltiples redes sociales (Discord, Twitch, YouTube y Telegram) con el objetivo de reconocer y recompensar la participación activa.
+            SalchiNeta es una plataforma de comunidad que unifica la actividad de sus miembros en múltiples redes sociales (Discord, Twitch, YouTube y Telegram) con el objetivo de reconocer y recompensar la participación activa.
           </p>
         </section>
 

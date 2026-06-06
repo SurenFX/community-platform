@@ -44,7 +44,7 @@ function LoginContent() {
             SalchiNeta
           </h1>
           <p className="text-muted-foreground mt-2 text-sm">
-            Community Platform — Ganá XP, subí de nivel, dominá el ranking
+            Ganá XP, subí de nivel, dominá el ranking
           </p>
         </div>
 

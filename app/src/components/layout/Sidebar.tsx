@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import {
   Home, Trophy, Target, Settings, LogOut, Shield, Ticket,
 } from 'lucide-react'
+
 import SidebarXpBar from './SidebarXpBar'
 import NotificationBell from './NotificationBell'
 import type { Profile, UserReputation } from '@/types/database'
@@ -32,14 +33,10 @@ export default function Sidebar({ profile }: SidebarProps) {
       {/* Logo */}
       <div className="p-5 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
-            <Shield className="w-4 h-4 text-primary" />
-          </div>
+          <span className="text-xl">🌭</span>
           <div className="flex items-center gap-1.5 flex-1">
-            <span className="font-bold text-foreground text-sm tracking-wide uppercase">
-              Community
-            </span>
-            <span className="text-[9px] font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded-full tracking-wide">
+            <span className="font-extrabold text-foreground tracking-tight text-sm">SalchiNeta</span>
+            <span className="text-[9px] font-bold bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">
               BETA
             </span>
           </div>

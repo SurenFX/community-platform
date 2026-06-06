@@ -31,7 +31,7 @@ export default function TerminosPage() {
         <section className="space-y-3">
           <h2 className="text-lg font-bold text-foreground">1. Aceptación de los términos</h2>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            Al registrarte y usar Community Platform, aceptás estos Términos de Uso en su totalidad. Si no estás de acuerdo con alguno de estos términos, no debés usar la plataforma.
+            Al registrarte y usar SalchiNeta, aceptás estos Términos de Uso en su totalidad. Si no estás de acuerdo con alguno de estos términos, no debés usar la plataforma.
           </p>
         </section>
 
