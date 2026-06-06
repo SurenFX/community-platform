@@ -30,6 +30,17 @@ const EVENT_LABELS: Record<string, string> = {
   ADMIN_MANUAL_GRANT:        'XP otorgado por admin',
 }
 
+const EVENT_SUBLABEL = (event: any): string | null => {
+  switch (event.event_type) {
+    case 'DISCORD_VOICE_TIME':  return '10 min en canal de voz'
+    case 'TWITCH_WATCH_TIME':   return '10 min viendo el stream'
+    case 'YOUTUBE_COMMENT':     return event.metadata?.comment_text
+      ? `"${String(event.metadata.comment_text).slice(0, 40)}${String(event.metadata.comment_text).length > 40 ? '…' : ''}"`
+      : null
+    default: return null
+  }
+}
+
 const PLATFORM_ICONS: Record<string, string> = {
   DISCORD:  '🎮',
   TWITCH:   '🟣',
@@ -37,16 +48,55 @@ const PLATFORM_ICONS: Record<string, string> = {
   TELEGRAM: '✈️',
 }
 
+const PLATFORM_COLOR: Record<string, string> = {
+  DISCORD:  'bg-indigo-500/20 text-indigo-300',
+  TWITCH:   'bg-purple-500/20 text-purple-300',
+  YOUTUBE:  'bg-red-500/20 text-red-300',
+  TELEGRAM: 'bg-sky-500/20 text-sky-300',
+  SYSTEM:   'bg-primary/20 text-primary',
+}
+
+const EVENT_PLATFORM: Record<string, string> = {
+  DISCORD_MESSAGE:           'DISCORD',
+  DISCORD_REACTION_RECEIVED: 'DISCORD',
+  DISCORD_REACTION_GIVEN:    'DISCORD',
+  DISCORD_HELPED_USER:       'DISCORD',
+  DISCORD_VOICE_TIME:        'DISCORD',
+  DISCORD_JOIN:              'DISCORD',
+  TWITCH_WATCH_TIME:         'TWITCH',
+  TWITCH_CHAT_MESSAGE:       'TWITCH',
+  TWITCH_FOLLOW:             'TWITCH',
+  TWITCH_SUBSCRIBE:          'TWITCH',
+  TWITCH_GIFT_SUB:           'TWITCH',
+  TWITCH_RAID_PARTICIPATE:   'TWITCH',
+  YOUTUBE_COMMENT:           'YOUTUBE',
+  YOUTUBE_SUBSCRIBE:         'YOUTUBE',
+  YOUTUBE_SHARE:             'YOUTUBE',
+  TELEGRAM_MESSAGE:          'TELEGRAM',
+  TELEGRAM_JOIN:             'TELEGRAM',
+  TELEGRAM_REACTION:         'TELEGRAM',
+  MISSION_COMPLETED:         'SYSTEM',
+  STREAK_BONUS:              'SYSTEM',
+  BADGE_EARNED:              'SYSTEM',
+  ADMIN_MANUAL_GRANT:        'SYSTEM',
+}
+
 const RARITY_COLORS: Record<string, string> = {
-  BRONZE:    'border-amber-700/30 bg-amber-700/10',
-  SILVER:    'border-slate-400/30 bg-slate-400/10',
-  GOLD:      'border-yellow-400/30 bg-yellow-400/10',
-  LEGENDARY: 'border-purple-400/30 bg-purple-400/10',
-  // legacy
+  BRONZE:    'border-amber-700/40 bg-amber-700/10',
+  SILVER:    'border-slate-400/40 bg-slate-400/10',
+  GOLD:      'border-yellow-400/40 bg-yellow-400/10',
+  LEGENDARY: 'border-purple-400/40 bg-purple-400/10',
   COMMON:    'border-gray-500/30 bg-gray-500/10',
   UNCOMMON:  'border-green-500/30 bg-green-500/10',
   RARE:      'border-blue-500/30 bg-blue-500/10',
   EPIC:      'border-purple-500/30 bg-purple-500/10',
+}
+
+const RARITY_GLOW: Record<string, string> = {
+  LEGENDARY: '0 0 12px hsl(270 80% 60% / 0.3)',
+  GOLD:      '0 0 10px hsl(45 100% 55% / 0.25)',
+  EPIC:      '0 0 10px hsl(270 80% 60% / 0.2)',
+  RARE:      '0 0 8px hsl(210 80% 60% / 0.2)',
 }
 
 export default async function PublicProfilePage({
@@ -56,7 +106,6 @@ export default async function PublicProfilePage({
 }) {
   const { username } = await params
 
-  // Usuario autenticado (para mostrar botón de editar en perfil propio)
   const authClient = await createClient()
   const { data: { user: currentUser } } = await authClient.auth.getUser()
 
@@ -66,8 +115,7 @@ export default async function PublicProfilePage({
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  // Queries separadas para evitar problemas con joins anidados
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile } = await supabase
     .from('profiles')
     .select('id, username, discord_tag, avatar_url, bio, created_at, is_admin')
     .eq('username', decodeURIComponent(username))
@@ -101,7 +149,7 @@ export default async function PublicProfilePage({
       .eq('is_public', true),
     supabase
       .from('xp_events')
-      .select('event_type, xp_awarded, created_at')
+      .select('event_type, xp_awarded, created_at, metadata, platform')
       .eq('user_id', profile.id)
       .order('created_at', { ascending: false })
       .limit(10),
@@ -118,7 +166,7 @@ export default async function PublicProfilePage({
   const events    = eventsRes.data ?? []
   const allEvents = (eventsRes2 as any)?.data ?? []
 
-  // Desglose de XP por plataforma
+  // XP por plataforma
   const xpByPlatform: Record<string, number> = {}
   for (const e of allEvents) {
     if (!e.platform || e.platform === 'DISCORD' && e.xp_awarded === 0) continue
@@ -133,7 +181,7 @@ export default async function PublicProfilePage({
       pct: totalXpAllPlatforms > 0 ? Math.round((xp / totalXpAllPlatforms) * 100) : 0,
     }))
 
-  // Agrupar badges por familia
+  // Badges por familia
   const badgesByFamily: Record<string, any[]> = {}
   for (const badge of allBadges) {
     const fam = (badge as any).family ?? 'other'
@@ -176,16 +224,21 @@ export default async function PublicProfilePage({
     <div className="max-w-3xl mx-auto space-y-6">
 
       {/* Header */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="h-24 xp-bar opacity-30" />
+      <div className="fade-in-up bg-card border border-border rounded-2xl overflow-hidden">
+        {/* Banner con gradiente animado */}
+        <div className="h-28 relative overflow-hidden">
+          <div className="absolute inset-0 xp-bar opacity-25" />
+          <div className="absolute inset-0"
+            style={{ background: 'radial-gradient(ellipse at 30% 50%, hsl(185 100% 45% / 0.3) 0%, transparent 60%), radial-gradient(ellipse at 70% 50%, hsl(45 100% 55% / 0.2) 0%, transparent 60%)' }} />
+        </div>
         <div className="px-6 pb-6">
-          <div className="flex items-end gap-4 -mt-10 mb-4">
+          <div className="flex items-end gap-4 -mt-12 mb-4">
             {profile.avatar_url ? (
               <img src={profile.avatar_url} alt={profile.username}
-                className="w-20 h-20 rounded-2xl ring-4 ring-card border-2 border-border" />
+                className="w-24 h-24 rounded-2xl ring-4 ring-card border-2 border-border shadow-xl" />
             ) : (
-              <div className="w-20 h-20 rounded-2xl ring-4 ring-card border-2 border-border bg-primary/20 flex items-center justify-center">
-                <span className="text-2xl font-bold text-primary">
+              <div className="w-24 h-24 rounded-2xl ring-4 ring-card border-2 border-border bg-primary/20 flex items-center justify-center shadow-xl">
+                <span className="text-3xl font-bold text-primary">
                   {profile.username[0].toUpperCase()}
                 </span>
               </div>
@@ -210,23 +263,26 @@ export default async function PublicProfilePage({
           </div>
 
           {profile.bio && (
-            <p className="text-sm text-muted-foreground mb-4">{profile.bio}</p>
+            <p className="text-sm text-muted-foreground mb-4 italic">"{profile.bio}"</p>
           )}
 
+          {/* XP bar */}
           <div className="mb-4">
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
               <span>{xpCurrent.toLocaleString()} / {xpNeeded.toLocaleString()} XP</span>
-              <span>Nv. {level + 1}</span>
+              <span className="font-semibold">Nv. {level + 1}</span>
             </div>
-            <div className="h-2 bg-secondary rounded-full overflow-hidden">
-              <div className="h-full xp-bar rounded-full transition-all" style={{ width: `${xpPercent}%` }} />
+            <div className="h-2.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full xp-bar rounded-full transition-all duration-700"
+                style={{ width: `${xpPercent}%` }} />
             </div>
           </div>
 
           {links.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
               {links.map((link: any) => (
-                <span key={link.platform} className="flex items-center gap-1.5 text-xs bg-secondary text-muted-foreground px-2.5 py-1 rounded-lg">
+                <span key={link.platform}
+                  className="flex items-center gap-1.5 text-xs bg-secondary text-muted-foreground px-2.5 py-1 rounded-lg border border-border/50">
                   <span>{PLATFORM_ICONS[link.platform] ?? '🔗'}</span>
                   @{link.username}
                 </span>
@@ -239,22 +295,26 @@ export default async function PublicProfilePage({
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'XP Total',    value: totalXp.toLocaleString(),           icon: Zap,      color: 'text-yellow-400' },
-          { label: 'Racha',       value: `${rep?.current_streak ?? 0} días`,  icon: Flame,    color: 'text-orange-400' },
-          { label: 'Mejor racha', value: `${rep?.longest_streak ?? 0} días`,  icon: Trophy,   color: 'text-purple-400' },
-          { label: 'Miembro',     value: memberSince,                         icon: Calendar, color: 'text-blue-400',  small: true },
-        ].map(({ label, value, icon: Icon, color, small }: any) => (
-          <div key={label} className="bg-card border border-border rounded-xl p-4 text-center">
-            <Icon className={`w-5 h-5 ${color} mx-auto mb-2`} />
-            <p className={`font-bold text-foreground ${small ? 'text-xs' : 'text-lg'}`}>{value}</p>
+          { label: 'XP Total',    value: totalXp.toLocaleString(),           icon: Zap,      color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+          { label: 'Racha',       value: `${rep?.current_streak ?? 0} días`,  icon: Flame,    color: 'text-orange-400', bg: 'bg-orange-400/10' },
+          { label: 'Mejor racha', value: `${rep?.longest_streak ?? 0} días`,  icon: Trophy,   color: 'text-purple-400', bg: 'bg-purple-400/10' },
+          { label: 'Miembro',     value: memberSince,                         icon: Calendar, color: 'text-blue-400',   bg: 'bg-blue-400/10',  small: true },
+        ].map(({ label, value, icon: Icon, color, bg, small }: any, i) => (
+          <div key={label}
+            className="fade-in-up bg-card border border-border rounded-xl p-4 text-center"
+            style={{ animationDelay: `${i * 60}ms` }}>
+            <div className={`inline-flex p-2 rounded-lg ${bg} mb-2`}>
+              <Icon className={`w-4 h-4 ${color}`} />
+            </div>
+            <p className={`font-bold text-foreground ${small ? 'text-xs leading-tight' : 'text-lg'}`}>{value}</p>
             <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
           </div>
         ))}
       </div>
 
-      {/* Desglose XP por plataforma */}
+      {/* XP por plataforma */}
       {platformBreakdown.length > 0 && (
-        <div className="bg-card border border-border rounded-2xl p-6">
+        <div className="fade-in-up bg-card border border-border rounded-2xl p-6" style={{ animationDelay: '80ms' }}>
           <h2 className="text-base font-bold text-foreground mb-4">XP por plataforma</h2>
           <div className="space-y-3">
             {platformBreakdown.map(({ platform, xp, pct }) => {
@@ -267,12 +327,13 @@ export default async function PublicProfilePage({
               const p = cfg[platform] ?? { label: platform, color: 'text-muted-foreground', bar: 'bg-muted-foreground' }
               return (
                 <div key={platform}>
-                  <div className="flex items-center justify-between text-xs mb-1">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
                     <span className={`font-semibold ${p.color}`}>{p.label}</span>
                     <span className="text-muted-foreground">{xp.toLocaleString()} XP · {pct}%</span>
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full transition-all duration-700 ${p.bar}`} style={{ width: `${pct}%` }} />
+                    <div className={`h-full rounded-full transition-all duration-700 ${p.bar}`}
+                      style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               )
@@ -282,7 +343,7 @@ export default async function PublicProfilePage({
       )}
 
       {/* Badges */}
-      <div className="bg-card border border-border rounded-2xl p-6">
+      <div className="fade-in-up bg-card border border-border rounded-2xl p-6" style={{ animationDelay: '120ms' }}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-bold text-foreground">Badges</h2>
           <span className="text-xs text-muted-foreground">
@@ -291,34 +352,47 @@ export default async function PublicProfilePage({
         </div>
 
         <div className="space-y-5">
-          {Object.entries(badgesByFamily).map(([family, fBadges]) => {
+          {Object.entries(badgesByFamily).map(([family, fBadges], fi) => {
             const earned = fBadges.filter(b => earnedIds.has(b.id))
             return (
               <div key={family}>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-2.5">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     {FAMILY_LABELS[family] ?? family}
                   </p>
                   <span className="text-xs text-muted-foreground">{earned.length}/{fBadges.length}</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {fBadges.map((badge: any) => {
+                  {fBadges.map((badge: any, bi) => {
                     const isEarned = earnedIds.has(badge.id)
+                    const glow = RARITY_GLOW[badge.tier ?? ''] ?? undefined
                     return (
                       <div
                         key={badge.id}
-                        className={`border rounded-xl p-3 flex items-center gap-3 transition-all ${
+                        className={`fade-in-up border rounded-xl p-3 flex items-center gap-3 transition-all ${
                           isEarned
-                            ? RARITY_COLORS[badge.tier ?? 'COMMON']
-                            : 'border-border bg-secondary/30 opacity-40 grayscale'
+                            ? `${RARITY_COLORS[badge.tier ?? 'COMMON']} badge-earned cursor-default`
+                            : 'border-border bg-secondary/30 opacity-35 grayscale'
                         }`}
+                        style={{
+                          animationDelay: `${(fi * 3 + bi) * 30}ms`,
+                          ...(isEarned && glow ? { boxShadow: glow } : {}),
+                        }}
                       >
-                        <span className="text-2xl">{badge.image_url || '🏅'}</span>
+                        <span className="text-2xl shrink-0">{badge.image_url || '🏅'}</span>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{badge.name}</p>
                           <p className="text-xs text-muted-foreground truncate">
                             {isEarned ? badge.description : '???'}
                           </p>
+                          {isEarned && badge.tier && (
+                            <span className={`text-[9px] font-bold uppercase tracking-wider mt-0.5 inline-block ${
+                              badge.tier === 'LEGENDARY' ? 'text-purple-400'
+                              : badge.tier === 'GOLD'    ? 'text-yellow-400'
+                              : badge.tier === 'SILVER'  ? 'text-slate-400'
+                              : 'text-amber-700'
+                            }`}>{badge.tier}</span>
+                          )}
                         </div>
                       </div>
                     )
@@ -332,22 +406,36 @@ export default async function PublicProfilePage({
 
       {/* Actividad reciente */}
       {events.length > 0 && (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="fade-in-up bg-card border border-border rounded-2xl overflow-hidden" style={{ animationDelay: '160ms' }}>
           <div className="px-6 py-4 border-b border-border">
             <h2 className="text-base font-bold text-foreground">Actividad reciente</h2>
           </div>
           <div className="divide-y divide-border">
-            {events.map((event: any, i: number) => (
-              <div key={i} className="flex items-center justify-between px-6 py-3">
-                <div>
-                  <p className="text-sm text-foreground">
-                    {EVENT_LABELS[event.event_type] ?? event.event_type}
-                  </p>
-                  <p className="text-xs text-muted-foreground">{timeAgo(event.created_at)}</p>
+            {events.map((event: any, i: number) => {
+              const platform = event.platform ?? EVENT_PLATFORM[event.event_type] ?? 'SYSTEM'
+              const colorClass = PLATFORM_COLOR[platform] ?? 'bg-primary/20 text-primary'
+              const icon = PLATFORM_ICONS[platform] ?? '⚡'
+              const sublabel = EVENT_SUBLABEL(event)
+              return (
+                <div key={i}
+                  className="fade-in-up row-hover flex items-center gap-3 px-5 py-3"
+                  style={{ animationDelay: `${160 + i * 30}ms` }}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 ${colorClass}`}>
+                    {icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground">
+                      {EVENT_LABELS[event.event_type] ?? event.event_type}
+                    </p>
+                    {sublabel && (
+                      <p className="text-xs text-muted-foreground truncate">{sublabel}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground/60">{timeAgo(event.created_at)}</p>
+                  </div>
+                  <span className="text-sm font-bold text-primary shrink-0">+{event.xp_awarded} XP</span>
                 </div>
-                <span className="text-sm font-bold text-primary">+{event.xp_awarded} XP</span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
