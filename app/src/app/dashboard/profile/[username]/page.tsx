@@ -159,8 +159,9 @@ export default async function PublicProfilePage({
       .eq('user_id', profile.id),
   ])
 
-  const rep       = repRes.data
-  const earnedIds = new Set((badgesRes.data ?? []).map((b: any) => b.badge_id))
+  const rep        = repRes.data
+  const earnedIds  = new Set((badgesRes.data ?? []).map((b: any) => b.badge_id))
+  const earnedDates = new Map((badgesRes.data ?? []).map((b: any) => [b.badge_id, b.earned_at as string]))
   const allBadges = allBadgesRes.data ?? []
   const links     = linksRes.data ?? []
   const events    = eventsRes.data ?? []
@@ -365,10 +366,15 @@ export default async function PublicProfilePage({
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {fBadges.map((badge: any, bi) => {
                     const isEarned = earnedIds.has(badge.id)
-                    const glow = RARITY_GLOW[badge.tier ?? ''] ?? undefined
+                    const glow      = RARITY_GLOW[badge.tier ?? ''] ?? undefined
+                    const earnedAt  = earnedDates.get(badge.id)
+                    const earnedStr = earnedAt
+                      ? new Date(earnedAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+                      : undefined
                     return (
                       <div
                         key={badge.id}
+                        title={isEarned && earnedStr ? `Ganado el ${earnedStr}` : undefined}
                         className={`fade-in-up border rounded-xl p-3 flex items-center gap-3 transition-all ${
                           isEarned
                             ? `${RARITY_COLORS[badge.tier ?? 'COMMON']} badge-earned cursor-default`
