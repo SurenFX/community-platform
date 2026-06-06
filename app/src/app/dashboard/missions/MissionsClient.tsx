@@ -50,20 +50,28 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
 
   const progressMap = new Map(localUserMissions.map(um => [um.mission_id, um]))
 
-  // Misiones activas: todas las misiones que no están completadas/reclamadas
-  // Incluye las que todavía no han empezado (progreso 0) y las en progreso
-  const active = missions.filter(m => {
-    const um = progressMap.get(m.id)
-    if (!um) return true                          // no iniciada — se muestra igual
-    return !um.is_completed                       // en progreso
-  })
+  // Misiones activas: todas las que no están completadas/reclamadas
+  // Ordenadas: en progreso primero, luego no iniciadas
+  const active = missions
+    .filter(m => {
+      const um = progressMap.get(m.id)
+      if (!um) return true
+      return !um.is_completed
+    })
+    .sort((a, b) => {
+      const pa = progressMap.get(a.id)?.progress ?? 0
+      const pb = progressMap.get(b.id)?.progress ?? 0
+      return pb - pa  // mayor progreso primero
+    })
 
   const toClaim = missions.filter(m => {
+    if ((m as any)._expired_unclaimed) return false
     const um = progressMap.get(m.id)
     return um && um.is_completed && !um.is_claimed && !claimedIds.has(um.id)
   })
 
   const completed = missions.filter(m => {
+    if ((m as any)._expired_unclaimed) return true   // expiradas van aquí
     const um = progressMap.get(m.id)
     return um && um.is_completed && (um.is_claimed || claimedIds.has(um.id))
   })
@@ -94,6 +102,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
     userMission?: UserMission
     showClaim?:   boolean
   }) {
+    const isExpiredUnclaimed = !!(mission as any)._expired_unclaimed
     const progress    = userMission?.progress ?? 0
     const isCompleted = userMission?.is_completed ?? false
     const isClaimed   = userMission?.is_claimed || claimedIds.has(userMission?.id ?? '')
@@ -107,6 +116,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
     return (
       <div className={cn(
         'bg-card border rounded-xl p-5 transition-all',
+        isExpiredUnclaimed ? 'border-border opacity-50' :
         isClaimed          ? 'border-green-500/30 bg-green-500/5 opacity-70' :
         isCompleted        ? 'border-yellow-400/40 bg-yellow-400/5' :
         !hasStarted        ? 'border-border opacity-60' :
@@ -123,7 +133,12 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
                   {platform.label}
                 </span>
               )}
-              {isClaimed && (
+              {isExpiredUnclaimed && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-red-500/15 text-red-400">
+                  Expirada sin reclamar
+                </span>
+              )}
+              {!isExpiredUnclaimed && isClaimed && (
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-green-500/15 text-green-400 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3" /> Reclamada
                 </span>
@@ -163,7 +178,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
         </div>
 
         {/* Botón reclamar */}
-        {showClaim && !isClaimed && userMission && (
+        {showClaim && !isClaimed && !isExpiredUnclaimed && userMission && (
           <button
             onClick={() => handleClaim(userMission.id)}
             disabled={isActioning}

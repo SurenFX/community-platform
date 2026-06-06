@@ -87,13 +87,13 @@ export class YoutubeService {
       // 1. Obtener usuarios con YouTube conectado
       const { data: socialLinks } = await this.supabase.db
         .from('user_social_links')
-        .select('user_id, external_id, username')
+        .select('user_id, external_id, username, created_at')
         .eq('platform', 'YOUTUBE')
 
       if (!socialLinks?.length) return
 
-      // Mapa de youtube_channel_id → {userId, discordId}
-      const ytUserMap = new Map<string, { userId: string; discordId: string }>()
+      // Mapa de youtube_channel_id → {userId, discordId, connectedAt}
+      const ytUserMap = new Map<string, { userId: string; discordId: string; connectedAt: string }>()
 
       for (const link of socialLinks) {
         // Obtener discord_id del perfil
@@ -105,8 +105,9 @@ export class YoutubeService {
 
         if (profile) {
           ytUserMap.set(link.external_id, {
-            userId:   link.user_id,
-            discordId: profile.discord_id,
+            userId:      link.user_id,
+            discordId:   profile.discord_id,
+            connectedAt: link.created_at ?? new Date(0).toISOString(),
           })
         }
       }
@@ -189,7 +190,7 @@ export class YoutubeService {
 
   private async scanVideoComments(
     videoId: string,
-    ytUserMap: Map<string, { userId: string; discordId: string }>
+    ytUserMap: Map<string, { userId: string; discordId: string; connectedAt: string }>
   ) {
     try {
       const res = await fetch(
@@ -198,14 +199,18 @@ export class YoutubeService {
       const data = await res.json()
 
       for (const item of data.items ?? []) {
-        const comment    = item.snippet.topLevelComment.snippet
-        const authorId   = comment.authorChannelId?.value
-        const commentId  = item.id
+        const comment     = item.snippet.topLevelComment.snippet
+        const authorId    = comment.authorChannelId?.value
+        const commentId   = item.id
         const commentText = comment.textDisplay
+        const commentedAt = comment.publishedAt ?? ''
 
         if (!authorId || !ytUserMap.has(authorId)) continue
 
-        const { userId, discordId } = ytUserMap.get(authorId)!
+        const { userId, discordId, connectedAt } = ytUserMap.get(authorId)!
+
+        // Ignorar comentarios publicados antes de que el usuario conectara YouTube
+        if (commentedAt && commentedAt < connectedAt) continue
 
         // Verificar que no hayamos recompensado este comentario antes
         const { data: existing } = await this.supabase.db

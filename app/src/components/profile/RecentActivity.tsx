@@ -98,12 +98,27 @@ export default function RecentActivity({ events }: RecentActivityProps) {
               label: event.event_type,
               color: 'text-muted-foreground',
             }
+
+            // Sublabel contextual para eventos de tiempo/volumen
+            let sublabel: string | null = null
+            if (event.event_type === 'DISCORD_VOICE_TIME') {
+              sublabel = '10 min en canal de voz'
+            } else if (event.event_type === 'TWITCH_WATCH_TIME') {
+              sublabel = '10 min viendo el stream'
+            } else if (event.event_type === 'YOUTUBE_COMMENT' && (event.metadata as any)?.comment_text) {
+              const text = (event.metadata as any).comment_text as string
+              sublabel = `"${text.slice(0, 40)}${text.length > 40 ? '…' : ''}"`
+            }
+
             return (
               <div key={event.id} className="flex items-center justify-between pr-1">
                 <div>
                   <p className={`text-sm font-medium ${meta.color}`}>
                     {meta.label}
                   </p>
+                  {sublabel && (
+                    <p className="text-xs text-muted-foreground italic">{sublabel}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     {timeAgo(event.created_at)}
                   </p>

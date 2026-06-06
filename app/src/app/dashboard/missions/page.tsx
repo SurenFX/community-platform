@@ -9,7 +9,8 @@ export default async function MissionsPage() {
 
   const now = new Date().toISOString()
 
-  const { data: missionsRaw } = await supabase
+  // Misiones activas (no expiradas)
+  const { data: activeMissionsRaw } = await supabase
     .from('missions')
     .select('*')
     .eq('is_active', true)
@@ -21,6 +22,20 @@ export default async function MissionsPage() {
     .from('user_missions')
     .select('*')
     .eq('user_id', user.id)
+
+  // Misiones expiradas sin reclamar — para mostrarlas como "Expiradas" en Completadas
+  const activeMissionIds = (activeMissionsRaw ?? []).map((m: any) => m.id)
+  const unclaimedExpiredUMs = (userMissionsRaw ?? []).filter(
+    (um: any) => um.is_completed && !um.is_claimed && !activeMissionIds.includes(um.mission_id)
+  )
+  let expiredMissionsRaw: any[] = []
+  if (unclaimedExpiredUMs.length > 0) {
+    const expiredIds = unclaimedExpiredUMs.map((um: any) => um.mission_id)
+    const { data } = await supabase.from('missions').select('*').in('id', expiredIds)
+    expiredMissionsRaw = (data ?? []).map((m: any) => ({ ...m, _expired_unclaimed: true }))
+  }
+
+  const missionsRaw = [...(activeMissionsRaw ?? []), ...expiredMissionsRaw]
 
   return (
     <MissionsClient
