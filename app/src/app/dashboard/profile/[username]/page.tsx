@@ -1,9 +1,59 @@
+import type { Metadata } from 'next'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { Shield, Flame, Trophy, Zap, Calendar } from 'lucide-react'
 import { getLevelTitle, getLevelColor, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'
 import ProfileEditButton from '@/components/profile/ProfileEditButton'
+import CopyProfileLink from '@/components/profile/CopyProfileLink'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ username: string }>
+}): Promise<Metadata> {
+  const { username } = await params
+
+  const supabase = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, username, bio, avatar_url')
+    .eq('username', decodeURIComponent(username))
+    .single()
+
+  if (!profile) return { title: 'Perfil — SalchiNeta' }
+
+  const { data: rep } = await supabase
+    .from('user_reputation')
+    .select('level, total_xp')
+    .eq('user_id', profile.id)
+    .single()
+
+  const title = `${profile.username} — SalchiNeta`
+  const description = profile.bio
+    ?? (rep ? `Nivel ${rep.level} · ${rep.total_xp.toLocaleString()} XP en SalchiNeta` : 'Perfil en SalchiNeta')
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      ...(profile.avatar_url ? { images: [profile.avatar_url] } : {}),
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
+      ...(profile.avatar_url ? { images: [profile.avatar_url] } : {}),
+    },
+  }
+}
 
 const EVENT_LABELS: Record<string, string> = {
   DISCORD_MESSAGE:           'Mensaje en Discord',
@@ -250,6 +300,7 @@ export default async function PublicProfilePage({
                 {isOwner && (
                   <ProfileEditButton username={profile.username} bio={profile.bio} />
                 )}
+                <CopyProfileLink username={profile.username} />
                 {profile.is_admin && (
                   <span className="flex items-center gap-1 text-[10px] font-bold bg-primary/20 text-primary px-2 py-0.5 rounded-full">
                     <Shield className="w-3 h-3" /> Admin
