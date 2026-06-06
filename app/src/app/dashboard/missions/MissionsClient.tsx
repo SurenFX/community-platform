@@ -110,7 +110,10 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
     const pct         = mission.target_count > 0 ? Math.min((progress / mission.target_count) * 100, 100) : 0
     const type        = TYPE_LABELS[mission.type]
     const platform    = PLATFORM_FROM_OBJECTIVE[mission.objective_type]
-    const endsIn      = Math.ceil((new Date(mission.ends_at).getTime() - Date.now()) / 86400000)
+    const msLeft      = new Date(mission.ends_at).getTime() - Date.now()
+    const hoursLeft   = Math.ceil(msLeft / 3600000)
+    const endsIn      = Math.ceil(msLeft / 86400000)
+    const isExpiringSoon = !isExpiredUnclaimed && !isCompleted && msLeft > 0 && hoursLeft <= 24
     const isActioning = actionId === userMission?.id
 
     return (
@@ -119,6 +122,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
         isExpiredUnclaimed ? 'border-border opacity-50' :
         isClaimed          ? 'border-green-500/30 bg-green-500/5 opacity-70' :
         isCompleted        ? 'border-yellow-400/40 bg-yellow-400/5' :
+        isExpiringSoon     ? 'border-orange-400/40 bg-orange-400/5' :
         !hasStarted        ? 'border-border opacity-60' :
         'border-border'
       )}>
@@ -131,6 +135,11 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
               {platform && (
                 <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${platform.bg} ${platform.color}`}>
                   {platform.label}
+                </span>
+              )}
+              {isExpiringSoon && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-orange-400/15 text-orange-400 flex items-center gap-1 pulse-soft">
+                  ⚠️ Expira en {hoursLeft}h
                 </span>
               )}
               {isExpiredUnclaimed && (
@@ -164,7 +173,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
         <div className="space-y-1 mb-3">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>{progress} / {mission.target_count}</span>
-            {endsIn <= 365 && <span>Vence en {endsIn}d</span>}
+            {!isExpiringSoon && endsIn <= 365 && <span>Vence en {endsIn}d</span>}
           </div>
           <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
             <div

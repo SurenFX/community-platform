@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Shield, Ban, ShieldOff, User, Search, Loader2, Zap, RotateCcw } from 'lucide-react'
+import { Shield, Ban, ShieldOff, User, Search, Loader2, Zap, RotateCcw, Eye } from 'lucide-react'
+import Link from 'next/link'
 import GrantXpModal from './GrantXpModal'
 import { getLevelColor, getLevelTitle, formatNumber, timeAgo } from '@/lib/utils'
 import { setUserAdmin, setUserBanned } from '@/app/actions/social'
@@ -215,6 +216,13 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
                             >
                               <RotateCcw className="w-4 h-4" />
                             </button>
+                            <Link
+                              href={`/admin/users/${user.id}`}
+                              title="Ver detalle"
+                              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Link>
                           </>
                         )}
                       </div>

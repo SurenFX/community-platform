@@ -245,6 +245,37 @@ export async function deleteRaffle(raffleId: string): Promise<{ error?: string }
   return {}
 }
 
+// ── Badges ─────────────────────────────────────────────────────────────────
+export async function grantBadge(badgeId: string, targetUserId: string): Promise<{ error?: string }> {
+  const { error: authError, admin } = await getAdminClient()
+  if (authError || !admin) return { error: authError ?? 'Error' }
+
+  const { error } = await admin
+    .from('user_badges')
+    .upsert(
+      { badge_id: badgeId, user_id: targetUserId, earned_at: new Date().toISOString() },
+      { onConflict: 'user_id,badge_id', ignoreDuplicates: true }
+    )
+
+  if (error) return { error: 'No se pudo otorgar el badge' }
+  return {}
+}
+
+export async function revokeBadge(badgeId: string, targetUserId: string): Promise<{ error?: string }> {
+  const { error: authError, admin } = await getAdminClient()
+  if (authError || !admin) return { error: authError ?? 'Error' }
+
+  const { error } = await admin
+    .from('user_badges')
+    .delete()
+    .eq('badge_id', badgeId)
+    .eq('user_id', targetUserId)
+
+  if (error) return { error: 'No se pudo revocar el badge' }
+  return {}
+}
+
+// ── User reset ─────────────────────────────────────────────────────────────
 export async function resetUserProgress(targetUserId: string): Promise<{ error?: string }> {
   const { error: authError, admin } = await getAdminClient()
   if (authError || !admin) return { error: authError ?? 'Error' }
