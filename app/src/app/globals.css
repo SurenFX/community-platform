@@ -81,7 +81,7 @@
   box-shadow: 0 8px 32px hsl(185 100% 45% / 0.15), 0 0 0 1px hsl(185 100% 45% / 0.1);
 }
 
-/* Shimmer para badges ganados */
+/* Shimmer para badges ganados — solo al hacer hover */
 @keyframes shimmer {
   0%   { background-position: -200% center; }
   100% { background-position:  200% center; }
@@ -94,11 +94,16 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, transparent 40%, hsl(185 100% 45% / 0.15) 50%, transparent 60%);
+  background: linear-gradient(105deg, transparent 40%, hsl(185 100% 45% / 0.25) 50%, transparent 60%);
   background-size: 200% 100%;
-  animation: shimmer 3s infinite;
+  background-position: -200% center;
+  animation: none;
   pointer-events: none;
   border-radius: inherit;
+  transition: background-position 0s;
+}
+.badge-earned:hover::after {
+  animation: shimmer 0.6s ease-in-out 2;
 }
 
 /* Pulse suave para indicadores de estado */
