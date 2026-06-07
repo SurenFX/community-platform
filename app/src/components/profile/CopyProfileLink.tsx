@@ -7,7 +7,7 @@ export default function CopyProfileLink({ username }: { username: string }) {
   const [copied, setCopied] = useState(false)
 
   async function handleCopy() {
-    const url = `${window.location.origin}/dashboard/profile/${username}`
+    const url = `${window.location.origin}/u/${username}`
     await navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)

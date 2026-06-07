@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Bell, CheckCheck, Check, Zap, Trophy, Flame, Star, Swords, CircleDollarSign, Gift } from 'lucide-react'
-import { markAllAsRead, markAsRead } from '@/app/actions/notifications'
+import { Bell, CheckCheck, Check, Zap, Trophy, Flame, Star, Swords, CircleDollarSign, Gift, Loader2 } from 'lucide-react'
+import { markAllAsRead, markAsRead, loadMoreNotifications } from '@/app/actions/notifications'
 
 interface Notification {
   id:         string
@@ -46,12 +46,30 @@ function NotifIcon({ type }: { type: string }) {
   )
 }
 
-export default function NotificacionesClient({ initialNotifications }: { initialNotifications: Notification[] }) {
+export default function NotificacionesClient({
+  initialNotifications,
+  totalCount,
+}: {
+  initialNotifications: Notification[]
+  totalCount: number
+}) {
   const [notifs,    setNotifs]    = useState(initialNotifications)
   const [isPending, start]        = useTransition()
   const [filter,    setFilter]    = useState<'all' | 'unread'>('all')
+  const [hasMore,   setHasMore]   = useState(initialNotifications.length < totalCount)
+  const [loading,   setLoading]   = useState(false)
 
   const unreadCount = notifs.filter(n => !n.is_read).length
+
+  async function handleLoadMore() {
+    if (!notifs.length) return
+    setLoading(true)
+    const cursor = notifs[notifs.length - 1].created_at
+    const { data, hasMore: more } = await loadMoreNotifications(cursor)
+    setNotifs(prev => [...prev, ...data])
+    setHasMore(more)
+    setLoading(false)
+  }
 
   function handleMarkAll() {
     start(async () => {
@@ -158,6 +176,20 @@ export default function NotificacionesClient({ initialNotifications }: { initial
           </div>
         )}
       </div>
+
+      {/* Cargar más */}
+      {hasMore && filter === 'all' && (
+        <div className="flex justify-center">
+          <button
+            onClick={handleLoadMore}
+            disabled={loading}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-secondary text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            {loading ? 'Cargando...' : 'Cargar más'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -7,12 +7,17 @@ export default async function NotificacionesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: notifications } = await supabase
+  const { data: notifications, count } = await supabase
     .from('notifications')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
-    .limit(100)
+    .limit(20)
 
-  return <NotificacionesClient initialNotifications={notifications ?? []} />
+  return (
+    <NotificacionesClient
+      initialNotifications={notifications ?? []}
+      totalCount={count ?? 0}
+    />
+  )
 }
