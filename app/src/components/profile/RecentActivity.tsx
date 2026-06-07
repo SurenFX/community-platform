@@ -30,7 +30,7 @@ const EVENT_LABELS: Record<string, { label: string; color: string }> = {
   // Sistema
   MISSION_COMPLETED:         { label: 'Misión completada',      color: 'text-amber-400' },
   STREAK_BONUS:              { label: 'Bonus de racha',         color: 'text-orange-400' },
-  BADGE_EARNED:              { label: 'Badge desbloqueado',     color: 'text-cyan-400' },
+  BADGE_EARNED:              { label: 'Logro desbloqueado',     color: 'text-cyan-400' },
   ADMIN_MANUAL_GRANT:        { label: 'XP otorgado por admin',  color: 'text-violet-400' },
 }
 

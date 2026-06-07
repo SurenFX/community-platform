@@ -76,7 +76,7 @@ const EVENT_LABELS: Record<string, string> = {
   TELEGRAM_REACTION:         'Reacción en Telegram',
   MISSION_COMPLETED:         'Completó una misión',
   STREAK_BONUS:              'Bonus de racha 🔥',
-  BADGE_EARNED:              'Badge desbloqueado',
+  BADGE_EARNED:              'Logro desbloqueado',
   ADMIN_MANUAL_GRANT:        'XP otorgado por admin',
 }
 
@@ -411,7 +411,7 @@ export default async function PublicProfilePage({
       {/* Badges */}
       <div className="fade-in-up bg-card border border-border rounded-2xl p-6" style={{ animationDelay: '120ms' }}>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-bold text-foreground">Badges</h2>
+          <h2 className="text-base font-bold text-foreground">🏆 Logros</h2>
           <span className="text-xs text-muted-foreground">
             {earnedIds.size} / {allBadges.length} desbloqueados
           </span>

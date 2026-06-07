@@ -93,7 +93,7 @@ export default async function HomePage() {
 
           <p className="text-lg text-muted-foreground mb-10 max-w-xl mx-auto leading-relaxed">
             Ganá XP por participar en Discord, Twitch, YouTube y Telegram.
-            Subí de nivel, desbloqueá badges únicos y competí en el ranking.
+            Subí de nivel, desbloqueá logros únicos y competí en el ranking.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -118,7 +118,7 @@ export default async function HomePage() {
               { value: formatNumber(totalMembers),      label: 'Miembros',             icon: Users,   color: 'text-blue-400'   },
               { value: formatNumber(totalXp),           label: 'XP total otorgado',    icon: Zap,     color: 'text-yellow-400' },
               { value: formatNumber(missionsCompleted), label: 'Misiones completadas', icon: Target,  color: 'text-green-400'  },
-              { value: formatNumber(badgesEarned),      label: 'Badges otorgados',     icon: Award,   color: 'text-purple-400' },
+              { value: formatNumber(badgesEarned),      label: 'Logros desbloqueados', icon: Award,   color: 'text-purple-400' },
             ].map(({ value, label, icon: Icon, color }, i) => (
               <div key={label}
                 className="bg-card border border-border rounded-2xl p-5 fade-in-up card-hover"
@@ -217,7 +217,7 @@ export default async function HomePage() {
               { icon: Trophy,     title: 'Ranking',   desc: 'Competí en rankings globales, semanales y mensuales' },
               { icon: Target,     title: 'Misiones',  desc: 'Completá misiones automáticas para ganar XP y SalchiCoins' },
               { icon: Ticket,     title: 'Sorteos',   desc: 'Participá en sorteos exclusivos de Twitch, YouTube y plataforma' },
-              { icon: Award,      title: 'Badges',    desc: 'Desbloqueá logros únicos por tu actividad y antigüedad' },
+              { icon: Award,      title: 'Logros',    desc: 'Desbloqueá logros únicos por tu actividad y antigüedad' },
               { icon: Flame,      title: 'Rachas',    desc: 'Mantené tu racha diaria y multiplicá tu XP' },
               { icon: TrendingUp, title: 'Niveles',   desc: '200 niveles con tiers exclusivos que desbloquean beneficios' },
             ].map(({ icon: Icon, title, desc }, i) => (

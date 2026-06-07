@@ -27,7 +27,7 @@ const EVENT_LABELS: Record<string, string> = {
   TELEGRAM_REACTION:         'Reacción en Telegram',
   MISSION_COMPLETED:         'Completó una misión',
   STREAK_BONUS:              'Bonus de racha',
-  BADGE_EARNED:              'Badge desbloqueado',
+  BADGE_EARNED:              'Logro desbloqueado',
   ADMIN_MANUAL_GRANT:        'XP manual admin',
 }
 
@@ -175,7 +175,7 @@ export default async function AdminUserDetailPage({
       {/* Badges ganados */}
       {earnedBadges.length > 0 && (
         <div className="bg-card border border-border rounded-2xl p-5">
-          <h2 className="text-sm font-bold text-foreground mb-3">Badges ({earnedBadges.length})</h2>
+          <h2 className="text-sm font-bold text-foreground mb-3">Logros ({earnedBadges.length})</h2>
           <div className="flex flex-wrap gap-2">
             {earnedBadges.map((b: any) => (
               <div key={b.id}

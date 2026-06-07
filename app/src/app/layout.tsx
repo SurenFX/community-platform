@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'SalchiNeta — Comunidad',
-  description: 'Ganá XP por participar en Discord, Twitch, YouTube y Telegram. Subí de nivel, desbloqueá badges y competí en el ranking.',
+  description: 'Ganá XP por participar en Discord, Twitch, YouTube y Telegram. Subí de nivel, desbloqueá logros y competí en el ranking.',
   openGraph: {
     title:       'SalchiNeta — Comunidad',
     description: 'Ganá XP por participar en Discord, Twitch, YouTube y Telegram.',

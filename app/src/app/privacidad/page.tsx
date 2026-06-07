@@ -42,7 +42,7 @@ export default function PrivacidadPage() {
             <li>Tu ID de usuario, nombre de usuario y avatar de Discord (obtenidos mediante OAuth con tu consentimiento).</li>
             <li>Los nombres de usuario de las plataformas que vincules voluntariamente (Twitch, YouTube, Telegram).</li>
             <li>Métricas de actividad pública: cantidad de mensajes, comentarios, reacciones y tiempo de visualización en las plataformas conectadas.</li>
-            <li>Tu progreso en la plataforma: XP acumulado, nivel, badges, misiones completadas y rachas.</li>
+            <li>Tu progreso en la plataforma: XP acumulado, nivel, logros, misiones completadas y rachas.</li>
           </ul>
           <p className="text-muted-foreground text-sm leading-relaxed">
             No recopilamos contraseñas, información de pago, números de teléfono ni ningún dato sensible.
@@ -55,7 +55,7 @@ export default function PrivacidadPage() {
           <ul className="text-muted-foreground text-sm space-y-2 pl-4 list-disc">
             <li>Calcular y acreditar XP por tu actividad en las plataformas conectadas.</li>
             <li>Mostrar tu perfil, nivel y logros dentro de la plataforma.</li>
-            <li>Enviarte notificaciones sobre tu progreso (subida de nivel, misiones completadas, badges desbloqueados).</li>
+            <li>Enviarte notificaciones sobre tu progreso (subida de nivel, misiones completadas, logros desbloqueados).</li>
             <li>Generar el ranking de la comunidad.</li>
           </ul>
           <p className="text-muted-foreground text-sm leading-relaxed">
@@ -66,7 +66,7 @@ export default function PrivacidadPage() {
         <section className="space-y-3">
           <h2 className="text-lg font-bold text-foreground">4. Visibilidad de tu información</h2>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            Tu perfil público muestra tu nombre de usuario, nivel, XP, badges y rachas. Las redes sociales vinculadas están <strong className="text-foreground">ocultas por defecto</strong> — podés elegir cuáles mostrar públicamente desde la configuración de tu cuenta.
+            Tu perfil público muestra tu nombre de usuario, nivel, XP, logros y rachas. Las redes sociales vinculadas están <strong className="text-foreground">ocultas por defecto</strong> — podés elegir cuáles mostrar públicamente desde la configuración de tu cuenta.
           </p>
         </section>
 

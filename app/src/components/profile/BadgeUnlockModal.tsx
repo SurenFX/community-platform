@@ -59,7 +59,7 @@ export default function BadgeUnlockModal({ badge, onClose }: Props) {
         </button>
 
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-4">
-          🏅 ¡Badge desbloqueado!
+          🏆 ¡Logro desbloqueado!
         </p>
 
         <div

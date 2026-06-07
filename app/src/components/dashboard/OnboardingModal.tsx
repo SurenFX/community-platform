@@ -44,7 +44,7 @@ const STEPS = [
     color: 'text-yellow-400',
     bg:    'bg-yellow-400/10',
     title: '¡Empezá a ganar XP!',
-    desc:  'Cuanto más activo seas en Discord, Twitch, YouTube y Telegram, más XP ganás. Subí de nivel, desbloqueá badges y participá en sorteos exclusivos.',
+    desc:  'Cuanto más activo seas en Discord, Twitch, YouTube y Telegram, más XP ganás. Subí de nivel, desbloqueá logros y participá en sorteos exclusivos.',
   },
 ]
 

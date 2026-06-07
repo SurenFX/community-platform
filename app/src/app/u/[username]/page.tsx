@@ -236,7 +236,7 @@ export default async function PublicProfilePage({
         {allBadges.length > 0 && (
           <div className="bg-card border border-border rounded-2xl p-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-bold text-foreground">Badges</h2>
+              <h2 className="text-base font-bold text-foreground">🏆 Logros</h2>
               <span className="text-xs text-muted-foreground">
                 {earnedIds.size} / {allBadges.length} desbloqueados
               </span>

@@ -58,7 +58,7 @@ export default function TerminosPage() {
         <section className="space-y-3">
           <h2 className="text-lg font-bold text-foreground">4. Sistema de XP, niveles y recompensas</h2>
           <p className="text-muted-foreground text-sm leading-relaxed">
-            El XP, los niveles, los badges y los tickets son puntos virtuales sin valor monetario. No son canjeables por dinero ni transferibles entre usuarios. La administración se reserva el derecho de ajustar, corregir o anular el XP de cualquier usuario en caso de detectar uso indebido del sistema.
+            El XP, los niveles, los logros y los tickets son puntos virtuales sin valor monetario. No son canjeables por dinero ni transferibles entre usuarios. La administración se reserva el derecho de ajustar, corregir o anular el XP de cualquier usuario en caso de detectar uso indebido del sistema.
           </p>
         </section>
 

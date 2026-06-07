@@ -101,7 +101,7 @@ export default function AdminUserActions({ userId, username, isAdmin, isBanned, 
           currentlyEarned ? next.delete(badgeId) : next.add(badgeId)
           return next
         })
-        fb(currentlyEarned ? 'Badge revocado' : 'Badge otorgado ✓', true)
+        fb(currentlyEarned ? 'Logro revocado' : 'Logro otorgado ✓', true)
       } else {
         fb(r.error, false)
       }
@@ -171,7 +171,7 @@ export default function AdminUserActions({ userId, username, isAdmin, isBanned, 
         <div className="pt-4 border-t border-border space-y-2">
           <div className="flex items-center gap-2">
             <Medal className="w-3.5 h-3.5 text-muted-foreground" />
-            <label className="text-xs font-medium text-muted-foreground">Badges — click para otorgar / revocar</label>
+            <label className="text-xs font-medium text-muted-foreground">Logros — click para otorgar / revocar</label>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {allBadges.map((b) => {

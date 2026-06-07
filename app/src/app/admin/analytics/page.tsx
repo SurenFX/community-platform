@@ -79,7 +79,7 @@ export default async function AdminAnalyticsPage() {
     TELEGRAM_MESSAGE:          'Mensaje Telegram',
     MISSION_COMPLETED:         'Quest completada',
     STREAK_BONUS:              'Bonus racha',
-    BADGE_EARNED:              'Badge ganado',
+    BADGE_EARNED:              'Logro desbloqueado',
     ADMIN_MANUAL_GRANT:        'XP manual / bono diario',
   }
 

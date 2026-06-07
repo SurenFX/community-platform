@@ -21,7 +21,7 @@ const EVENT_LABELS: Record<string, string> = {
   TELEGRAM_MESSAGE:           'Mensaje en Telegram',
   MISSION_COMPLETED:          'Misión completada',
   STREAK_BONUS:               'Bonus de racha',
-  BADGE_EARNED:               'Badge ganado',
+  BADGE_EARNED:               'Logro desbloqueado',
   ADMIN_MANUAL_GRANT:         'Otorgado por admin',
 }
 

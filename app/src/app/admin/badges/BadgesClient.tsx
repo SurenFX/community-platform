@@ -92,8 +92,8 @@ export default function BadgesClient({ badges, users }: { badges: Badge[]; users
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Badges</h1>
-            <p className="text-muted-foreground text-sm mt-1">{badges.length} badges en total</p>
+            <h1 className="text-2xl font-bold text-foreground">Logros</h1>
+            <p className="text-muted-foreground text-sm mt-1">{badges.length} logros en total</p>
           </div>
         </div>
 
@@ -103,7 +103,7 @@ export default function BadgesClient({ badges, users }: { badges: Badge[]; users
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar badge..."
+            placeholder="Buscar logro..."
             className="w-full bg-card border border-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
         </div>
@@ -138,7 +138,7 @@ export default function BadgesClient({ badges, users }: { badges: Badge[]; users
                       <button
                         onClick={() => { setGrantTarget(badge); setUserSearch('') }}
                         className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
-                        title="Otorgar / revocar badge"
+                        title="Otorgar / revocar logro"
                       >
                         <Award className="w-4 h-4" />
                       </button>
@@ -161,7 +161,7 @@ export default function BadgesClient({ badges, users }: { badges: Badge[]; users
                 <span className="text-2xl">{grantTarget.image_url || '🏅'}</span>
                 <div>
                   <p className="text-sm font-bold text-foreground">{grantTarget.name}</p>
-                  <p className="text-xs text-muted-foreground">Otorgar o revocar badge</p>
+                  <p className="text-xs text-muted-foreground">Otorgar o revocar logro</p>
                 </div>
               </div>
               <button onClick={() => setGrantTarget(null)} className="p-1.5 rounded-lg hover:bg-secondary transition-all">
