@@ -34,7 +34,7 @@ interface ShopItem {
 interface Props {
   items:          ShopItem[]
   balance:        number
-  inventoryIds:   Set<string>
+  inventoryIds:   string[]
   equippedBorder: string | null
   equippedEmoji:  string | null
   equippedTitle:  string | null

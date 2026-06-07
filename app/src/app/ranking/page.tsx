@@ -38,54 +38,43 @@ export default async function PublicRankingPage() {
       .limit(10),
   ])
 
-  // Para cada temporada cerrada, obtener top 3 por monthly_xp en ese período
-  const seasonHistories: Array<{
-    season: { id: string; name: string; starts_at: string; ends_at: string }
-    top3:   Array<{ username: string; avatar_url: string | null; xp: number; rank: number }>
-  }> = []
+  // Para cada temporada cerrada, obtener top 3 — todo en paralelo
+  const seasonHistories = await Promise.all(
+    ((closedSeasons ?? []) as any[]).map(async (season) => {
+      const { data: topUsers } = await supabase
+        .from('xp_events')
+        .select('user_id, xp_awarded')
+        .gte('created_at', season.starts_at)
+        .lte('created_at', season.ends_at)
+        .limit(5000)
 
-  for (const season of (closedSeasons ?? []) as any[]) {
-    const { data: topUsers } = await supabase
-      .from('xp_events')
-      .select('user_id, xp_awarded')
-      .gte('created_at', season.starts_at)
-      .lte('created_at', season.ends_at)
-      .limit(5000)
+      if (!topUsers?.length) return { season, top3: [] }
 
-    if (!topUsers?.length) {
-      seasonHistories.push({ season, top3: [] })
-      continue
-    }
+      const xpMap: Record<string, number> = {}
+      for (const e of topUsers as any[]) {
+        xpMap[e.user_id] = (xpMap[e.user_id] ?? 0) + e.xp_awarded
+      }
 
-    // Agrupar por user_id
-    const xpMap: Record<string, number> = {}
-    for (const e of topUsers as any[]) {
-      xpMap[e.user_id] = (xpMap[e.user_id] ?? 0) + e.xp_awarded
-    }
+      const sorted = Object.entries(xpMap).sort((a, b) => b[1] - a[1]).slice(0, 3)
+      const userIds = sorted.map(([id]) => id)
 
-    const sorted = Object.entries(xpMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
+      const { data: profiles } = await supabase
+        .from('profiles').select('id, username, avatar_url').in('id', userIds)
 
-    const userIds = sorted.map(([id]) => id)
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, username, avatar_url')
-      .in('id', userIds)
+      const profileMap: Record<string, any> = {}
+      for (const p of profiles ?? []) profileMap[(p as any).id] = p
 
-    const profileMap: Record<string, any> = {}
-    for (const p of profiles ?? []) profileMap[(p as any).id] = p
-
-    seasonHistories.push({
-      season,
-      top3: sorted.map(([userId, xp], i) => ({
-        username:   profileMap[userId]?.username ?? '???',
-        avatar_url: profileMap[userId]?.avatar_url ?? null,
-        xp,
-        rank: i + 1,
-      })),
+      return {
+        season,
+        top3: sorted.map(([userId, xp], i) => ({
+          username:   profileMap[userId]?.username ?? '???',
+          avatar_url: profileMap[userId]?.avatar_url ?? null,
+          xp,
+          rank: i + 1,
+        })),
+      }
     })
-  }
+  )
 
   const RANK_ICONS = [
     <Trophy key={1} className="w-4 h-4 text-yellow-400" />,

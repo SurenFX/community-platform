@@ -51,18 +51,19 @@ export async function claimDailyBonus(): Promise<{
       weekly_xp:            ((rep as any)?.weekly_xp  ?? 0) + xp,
       monthly_xp:           ((rep as any)?.monthly_xp ?? 0) + xp,
       salchi_coins:         currentCoins + sc,
+      current_streak:       streak + 1,
       last_daily_bonus_at:  new Date().toISOString(),
     }).eq('user_id', user.id),
     db.from('xp_events').insert({
       user_id:       user.id,
-      event_type:    'ADMIN_MANUAL_GRANT',
+      event_type:    'STREAK_BONUS',
       xp_awarded:    xp,
       base_xp:       xp,
       multiplier:    1,
       quality_score: 1,
       streak_bonus:  0,
-      platform:      'DISCORD',
-      metadata:      { source: 'DAILY_BONUS', streak },
+      platform:      'SYSTEM',
+      metadata:      { source: 'DAILY_BONUS', streak: streak + 1 },
     }),
   ])
 
@@ -93,20 +94,14 @@ export async function purchaseItem(itemId: string): Promise<{ error?: string }> 
     .maybeSingle()
   if (owned) return { error: 'Ya tenés este item' }
 
-  const { data: rep } = await db
-    .from('user_reputation')
-    .select('salchi_coins')
-    .eq('user_id', user.id)
-    .single()
-  const balance = (rep as any)?.salchi_coins ?? 0
-  if (balance < (item as any).price_sc) return { error: 'SC insuficientes' }
+  // Deducción atómica via RPC (evita race condition de balance negativo)
+  const { error: rpcError } = await db.rpc('deduct_sc_if_enough', {
+    p_user_id: user.id,
+    p_amount:  (item as any).price_sc,
+  })
+  if (rpcError) return { error: 'SC insuficientes' }
 
-  await Promise.all([
-    db.from('user_reputation')
-      .update({ salchi_coins: balance - (item as any).price_sc })
-      .eq('user_id', user.id),
-    db.from('user_inventory').insert({ user_id: user.id, item_id: itemId }),
-  ])
+  await db.from('user_inventory').insert({ user_id: user.id, item_id: itemId })
 
   return {}
 }

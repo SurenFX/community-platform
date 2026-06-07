@@ -24,7 +24,7 @@ export default async function ShopPage() {
       .single(),
   ])
 
-  const inventoryIds = new Set((inventoryRes.data ?? []).map((i: any) => i.item_id))
+  const inventoryIds = (inventoryRes.data ?? []).map((i: any) => i.item_id as string)
   const balance      = (repRes.data as any)?.salchi_coins ?? 0
   const profile      = profileRes.data as any
 
