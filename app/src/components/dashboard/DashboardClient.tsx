@@ -7,6 +7,7 @@ import RecentActivity from '@/components/profile/RecentActivity'
 import ActiveMissions from '@/components/missions/ActiveMissions'
 import XpToast from '@/components/dashboard/XpToast'
 import LevelUpModal from '@/components/dashboard/LevelUpModal'
+import BadgeUnlockModal from '@/components/profile/BadgeUnlockModal'
 import type { Profile, UserReputation, XpEvent, UserMission, Mission } from '@/types/database'
 
 interface ProfileWithAll extends Profile {
@@ -101,8 +102,9 @@ export default function DashboardClient({
   const [profile,     setProfile]     = useState(initialProfile)
   const [events,      setEvents]      = useState(initialEvents)
   const [missions,    setMissions]    = useState(initialMissions)
-  const [toasts,      setToasts]      = useState<XpToastData[]>([])
-  const [levelUpData, setLevelUpData] = useState<{ oldLevel: number; newLevel: number } | null>(null)
+  const [toasts,       setToasts]       = useState<XpToastData[]>([])
+  const [levelUpData,  setLevelUpData]  = useState<{ oldLevel: number; newLevel: number } | null>(null)
+  const [badgeUnlock,  setBadgeUnlock]  = useState<BadgeItem | null>(null)
 
   const lastXpRef    = useRef(initialProfile?.user_reputation?.total_xp ?? 0)
   const lastLevelRef = useRef(initialProfile?.user_reputation?.level ?? 1)
@@ -219,6 +221,25 @@ export default function DashboardClient({
     return () => { supabase.removeChannel(channel) }
   }, [userId])
 
+  // ── Realtime para badges nuevos ───────────────────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel(`badges:${userId}`)
+      .on('postgres_changes', {
+        event:  'INSERT',
+        schema: 'public',
+        table:  'user_badges',
+        filter: `user_id=eq.${userId}`,
+      }, (payload) => {
+        const badgeId = (payload.new as any).badge_id
+        const badge   = allBadges.find(b => b.id === badgeId)
+        if (badge) setBadgeUnlock(badge)
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [userId, allBadges])
+
   const rep = profile?.user_reputation
 
   return (
@@ -311,6 +332,13 @@ export default function DashboardClient({
           oldLevel={levelUpData.oldLevel}
           newLevel={levelUpData.newLevel}
           onClose={() => setLevelUpData(null)}
+        />
+      )}
+
+      {badgeUnlock && (
+        <BadgeUnlockModal
+          badge={badgeUnlock}
+          onClose={() => setBadgeUnlock(null)}
         />
       )}
 

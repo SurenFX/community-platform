@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { Swords, MapPin } from 'lucide-react'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import OnboardingModal from '@/components/dashboard/OnboardingModal'
 import DailyBonusCard from '@/components/dashboard/DailyBonusCard'
@@ -10,7 +12,13 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [profileRes, activityRes, missionsRes, claimableRes, allBadgesRes, earnedBadgesRes] = await Promise.all([
+  const admin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+
+  const [profileRes, activityRes, missionsRes, claimableRes, allBadgesRes, earnedBadgesRes, challengeRes] = await Promise.all([
     supabase
       .from('profiles')
       .select('*, user_reputation(*), user_badges(*, badges(*))')
@@ -44,6 +52,14 @@ export default async function DashboardPage() {
       .from('user_badges')
       .select('badge_id')
       .eq('user_id', user.id),
+    // Desafío comunitario activo
+    admin
+      .from('community_challenges')
+      .select('id, title, goal_xp, current_xp, ends_at, reward_xp_per_user, reward_sc_per_user')
+      .eq('status', 'ACTIVE')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ])
 
   const profile        = profileRes.data
@@ -51,6 +67,15 @@ export default async function DashboardPage() {
   const earnedIds      = new Set((earnedBadgesRes.data ?? []).map((b: any) => b.badge_id))
   const allBadges      = allBadgesRes.data ?? []
   const claimableCount = claimableRes.count ?? 0
+  const challenge      = (challengeRes as any).data
+
+  // Posición en ranking (usuarios con más XP que yo + 1)
+  const myTotalXp = (profile as any)?.user_reputation?.total_xp ?? 0
+  const { count: usersAhead } = await supabase
+    .from('user_reputation')
+    .select('*', { count: 'exact', head: true })
+    .gt('total_xp', myTotalXp)
+  const myRank = (usersAhead ?? 0) + 1
 
   // Daily bonus — resetea a las 00:00 UTC cada día
   const lastBonusAt  = (profile as any)?.user_reputation?.last_daily_bonus_at ?? null
@@ -82,6 +107,56 @@ export default async function DashboardPage() {
       )}
       <div className="mb-4">
         <DailyBonusCard canClaim={canClaimBonus} streak={streak} nextClaimMs={msUntilNext} />
+      </div>
+
+      {/* Fila: posición en ranking + desafío activo */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        {/* Posición global */}
+        <Link href="/dashboard/comunidad"
+          className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3 hover:border-primary/40 transition-colors">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <MapPin className="w-4 h-4 text-primary" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground">Tu posición global</p>
+            <p className="text-sm font-black text-foreground">#{myRank}</p>
+          </div>
+        </Link>
+
+        {/* Desafío activo */}
+        {challenge ? (() => {
+          const pct = challenge.goal_xp > 0
+            ? Math.min(100, Math.round((challenge.current_xp / challenge.goal_xp) * 100))
+            : 0
+          return (
+            <Link href="/dashboard/challenges"
+              className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3 hover:border-primary/40 transition-colors">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Swords className="w-4 h-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground truncate">{challenge.title}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full xp-bar rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="text-xs font-bold text-primary shrink-0">{pct}%</span>
+                </div>
+              </div>
+            </Link>
+          )
+        })() : (
+          <Link href="/dashboard/challenges"
+            className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3 hover:border-primary/40 transition-colors opacity-60">
+            <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center shrink-0">
+              <Swords className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Desafío comunitario</p>
+              <p className="text-xs font-semibold text-foreground">Sin desafío activo</p>
+            </div>
+          </Link>
+        )}
       </div>
       <DashboardClient
         initialProfile={profile}
