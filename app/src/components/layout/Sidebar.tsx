@@ -7,7 +7,7 @@ import { signOut } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
 import {
   Home, Trophy, Sword, Settings, LogOut, Shield, Ticket,
-  CircleDollarSign, ShoppingBag, Swords, Menu, X, Bell,
+  CircleDollarSign, ShoppingBag, Swords, Menu, X,
 } from 'lucide-react'
 
 import SidebarXpBar from './SidebarXpBar'
@@ -41,9 +41,8 @@ const navItems = [
   { href: '/dashboard/challenges',    label: 'Desafíos',       icon: Swords                         },
   { href: '/dashboard/raffles',       label: 'Sorteos',        icon: Ticket                         },
   { href: '/dashboard/shop',          label: 'Tienda',         icon: ShoppingBag                    },
-  { href: '/dashboard/coins',             label: 'SalchiCoins',    icon: CircleDollarSign               },
-  { href: '/dashboard/notificaciones',   label: 'Notificaciones', icon: Bell                           },
-  { href: '/dashboard/configuracion',    label: 'Configuración',  icon: Settings                       },
+  { href: '/dashboard/coins',          label: 'SalchiCoins',  icon: CircleDollarSign },
+  { href: '/dashboard/configuracion', label: 'Configuración', icon: Settings         },
 ]
 
 export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
@@ -136,7 +135,6 @@ export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {navItems.map(({ href, label, icon: Icon, exact }) => {
           const isActive = exact ? pathname === href : pathname.startsWith(href)
-          const showBadge = href === '/dashboard/notificaciones' && unreadNotifs > 0
           return (
             <Link key={href} href={href}
               onClick={() => setMobileOpen(false)}
@@ -144,11 +142,6 @@ export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
             >
               <Icon className="w-4 h-4 shrink-0" />
               <span className="flex-1">{label}</span>
-              {showBadge && (
-                <span className="ml-auto text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
-                  {unreadNotifs > 99 ? '99+' : unreadNotifs}
-                </span>
-              )}
             </Link>
           )
         })}
