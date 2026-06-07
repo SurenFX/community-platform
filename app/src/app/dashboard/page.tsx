@@ -55,7 +55,7 @@ export default async function DashboardPage() {
     // Desafío comunitario activo
     admin
       .from('community_challenges')
-      .select('id, title, goal_xp, current_xp, ends_at, reward_xp_per_user, reward_sc_per_user')
+      .select('id, title, goal_xp, starts_at, ends_at, reward_xp_per_user, reward_sc_per_user')
       .eq('status', 'ACTIVE')
       .order('created_at', { ascending: false })
       .limit(1)
@@ -68,6 +68,18 @@ export default async function DashboardPage() {
   const allBadges      = allBadgesRes.data ?? []
   const claimableCount = claimableRes.count ?? 0
   const challenge      = (challengeRes as any).data
+
+  // Progreso del desafío activo desde xp_events
+  let challengePct = 0
+  if (challenge) {
+    const { data: evts } = await admin
+      .from('xp_events')
+      .select('xp_awarded')
+      .gte('created_at', challenge.starts_at)
+      .lte('created_at', challenge.ends_at)
+    const total = ((evts ?? []) as any[]).reduce((s: number, e: any) => s + (e.xp_awarded ?? 0), 0)
+    challengePct = challenge.goal_xp > 0 ? Math.min(100, Math.round((total / challenge.goal_xp) * 100)) : 0
+  }
 
   // Posición en ranking (usuarios con más XP que yo + 1)
   const myTotalXp = (profile as any)?.user_reputation?.total_xp ?? 0
@@ -125,9 +137,7 @@ export default async function DashboardPage() {
 
         {/* Desafío activo */}
         {challenge ? (() => {
-          const pct = challenge.goal_xp > 0
-            ? Math.min(100, Math.round((challenge.current_xp / challenge.goal_xp) * 100))
-            : 0
+          const pct = challengePct
           return (
             <Link href="/dashboard/challenges"
               className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3 hover:border-primary/40 transition-colors">
