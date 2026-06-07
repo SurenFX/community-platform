@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { revalidatePath } from 'next/cache'
 
 function adminDb() {
   return createAdminClient(
@@ -147,6 +148,7 @@ export async function equipItem(
   if (!owned) return { error: 'No tenés este item' }
 
   await db.from('profiles').update({ [col]: (item as any).value }).eq('id', user.id)
+  revalidatePath('/dashboard', 'layout')
   return {}
 }
 
@@ -160,5 +162,6 @@ export async function unequipItem(type: string): Promise<{ error?: string }> {
 
   const db = adminDb()
   await db.from('profiles').update({ [col]: null }).eq('id', user.id)
+  revalidatePath('/dashboard', 'layout')
   return {}
 }

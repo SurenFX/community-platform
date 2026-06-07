@@ -20,6 +20,7 @@ interface SidebarProps {
     equipped_name_emoji?: string | null
     equipped_title_override?: string | null
   }) | null
+  unreadNotifs?: number
 }
 
 const BORDER_COLOR_HEX: Record<string, string> = {
@@ -45,7 +46,7 @@ const navItems = [
   { href: '/dashboard/configuracion',    label: 'Configuración',  icon: Settings                       },
 ]
 
-export default function Sidebar({ profile }: SidebarProps) {
+export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -135,13 +136,19 @@ export default function Sidebar({ profile }: SidebarProps) {
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {navItems.map(({ href, label, icon: Icon, exact }) => {
           const isActive = exact ? pathname === href : pathname.startsWith(href)
+          const showBadge = href === '/dashboard/notificaciones' && unreadNotifs > 0
           return (
             <Link key={href} href={href}
               onClick={() => setMobileOpen(false)}
               className={cn('nav-item', isActive ? 'active' : 'text-muted-foreground')}
             >
               <Icon className="w-4 h-4 shrink-0" />
-              {label}
+              <span className="flex-1">{label}</span>
+              {showBadge && (
+                <span className="ml-auto text-[10px] font-bold bg-red-500 text-white px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
+                  {unreadNotifs > 99 ? '99+' : unreadNotifs}
+                </span>
+              )}
             </Link>
           )
         })}

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Zap, Flame, Trophy, Shield, Calendar } from 'lucide-react'
+import AdminUserActions from './AdminUserActions'
 import { getLevelTitle, getLevelColor, formatNumber, timeAgo } from '@/lib/utils'
 
 const EVENT_LABELS: Record<string, string> = {
@@ -205,6 +206,14 @@ export default async function AdminUserDetailPage({
           </div>
         </div>
       )}
+
+      {/* Acciones admin */}
+      <AdminUserActions
+        userId={id}
+        username={profile.username}
+        isAdmin={profile.is_admin ?? false}
+        isBanned={profile.is_banned ?? false}
+      />
 
       {/* Actividad reciente */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">

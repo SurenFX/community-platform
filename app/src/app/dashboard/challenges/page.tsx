@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
-import { Swords, Zap, CircleDollarSign, Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { Swords, Zap, CircleDollarSign, Clock, CheckCircle2, XCircle, User } from 'lucide-react'
 
 function fmtTime(endsAt: string) {
   const ms = new Date(endsAt).getTime() - Date.now()
@@ -23,7 +23,6 @@ export default async function ChallengesPage() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  // Retos activos y recientes
   const { data: challenges } = await admin
     .from('community_challenges')
     .select('*')
@@ -31,26 +30,34 @@ export default async function ChallengesPage() {
     .order('created_at', { ascending: false })
     .limit(20)
 
-  // Para cada reto activo, calcular XP acumulada en ese rango
   const activeOnes = (challenges ?? []).filter((c: any) => c.status === 'ACTIVE')
 
-  const challengeProgress: Record<string, bigint> = {}
+  // Progreso comunitario + progreso personal para cada challenge activo
+  const challengeProgress:     Record<string, number> = {}
+  const challengeUserProgress: Record<string, number> = {}
+
   for (const ch of activeOnes as any[]) {
-    const { data } = await admin
-      .from('xp_events')
-      .select('xp_awarded')
-      .gte('created_at', ch.starts_at)
-      .lte('created_at', ch.ends_at)
-    challengeProgress[ch.id] = ((data ?? []) as any[]).reduce(
-      (sum: bigint, e: any) => sum + BigInt(e.xp_awarded),
-      BigInt(0)
-    )
+    const [{ data: allEvents }, { data: myEvents }] = await Promise.all([
+      admin
+        .from('xp_events')
+        .select('xp_awarded')
+        .gte('created_at', ch.starts_at)
+        .lte('created_at', ch.ends_at),
+      admin
+        .from('xp_events')
+        .select('xp_awarded')
+        .eq('user_id', user.id)
+        .gte('created_at', ch.starts_at)
+        .lte('created_at', ch.ends_at),
+    ])
+    challengeProgress[ch.id]     = ((allEvents ?? []) as any[]).reduce((s, e) => s + e.xp_awarded, 0)
+    challengeUserProgress[ch.id] = ((myEvents  ?? []) as any[]).reduce((s, e) => s + e.xp_awarded, 0)
   }
 
   const STATUS_CONFIG = {
-    ACTIVE:    { label: 'Activo',     color: 'text-green-400',  bg: 'bg-green-400/10',      icon: Swords     },
-    COMPLETED: { label: '¡Logrado!',  color: 'text-primary',    bg: 'bg-primary/10',         icon: CheckCircle2 },
-    FAILED:    { label: 'Fallido',    color: 'text-destructive', bg: 'bg-destructive/10',     icon: XCircle    },
+    ACTIVE:    { label: 'Activo',     color: 'text-green-400',  bg: 'bg-green-400/10',  icon: Swords      },
+    COMPLETED: { label: '¡Logrado!',  color: 'text-primary',    bg: 'bg-primary/10',    icon: CheckCircle2 },
+    FAILED:    { label: 'Fallido',    color: 'text-destructive', bg: 'bg-destructive/10', icon: XCircle    },
   }
 
   return (
@@ -71,9 +78,11 @@ export default async function ChallengesPage() {
       ) : (
         <div className="space-y-4">
           {(challenges as any[]).map((ch: any) => {
-            const current     = Number(challengeProgress[ch.id] ?? 0)
+            const current     = challengeProgress[ch.id] ?? 0
+            const myXp        = challengeUserProgress[ch.id] ?? 0
             const goal        = Number(ch.goal_xp)
             const pct         = ch.status === 'COMPLETED' ? 100 : Math.min(100, Math.round((current / goal) * 100))
+            const myPct       = goal > 0 ? Math.min(100, Math.round((myXp / goal) * 100)) : 0
             const cfg         = STATUS_CONFIG[ch.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.ACTIVE
             const StatusIcon  = cfg.icon
             const isActive    = ch.status === 'ACTIVE'
@@ -114,11 +123,11 @@ export default async function ChallengesPage() {
                   )}
                 </div>
 
-                {/* Progress bar */}
-                <div className="mb-4">
+                {/* Progreso comunitario */}
+                <div className="mb-3">
                   <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-                    <span>{current.toLocaleString('es-AR')} XP</span>
-                    <span className="font-semibold">{goal.toLocaleString('es-AR')} XP</span>
+                    <span className="font-medium">Comunidad</span>
+                    <span>{current.toLocaleString('es-AR')} / {goal.toLocaleString('es-AR')} XP · {pct}%</span>
                   </div>
                   <div className="h-3 bg-secondary rounded-full overflow-hidden">
                     <div
@@ -126,8 +135,27 @@ export default async function ChallengesPage() {
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1 text-right">{pct}% completado</p>
                 </div>
+
+                {/* Progreso personal — solo en activos */}
+                {isActive && (
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                      <span className="flex items-center gap-1">
+                        <User className="w-3 h-3" /> Tu aporte
+                      </span>
+                      <span className={myXp > 0 ? 'text-primary font-semibold' : ''}>
+                        {myXp.toLocaleString('es-AR')} XP · {myPct}%
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-700"
+                        style={{ width: `${myPct}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Recompensas */}
                 {(ch.reward_xp_per_user > 0 || ch.reward_sc_per_user > 0) && (
