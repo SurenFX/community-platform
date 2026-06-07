@@ -58,7 +58,7 @@ export async function claimMission(userMissionId: string): Promise<{ error?: str
 
   const admin = getAdmin()
 
-  // Verificar que la misión está completada y no reclamada
+  // Primero leer los datos de la misión (sin cambiar nada todavía)
   const { data: um } = await admin
     .from('user_missions')
     .select('id, is_completed, is_claimed, missions!inner(id, xp_reward, coin_reward, title)')
@@ -72,11 +72,17 @@ export async function claimMission(userMissionId: string): Promise<{ error?: str
 
   const mission = (um as any).missions
 
-  // Marcar como reclamada
-  await admin
+  // UPDATE atómico: solo actualiza si is_claimed sigue siendo false
+  // Esto previene el double-claim por race condition (dos tabs simultáneos)
+  const { count } = await admin
     .from('user_missions')
     .update({ is_claimed: true })
     .eq('id', userMissionId)
+    .eq('user_id', user.id)
+    .eq('is_claimed', false)
+    .select('id', { count: 'exact', head: true })
+
+  if (!count || count === 0) return { error: 'Ya reclamaste esta recompensa' }
 
   // Otorgar XP
   if (mission.xp_reward > 0) {

@@ -44,7 +44,7 @@ export default async function CoinsPage() {
       .from('notifications')
       .select('created_at, title, type')
       .eq('user_id', user.id)
-      .in('type', ['SYSTEM', 'CHALLENGE_REWARD'])
+      .in('type', ['SYSTEM', 'CHALLENGE_REWARD', 'STREAK_BONUS'])
       .ilike('title', '%SalchiCoin%')
       .order('created_at', { ascending: false })
       .limit(50),
@@ -85,6 +85,7 @@ export default async function CoinsPage() {
     mission:         { icon: CheckCircle,      color: 'text-green-400',  bg: 'bg-green-400/10'  },
     shop:            { icon: ShoppingBag,      color: 'text-pink-400',   bg: 'bg-pink-400/10'   },
     CHALLENGE_REWARD:{ icon: Swords,           color: 'text-primary',    bg: 'bg-primary/10'    },
+    STREAK_BONUS:    { icon: Flame,            color: 'text-orange-400', bg: 'bg-orange-400/10' },
     SYSTEM:          { icon: Zap,              color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
   }
 
