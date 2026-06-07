@@ -175,6 +175,7 @@ export default async function DashboardPage() {
         userId={user.id}
         allBadges={allBadges}
         earnedBadgeIds={[...earnedIds]}
+        myRank={myRank}
       />
     </>
   )

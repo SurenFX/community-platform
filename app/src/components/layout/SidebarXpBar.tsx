@@ -89,8 +89,11 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
               <span className="text-primary font-bold text-sm">{username[0]?.toUpperCase()}</span>
             </div>
           )}
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-card border border-border flex items-center justify-center">
-            <span className="text-[9px] font-bold text-foreground leading-none">{level}</span>
+          <div
+            className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[9px] font-black whitespace-nowrap leading-none"
+            style={{ boxShadow: '0 0 8px hsl(185 100% 45% / 0.5)' }}
+          >
+            LVL {level}
           </div>
         </div>
         <div className="flex-1 min-w-0">

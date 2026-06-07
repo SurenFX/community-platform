@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import StatsGrid from '@/components/profile/StatsGrid'
+import PlayerCard from '@/components/dashboard/PlayerCard'
 import RecentActivity from '@/components/profile/RecentActivity'
 import ActiveMissions from '@/components/missions/ActiveMissions'
 import XpToast from '@/components/dashboard/XpToast'
@@ -32,12 +32,12 @@ const TIER_COLORS: Record<string, string> = {
 }
 
 const FAMILY_LABELS: Record<string, string> = {
-  discord:  '💬 Discord',
-  stream:   '🟣 Stream',
-  streak:   '🔥 Racha',
-  level:    '⭐ Nivel',
-  missions: '🎯 Misiones',
-  youtube:  '📹 YouTube',
+  discord:   '💬 Discord',
+  stream:    '🟣 Stream',
+  streak:    '🔥 Racha',
+  level:     '⭐ Nivel',
+  missions:  '🎯 Quests',
+  youtube:   '📹 YouTube',
   telegram:  '✈️ Telegram',
   seniority: '🏛️ Antigüedad',
   special:   '🏅 Especiales',
@@ -50,6 +50,7 @@ interface DashboardClientProps {
   userId:          string
   allBadges:       BadgeItem[]
   earnedBadgeIds:  string[]
+  myRank:          number
 }
 
 interface XpToastData {
@@ -77,9 +78,9 @@ const EVENT_LABELS: Record<string, string> = {
   TELEGRAM_MESSAGE:          'Mensaje en Telegram',
   TELEGRAM_JOIN:             'Te uniste al grupo',
   TELEGRAM_REACTION:         'Reacción en Telegram',
-  MISSION_COMPLETED:         'Misión completada',
-  STREAK_BONUS:              'Bonus de racha 🔥',
-  BADGE_EARNED:              'Badge desbloqueado',
+  MISSION_COMPLETED:         'Quest completada',
+  STREAK_BONUS:              'Misión diaria 🔥',
+  BADGE_EARNED:              'Logro desbloqueado',
   ADMIN_MANUAL_GRANT:        'XP otorgado por admin',
 }
 
@@ -90,24 +91,25 @@ export default function DashboardClient({
   userId,
   allBadges,
   earnedBadgeIds,
+  myRank,
 }: DashboardClientProps) {
   const earnedSet = new Set(earnedBadgeIds)
 
-  // Agrupar badges por familia
   const badgesByFamily: Record<string, BadgeItem[]> = {}
   for (const badge of allBadges) {
     if (!badgesByFamily[badge.family]) badgesByFamily[badge.family] = []
     badgesByFamily[badge.family].push(badge)
   }
-  const [profile,     setProfile]     = useState(initialProfile)
-  const [events,      setEvents]      = useState(initialEvents)
-  const [missions,    setMissions]    = useState(initialMissions)
-  const [toasts,       setToasts]       = useState<XpToastData[]>([])
-  const [levelUpData,  setLevelUpData]  = useState<{ oldLevel: number; newLevel: number } | null>(null)
-  const [badgeUnlock,  setBadgeUnlock]  = useState<BadgeItem | null>(null)
 
-  const lastXpRef    = useRef(initialProfile?.user_reputation?.total_xp ?? 0)
-  const lastLevelRef = useRef(initialProfile?.user_reputation?.level ?? 1)
+  const [profile,     setProfile]    = useState(initialProfile)
+  const [events,      setEvents]     = useState(initialEvents)
+  const [missions,    setMissions]   = useState(initialMissions)
+  const [toasts,      setToasts]     = useState<XpToastData[]>([])
+  const [levelUpData, setLevelUpData] = useState<{ oldLevel: number; newLevel: number } | null>(null)
+  const [badgeUnlock, setBadgeUnlock] = useState<BadgeItem | null>(null)
+
+  const lastXpRef           = useRef(initialProfile?.user_reputation?.total_xp ?? 0)
+  const lastLevelRef        = useRef(initialProfile?.user_reputation?.level ?? 1)
   const lastEventRef        = useRef(initialEvents[0]?.id ?? '')
   const lastLevelUpShownRef = useRef(initialProfile?.user_reputation?.level ?? 1)
 
@@ -123,7 +125,6 @@ export default function DashboardClient({
   useEffect(() => {
     async function poll() {
       try {
-        // 1. Reputación
         const { data: rep } = await (supabase
           .from('user_reputation')
           .select('*')
@@ -134,26 +135,20 @@ export default function DashboardClient({
           const newXp    = rep.total_xp
           const newLevel = rep.level
 
-          // Detectar level up — solo si no se mostró ya para este nivel
           if (newLevel > lastLevelRef.current && newLevel > lastLevelUpShownRef.current) {
-            setLevelUpData({
-              oldLevel: lastLevelRef.current,
-              newLevel,
-            })
+            setLevelUpData({ oldLevel: lastLevelRef.current, newLevel })
             lastLevelUpShownRef.current = newLevel
             lastLevelRef.current = newLevel
           } else if (newLevel > lastLevelRef.current) {
             lastLevelRef.current = newLevel
           }
 
-          // Actualizar stats si cambió el XP
           if (newXp !== lastXpRef.current) {
             lastXpRef.current = newXp
             setProfile(prev => prev ? { ...prev, user_reputation: rep } : prev)
           }
         }
 
-        // 2. Eventos recientes — buscar nuevos desde el último conocido
         const { data: newEvents } = await (supabase
           .from('xp_events')
           .select('*')
@@ -163,115 +158,72 @@ export default function DashboardClient({
 
         if (newEvents?.length) {
           const latestId = newEvents[0].id
-
           if (latestId !== lastEventRef.current) {
-            // Hay eventos nuevos — mostrar toasts
             const previousIdx = newEvents.findIndex(e => e.id === lastEventRef.current)
             const newOnes = previousIdx === -1 ? newEvents.slice(0, 1) : newEvents.slice(0, previousIdx)
-
-            newOnes.reverse().forEach(event => {
-              addToast(event.xp_awarded, event.event_type)
-            })
-
+            newOnes.reverse().forEach(event => addToast(event.xp_awarded, event.event_type))
             lastEventRef.current = latestId
             setEvents(newEvents)
           }
         }
-
-      } catch (err) {
-        // Silenciar errores de polling — no queremos crashes
-      }
+      } catch { /* silenciar */ }
     }
 
-    // Poll inmediato al montar y después cada 8 segundos
     poll()
     const interval = setInterval(poll, 8000)
     return () => clearInterval(interval)
   }, [userId])
 
-  // ── Realtime para level ups (INSERT — funciona bien) ──────
+  // ── Realtime level ups ────────────────────────────────────
   useEffect(() => {
     const channel = supabase
       .channel(`levelups:${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event:  'INSERT',
-          schema: 'public',
-          table:  'user_level_ups',
-        },
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'user_level_ups' },
         (payload) => {
-          const levelUp = payload.new as { user_id: string; level: number; xp_bonus: number }
-          if (levelUp.user_id !== userId) return
-          // Solo mostrar si el polling aún no lo mostró para este nivel
-          if (levelUp.level > lastLevelUpShownRef.current) {
-            setLevelUpData({
-              oldLevel: levelUp.level - 1,
-              newLevel: levelUp.level,
-            })
-            lastLevelUpShownRef.current = levelUp.level
+          const lu = payload.new as { user_id: string; level: number; xp_bonus: number }
+          if (lu.user_id !== userId) return
+          if (lu.level > lastLevelUpShownRef.current) {
+            setLevelUpData({ oldLevel: lu.level - 1, newLevel: lu.level })
+            lastLevelUpShownRef.current = lu.level
           }
-          if (levelUp.xp_bonus > 0) {
-            addToast(levelUp.xp_bonus, 'ADMIN_MANUAL_GRANT')
-          }
-        }
-      )
+          if (lu.xp_bonus > 0) addToast(lu.xp_bonus, 'ADMIN_MANUAL_GRANT')
+        })
       .subscribe()
-
     return () => { supabase.removeChannel(channel) }
   }, [userId])
 
-  // ── Realtime para badges nuevos ───────────────────────────
+  // ── Realtime badges ───────────────────────────────────────
   useEffect(() => {
     const channel = supabase
       .channel(`badges:${userId}`)
       .on('postgres_changes', {
-        event:  'INSERT',
-        schema: 'public',
-        table:  'user_badges',
+        event: 'INSERT', schema: 'public', table: 'user_badges',
         filter: `user_id=eq.${userId}`,
       }, (payload) => {
-        const badgeId = (payload.new as any).badge_id
-        const badge   = allBadges.find(b => b.id === badgeId)
+        const badge = allBadges.find(b => b.id === (payload.new as any).badge_id)
         if (badge) setBadgeUnlock(badge)
       })
       .subscribe()
-
     return () => { supabase.removeChannel(channel) }
   }, [userId, allBadges])
 
-  const rep = profile?.user_reputation
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Bienvenido, {profile?.username} 👋
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Tu resumen de actividad y progreso
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          En vivo
-        </div>
-      </div>
+      {/* Tarjeta de personaje */}
+      <PlayerCard profile={profile as any} myRank={myRank} />
 
-      <StatsGrid reputation={rep} />
-
+      {/* Actividad + Quests activas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RecentActivity events={events} />
         <ActiveMissions missions={missions} />
       </div>
 
-      {/* Badges */}
+      {/* Logros */}
       {allBadges.length > 0 && (
         <div className="gradient-border rounded-2xl p-6">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-base font-bold text-foreground">Badges</h2>
+            <h2 className="text-base font-bold text-foreground">🏆 Logros</h2>
             <span className="text-xs text-muted-foreground">
               {earnedSet.size} / {allBadges.length} desbloqueados
             </span>
@@ -317,13 +269,10 @@ export default function DashboardClient({
         </div>
       )}
 
+      {/* Toasts XP */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
         {toasts.map(toast => (
-          <XpToast
-            key={toast.id}
-            xp={toast.xp}
-            label={EVENT_LABELS[toast.eventType] ?? toast.eventType}
-          />
+          <XpToast key={toast.id} xp={toast.xp} label={EVENT_LABELS[toast.eventType] ?? toast.eventType} />
         ))}
       </div>
 
@@ -336,10 +285,7 @@ export default function DashboardClient({
       )}
 
       {badgeUnlock && (
-        <BadgeUnlockModal
-          badge={badgeUnlock}
-          onClose={() => setBadgeUnlock(null)}
-        />
+        <BadgeUnlockModal badge={badgeUnlock} onClose={() => setBadgeUnlock(null)} />
       )}
 
     </div>

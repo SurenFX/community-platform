@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Gift, Zap, CircleDollarSign, Flame, Loader2, CheckCircle } from 'lucide-react'
+import { Sword, Zap, CircleDollarSign, Flame, Loader2, CheckCircle } from 'lucide-react'
 import { claimDailyBonus } from '@/app/actions/shop'
 
 interface Props {
@@ -67,7 +67,7 @@ export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props)
         }`}>
           {claimed
             ? <CheckCircle className="w-6 h-6 text-green-400" />
-            : <Gift className={`w-6 h-6 ${alreadyClaimed ? 'text-muted-foreground' : 'text-primary'}`} />
+            : <Sword className={`w-6 h-6 ${alreadyClaimed ? 'text-muted-foreground' : 'text-primary'}`} />
           }
         </div>
 
@@ -75,7 +75,7 @@ export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props)
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <p className="text-sm font-bold text-foreground">
-              {claimed ? '¡Bonus reclamado!' : 'Bonus diario'}
+              {claimed ? '¡Misión completada!' : 'Misión diaria'}
             </p>
             {streak >= 3 && (
               <span className="flex items-center gap-0.5 text-[10px] font-bold text-orange-400">
@@ -118,7 +118,7 @@ export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props)
             disabled={isPending}
             className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-xs font-bold transition-all"
           >
-            {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Gift className="w-3.5 h-3.5" />}
+            {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sword className="w-3.5 h-3.5" />}
             Reclamar
           </button>
         )}

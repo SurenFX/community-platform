@@ -38,7 +38,7 @@ const navItems = [
   { href: '/dashboard',               label: 'Inicio',         icon: Home,              exact: true },
   { href: '/dashboard/comunidad',     label: 'Ranking',        icon: Trophy                         },
   { href: '/dashboard/missions',      label: 'Quests',         icon: Sword                          },
-  { href: '/dashboard/challenges',    label: 'Desafíos',       icon: Swords                         },
+  { href: '/dashboard/challenges',    label: 'Raids',          icon: Swords                         },
   { href: '/dashboard/raffles',       label: 'Sorteos',        icon: Ticket                         },
   { href: '/dashboard/shop',          label: 'Tienda',         icon: ShoppingBag                    },
   { href: '/dashboard/coins',          label: 'SalchiCoins',  icon: CircleDollarSign },
