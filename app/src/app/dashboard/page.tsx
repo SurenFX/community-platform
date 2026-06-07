@@ -52,13 +52,16 @@ export default async function DashboardPage() {
   const allBadges      = allBadgesRes.data ?? []
   const claimableCount = claimableRes.count ?? 0
 
-  // Daily bonus
-  const lastBonusAt = (profile as any)?.user_reputation?.last_daily_bonus_at ?? null
-  const now = Date.now()
-  const msUntilNext = lastBonusAt
-    ? Math.max(0, new Date(lastBonusAt).getTime() + 23 * 3_600_000 - now)
-    : 0
-  const canClaimBonus = msUntilNext === 0
+  // Daily bonus — resetea a las 00:00 UTC cada día
+  const lastBonusAt  = (profile as any)?.user_reputation?.last_daily_bonus_at ?? null
+  const nowMs        = Date.now()
+  const todayUTC     = new Date().toISOString().slice(0, 10)
+  const lastBonusDay = lastBonusAt ? (lastBonusAt as string).slice(0, 10) : null
+  const claimedToday = lastBonusDay === todayUTC
+  // Tiempo hasta el próximo 00:00 UTC
+  const nextMidnightUTC = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
+  const msUntilNext  = claimedToday ? Math.max(0, nextMidnightUTC - nowMs) : 0
+  const canClaimBonus = !claimedToday
   const streak = (profile as any)?.user_reputation?.current_streak ?? 0
 
   return (

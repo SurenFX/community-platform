@@ -24,9 +24,8 @@ export async function claimDailyBonus(): Promise<{
 
   const db = adminDb()
 
-  // Claim atómico: solo actualiza si no reclamó en las últimas 23h
-  const now = new Date().toISOString()
-  const cutoff = new Date(Date.now() - 23 * 3_600_000).toISOString()
+  const now       = new Date().toISOString()
+  const todayUTC  = now.slice(0, 10) // "YYYY-MM-DD"
 
   const { data: rep } = await db
     .from('user_reputation')
@@ -34,12 +33,18 @@ export async function claimDailyBonus(): Promise<{
     .eq('user_id', user.id)
     .single()
 
-  const lastBonus = (rep as any)?.last_daily_bonus_at
-  if (lastBonus && lastBonus > cutoff) return { error: 'Ya reclamaste el bonus de hoy' }
+  const lastBonus    = (rep as any)?.last_daily_bonus_at as string | null
+  const lastBonusDay = lastBonus ? lastBonus.slice(0, 10) : null
+
+  // Bloquear si ya reclamó hoy (día calendario UTC)
+  if (lastBonusDay === todayUTC) return { error: 'Ya reclamaste el bonus de hoy' }
 
   const streak        = (rep as any)?.current_streak  ?? 0
   const longestStreak = (rep as any)?.longest_streak  ?? 0
-  const newStreak     = streak + 1
+
+  // La racha continúa solo si el último reclamo fue ayer; si saltó un día, se resetea
+  const yesterdayUTC = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
+  const newStreak = lastBonusDay === yesterdayUTC ? streak + 1 : 1
 
   let xp = 25
   let sc = 1
