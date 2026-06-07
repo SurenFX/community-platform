@@ -275,6 +275,43 @@ export async function revokeBadge(badgeId: string, targetUserId: string): Promis
   return {}
 }
 
+// ── SC Manual ──────────────────────────────────────────────────────────────
+export async function grantSc(
+  targetUserId: string,
+  amount: number,
+  reason?: string,
+): Promise<{ error?: string }> {
+  if (amount <= 0 || amount > 100000) return { error: 'Cantidad inválida (1-100000)' }
+
+  const { error: authError, admin } = await getAdminClient()
+  if (authError || !admin) return { error: authError ?? 'Error' }
+
+  const { data: rep } = await admin
+    .from('user_reputation')
+    .select('salchi_coins')
+    .eq('user_id', targetUserId)
+    .single()
+
+  if (!rep) return { error: 'Usuario no encontrado' }
+
+  const { error } = await admin
+    .from('user_reputation')
+    .update({ salchi_coins: (rep as any).salchi_coins + amount })
+    .eq('user_id', targetUserId)
+
+  if (error) return { error: 'No se pudo otorgar los SC' }
+
+  await admin.from('notifications').insert({
+    user_id: targetUserId,
+    type:    'SYSTEM',
+    title:   `+${amount} SalchiCoins`,
+    body:    reason ? `El equipo te otorgó SC: ${reason}` : 'El equipo te otorgó SalchiCoins.',
+    is_read: false,
+  })
+
+  return {}
+}
+
 // ── User reset ─────────────────────────────────────────────────────────────
 export async function resetUserProgress(targetUserId: string): Promise<{ error?: string }> {
   const { error: authError, admin } = await getAdminClient()

@@ -50,11 +50,6 @@ export default async function ComunidadPage() {
     }
   }
 
-  // Season banner data
-  const seasonDaysLeft = activeSeason
-    ? Math.max(0, Math.ceil((new Date(activeSeason.ends_at).getTime() - Date.now()) / 86_400_000))
-    : null
-
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       <div>

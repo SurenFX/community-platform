@@ -7,7 +7,7 @@ import { signOut } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
 import {
   Home, Trophy, Sword, Settings, LogOut, Shield, Ticket,
-  CircleDollarSign, ShoppingBag, Swords, Menu, X,
+  CircleDollarSign, ShoppingBag, Swords, Menu, X, Bell,
 } from 'lucide-react'
 
 import SidebarXpBar from './SidebarXpBar'
@@ -40,8 +40,9 @@ const navItems = [
   { href: '/dashboard/challenges',    label: 'Desafíos',       icon: Swords                         },
   { href: '/dashboard/raffles',       label: 'Sorteos',        icon: Ticket                         },
   { href: '/dashboard/shop',          label: 'Tienda',         icon: ShoppingBag                    },
-  { href: '/dashboard/coins',         label: 'SalchiCoins',    icon: CircleDollarSign               },
-  { href: '/dashboard/configuracion', label: 'Configuración',  icon: Settings                       },
+  { href: '/dashboard/coins',             label: 'SalchiCoins',    icon: CircleDollarSign               },
+  { href: '/dashboard/notificaciones',   label: 'Notificaciones', icon: Bell                           },
+  { href: '/dashboard/configuracion',    label: 'Configuración',  icon: Settings                       },
 ]
 
 export default function Sidebar({ profile }: SidebarProps) {

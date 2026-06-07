@@ -248,11 +248,11 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
         userId={grantTarget.id}
         username={grantTarget.username}
         onClose={() => setGrantTarget(null)}
-        onGranted={(amount) => {
-          setUsers(prev => prev.map(u =>
+        onGranted={(xp) => {
+          if (xp > 0) setUsers(prev => prev.map(u =>
             u.id === grantTarget.id
               ? { ...u, user_reputation: u.user_reputation
-                  ? { ...u.user_reputation, total_xp: u.user_reputation.total_xp + amount }
+                  ? { ...u.user_reputation, total_xp: u.user_reputation.total_xp + xp }
                   : u.user_reputation }
               : u
           ))
