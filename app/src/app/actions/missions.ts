@@ -32,21 +32,16 @@ export async function acceptMission(missionId: string): Promise<{ error?: string
 
   if (!mission) return { error: 'Misión no disponible' }
 
-  // Verificar que no la aceptó ya
-  const { data: existing } = await admin
-    .from('user_missions')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('mission_id', missionId)
-    .single()
-
-  if (existing) return { error: 'Ya aceptaste esta misión' }
-
+  // INSERT atómico: el UNIQUE constraint (user_id, mission_id) previene el doble-accept.
+  // Si ya existe la fila, Supabase devuelve error con code 23505 (unique_violation).
   const { error } = await admin
     .from('user_missions')
     .insert({ user_id: user.id, mission_id: missionId, progress: 0 })
 
-  if (error) return { error: 'No se pudo aceptar la misión' }
+  if (error) {
+    if ((error as any).code === '23505') return { error: 'Ya aceptaste esta misión' }
+    return { error: 'No se pudo aceptar la misión' }
+  }
   return {}
 }
 

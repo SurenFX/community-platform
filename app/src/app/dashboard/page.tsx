@@ -73,7 +73,7 @@ export default async function DashboardPage() {
         />
       )}
       {claimableCount > 0 && (
-        <Link href="/dashboard/misiones" className="mb-4 flex items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm font-semibold text-green-400 hover:bg-green-500/20 transition-colors">
+        <Link href="/dashboard/missions" className="mb-4 flex items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm font-semibold text-green-400 hover:bg-green-500/20 transition-colors">
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-[11px] font-black text-white shrink-0">
             {claimableCount}
           </span>
