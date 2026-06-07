@@ -30,7 +30,7 @@ export async function claimDailyBonus(): Promise<{
 
   const { data: rep } = await db
     .from('user_reputation')
-    .select('salchi_coins, current_streak, longest_streak, last_daily_bonus_at')
+    .select('total_xp, weekly_xp, monthly_xp, salchi_coins, current_streak, longest_streak, last_daily_bonus_at')
     .eq('user_id', user.id)
     .single()
 
@@ -49,32 +49,33 @@ export async function claimDailyBonus(): Promise<{
 
   const currentCoins = (rep as any)?.salchi_coins ?? 0
 
-  // Usar award_xp RPC para que actualice nivel y dispare level-up
-  const { error: rpcError } = await db.rpc('award_xp', {
-    p_user_id:    user.id,
-    p_event_type: 'STREAK_BONUS',
-    p_platform:   'SYSTEM',
-    p_xp:         xp,
-    p_base_xp:    xp,
-    p_multiplier: 1,
-    p_quality:    1,
-    p_streak:     0,
-    p_ref:        `daily_bonus_${now}`,
-    p_metadata:   { source: 'DAILY_BONUS', streak: newStreak },
-  })
+  const newTotalXp = ((rep as any)?.total_xp   ?? 0) + xp
+  const newLevel   = Math.min(Math.floor((-9 + Math.sqrt(121 + newTotalXp / 3.125)) / 2), 200)
 
-  if (rpcError) {
-    console.error('claimDailyBonus award_xp error:', rpcError.message)
-    return { error: 'Error al reclamar el bonus' }
-  }
-
-  // Actualizar streak, SC y timestamp
+  // Actualizar todo en un solo UPDATE
   await db.from('user_reputation').update({
+    total_xp:            newTotalXp,
+    weekly_xp:           ((rep as any)?.weekly_xp  ?? 0) + xp,
+    monthly_xp:          ((rep as any)?.monthly_xp ?? 0) + xp,
+    level:               newLevel,
     salchi_coins:        currentCoins + sc,
     current_streak:      newStreak,
     longest_streak:      Math.max(longestStreak, newStreak),
     last_daily_bonus_at: now,
   }).eq('user_id', user.id)
+
+  // Insertar xp_event para historial de actividad
+  await db.from('xp_events').insert({
+    user_id:       user.id,
+    event_type:    'STREAK_BONUS',
+    xp_awarded:    xp,
+    base_xp:       xp,
+    multiplier:    1,
+    quality_score: 1,
+    streak_bonus:  0,
+    platform:      'DISCORD',
+    metadata:      { source: 'DAILY_BONUS', streak: newStreak },
+  })
 
   // Notificación para que aparezca en historial de coins
   await db.from('notifications').insert({
