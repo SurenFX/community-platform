@@ -1,19 +1,36 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Zap, CircleDollarSign, Ban, RotateCcw, Check, Loader2, Shield, ShieldOff } from 'lucide-react'
-import { grantXp, grantSc, resetUserProgress } from '@/app/actions/admin'
+import { Zap, CircleDollarSign, Ban, RotateCcw, Check, Loader2, Shield, ShieldOff, Medal, X } from 'lucide-react'
+import { grantXp, grantSc, resetUserProgress, grantBadge, revokeBadge } from '@/app/actions/admin'
 import { setUserAdmin, setUserBanned } from '@/app/actions/social'
 import { useRouter } from 'next/navigation'
 
-interface Props {
-  userId:   string
-  username: string
-  isAdmin:  boolean
-  isBanned: boolean
+interface Badge {
+  id: string
+  name: string
+  image_url: string | null
+  tier: string
+  family: string | null
 }
 
-export default function AdminUserActions({ userId, username, isAdmin, isBanned }: Props) {
+interface Props {
+  userId:        string
+  username:      string
+  isAdmin:       boolean
+  isBanned:      boolean
+  allBadges:     Badge[]
+  earnedBadgeIds: string[]
+}
+
+const TIER_COLORS: Record<string, string> = {
+  BRONZE:    'border-amber-700/30 bg-amber-700/10 text-amber-600',
+  SILVER:    'border-slate-400/30 bg-slate-400/10 text-slate-400',
+  GOLD:      'border-yellow-400/30 bg-yellow-400/10 text-yellow-400',
+  LEGENDARY: 'border-purple-400/30 bg-purple-400/10 text-purple-400',
+}
+
+export default function AdminUserActions({ userId, username, isAdmin, isBanned, allBadges, earnedBadgeIds }: Props) {
   const router = useRouter()
   const [isPending, start] = useTransition()
   const [xpAmount,  setXpAmount]  = useState(100)
@@ -21,8 +38,9 @@ export default function AdminUserActions({ userId, username, isAdmin, isBanned }
   const [reason,    setReason]    = useState('')
   const [feedback,  setFeedback]  = useState<{ msg: string; ok: boolean } | null>(null)
   const [resetConfirm, setResetConfirm] = useState(false)
-  const [adminState, setAdminState] = useState(isAdmin)
+  const [adminState,  setAdminState]  = useState(isAdmin)
   const [bannedState, setBannedState] = useState(isBanned)
+  const [earnedIds,   setEarnedIds]   = useState<Set<string>>(new Set(earnedBadgeIds))
 
   const inputClass = "bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 w-full"
 
@@ -69,6 +87,24 @@ export default function AdminUserActions({ userId, username, isAdmin, isBanned }
       fb('Progreso reseteado', true)
       setResetConfirm(false)
       router.refresh()
+    })
+  }
+
+  function handleToggleBadge(badgeId: string, currentlyEarned: boolean) {
+    start(async () => {
+      const r = currentlyEarned
+        ? await revokeBadge(badgeId, userId)
+        : await grantBadge(badgeId, userId)
+      if (!r.error) {
+        setEarnedIds(prev => {
+          const next = new Set(prev)
+          currentlyEarned ? next.delete(badgeId) : next.add(badgeId)
+          return next
+        })
+        fb(currentlyEarned ? 'Badge revocado' : 'Badge otorgado ✓', true)
+      } else {
+        fb(r.error, false)
+      }
     })
   }
 
@@ -129,6 +165,39 @@ export default function AdminUserActions({ userId, username, isAdmin, isBanned }
           </button>
         </div>
       </div>
+
+      {/* Badges */}
+      {allBadges.length > 0 && (
+        <div className="pt-4 border-t border-border space-y-2">
+          <div className="flex items-center gap-2">
+            <Medal className="w-3.5 h-3.5 text-muted-foreground" />
+            <label className="text-xs font-medium text-muted-foreground">Badges — click para otorgar / revocar</label>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {allBadges.map((b) => {
+              const earned = earnedIds.has(b.id)
+              const tc = TIER_COLORS[b.tier] ?? 'border-border bg-secondary text-muted-foreground'
+              return (
+                <button
+                  key={b.id}
+                  onClick={() => handleToggleBadge(b.id, earned)}
+                  disabled={isPending}
+                  title={earned ? `Revocar ${b.name}` : `Otorgar ${b.name}`}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-all disabled:opacity-50 ${
+                    earned
+                      ? `${tc} opacity-100`
+                      : 'border-border bg-secondary text-muted-foreground opacity-50 hover:opacity-80'
+                  }`}
+                >
+                  <span>{b.image_url || '🏅'}</span>
+                  <span>{b.name}</span>
+                  {earned && <X className="w-3 h-3 ml-0.5 opacity-60" />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Estado */}
       <div className="flex gap-3 pt-2 border-t border-border">

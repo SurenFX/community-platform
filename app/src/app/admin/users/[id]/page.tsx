@@ -213,6 +213,8 @@ export default async function AdminUserDetailPage({
         username={profile.username}
         isAdmin={profile.is_admin ?? false}
         isBanned={profile.is_banned ?? false}
+        allBadges={allBadges}
+        earnedBadgeIds={[...earnedSet]}
       />
 
       {/* Actividad reciente */}
