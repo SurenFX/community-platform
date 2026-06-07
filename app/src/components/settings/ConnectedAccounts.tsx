@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Check, Link, Unlink, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
 import type { Profile, UserSocialLink } from '@/types/database'
@@ -112,6 +112,13 @@ export default function ConnectedAccounts({
   const [loading,         setLoading]         = useState<string | null>(null)
   const [localError,      setLocalError]      = useState<string | null>(null)
   const [telegramWaiting, setTelegramWaiting] = useState(false)
+  const telegramPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (telegramPollRef.current) clearInterval(telegramPollRef.current)
+    }
+  }, [])
   const [togglingPublic,  setTogglingPublic]  = useState<string | null>(null)
   const supabase = createClient()
 
@@ -162,9 +169,10 @@ export default function ConnectedAccounts({
         setLoading(null)
 
         const startTime = Date.now()
-        const poll = setInterval(async () => {
+        telegramPollRef.current = setInterval(async () => {
           if (Date.now() - startTime > 3 * 60 * 1000) {
-            clearInterval(poll)
+            clearInterval(telegramPollRef.current!)
+            telegramPollRef.current = null
             setTelegramWaiting(false)
             setLocalError('Tiempo agotado. Intentá de nuevo.')
             return
@@ -178,7 +186,8 @@ export default function ConnectedAccounts({
             .maybeSingle()
 
           if (link) {
-            clearInterval(poll)
+            clearInterval(telegramPollRef.current!)
+            telegramPollRef.current = null
             setTelegramWaiting(false)
             setLocalLinks(prev => [
               ...prev.filter(l => l.platform !== 'TELEGRAM'),

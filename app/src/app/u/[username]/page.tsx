@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Shield, Flame, Trophy, Zap, Calendar } from 'lucide-react'
 import { getLevelTitle, getLevelColor, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'
+import ProfileEditButton from '@/components/profile/ProfileEditButton'
 
 export async function generateMetadata({
   params,
@@ -75,6 +77,9 @@ export default async function PublicProfilePage({
 }) {
   const { username } = await params
 
+  const authClient = await createClient()
+  const { data: { user: currentUser } } = await authClient.auth.getUser()
+
   const supabase = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -88,6 +93,8 @@ export default async function PublicProfilePage({
     .single()
 
   if (!profile) notFound()
+
+  const isOwner = currentUser?.id === profile.id
 
   const [repRes, badgesRes, allBadgesRes, linksRes] = await Promise.all([
     supabase.from('user_reputation')
@@ -162,6 +169,9 @@ export default async function PublicProfilePage({
                     {nameEmoji && <span className="mr-1">{nameEmoji}</span>}
                     {profile.username}
                   </h1>
+                  {isOwner && (
+                    <ProfileEditButton username={profile.username} bio={profile.bio} />
+                  )}
                   {profile.is_admin && (
                     <span className="flex items-center gap-1 text-[10px] font-bold bg-primary/20 text-primary px-2 py-0.5 rounded-full">
                       <Shield className="w-3 h-3" /> Admin
