@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import LeaderboardTable from '@/components/leaderboard/LeaderboardTable'
+import SeasonCountdown from '@/components/layout/SeasonCountdown'
 
 export default async function ComunidadPage() {
   const supabase = await createClient()
@@ -63,19 +64,7 @@ export default async function ComunidadPage() {
 
       {/* Season banner */}
       {activeSeason && (
-        <div className="relative overflow-hidden bg-card border border-primary/20 rounded-2xl px-5 py-4 flex items-center gap-4"
-          style={{ background: 'radial-gradient(ellipse at 0% 50%, hsl(185 100% 45% / 0.08) 0%, transparent 60%)' }}
-        >
-          <div className="text-2xl">🏆</div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-primary uppercase tracking-widest">Temporada activa</p>
-            <p className="text-base font-black text-foreground">{activeSeason.name}</p>
-          </div>
-          <div className="text-right shrink-0">
-            <p className="text-xl font-black text-foreground">{seasonDaysLeft}</p>
-            <p className="text-xs text-muted-foreground">días restantes</p>
-          </div>
-        </div>
+        <SeasonCountdown endsAt={activeSeason.ends_at} name={activeSeason.name} />
       )}
 
       <LeaderboardTable
