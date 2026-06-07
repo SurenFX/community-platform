@@ -44,7 +44,7 @@ export default async function CoinsPage() {
       .from('notifications')
       .select('created_at, title, type')
       .eq('user_id', user.id)
-      .in('type', ['SYSTEM', 'CHALLENGE_REWARD', 'STREAK_BONUS'])
+      .in('type', ['SYSTEM', 'CHALLENGE_REWARD', 'STREAK_BONUS', 'MISSION_COMPLETED'])
       .ilike('title', '%SalchiCoin%')
       .order('created_at', { ascending: false })
       .limit(50),
