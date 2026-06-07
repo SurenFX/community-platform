@@ -82,6 +82,19 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
   const myPosition  = myRank ? (myRank[rankField[period]] as number) : null
 
   return (
+    <div className="space-y-3">
+      {/* Search — fuera del card */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar usuario..."
+          className="w-full pl-9 pr-4 py-2.5 text-sm bg-card border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors"
+        />
+      </div>
+
     <div className="bg-card border border-border rounded-xl overflow-hidden">
       {/* Tabs */}
       <div className="flex border-b border-border">
@@ -99,20 +112,6 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
             {periodLabels[p]}
           </button>
         ))}
-      </div>
-
-      {/* Search */}
-      <div className="px-4 py-3 border-b border-border">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar usuario..."
-            className="w-full pl-9 pr-4 py-2 text-sm bg-secondary border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
-          />
-        </div>
       </div>
 
       {/* Table */}
@@ -239,6 +238,7 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
           </div>
         </>
       )}
+    </div>
     </div>
   )
 }
