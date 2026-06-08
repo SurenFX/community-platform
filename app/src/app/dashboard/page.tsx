@@ -70,17 +70,7 @@ export default async function DashboardPage() {
   const middleContent = (
     <div className="space-y-4">
 
-      {claimableCount > 0 && (
-        <Link href="/dashboard/missions" className="flex items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm font-semibold text-green-400 hover:bg-green-500/20 transition-colors">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-[11px] font-black text-white shrink-0">
-            {claimableCount}
-          </span>
-          {claimableCount === 1 ? 'Tenes 1 mision lista para reclamar' : `Tenes ${claimableCount} misiones listas para reclamar`} &rarr;
-        </Link>
-      )}
-
-      <DailyBonusCard canClaim={canClaimBonus} streak={streak} nextClaimMs={msUntilNext} />
-
+      {/* 1. Buffs activos */}
       {buffs.length > 0 && (
         <div className="flex flex-wrap gap-2 items-center">
           <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
@@ -94,36 +84,7 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {activeMissions.length > 0 && (
-        <div className="bg-card border border-border rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-              <Target className="w-3.5 h-3.5 text-primary" />
-              QUESTS EN PROGRESO
-            </span>
-            <Link href="/dashboard/missions" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">
-              Ver todas <ChevronRight className="w-3 h-3" />
-            </Link>
-          </div>
-          <div className="space-y-2.5">
-            {activeMissions.map((m: any) => {
-              const pct = m.target > 0 ? Math.min(100, Math.round((m.progress / m.target) * 100)) : 0
-              return (
-                <div key={m.id}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-foreground font-medium truncate flex-1 mr-2">{m.title}</span>
-                    <span className="text-[10px] text-muted-foreground shrink-0">{m.progress}/{m.target}</span>
-                  </div>
-                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full xp-bar rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
+      {/* 2. Posicion global + Desafio comunitario */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Link href="/dashboard/comunidad" className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3 hover:border-primary/40 transition-colors">
           <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -162,6 +123,50 @@ export default async function DashboardPage() {
           </Link>
         )}
       </div>
+
+      {/* 3. Mision diaria */}
+      <DailyBonusCard canClaim={canClaimBonus} streak={streak} nextClaimMs={msUntilNext} />
+
+      {/* 4. Quest tracker */}
+      {activeMissions.length > 0 && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <Target className="w-3.5 h-3.5 text-primary" />
+              QUESTS EN PROGRESO
+            </span>
+            <Link href="/dashboard/missions" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">
+              Ver todas <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="space-y-2.5">
+            {activeMissions.map((m: any) => {
+              const pct = m.target > 0 ? Math.min(100, Math.round((m.progress / m.target) * 100)) : 0
+              return (
+                <div key={m.id}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-foreground font-medium truncate flex-1 mr-2">{m.title}</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">{m.progress}/{m.target}</span>
+                  </div>
+                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full xp-bar rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Alerta misiones por reclamar — junto a las quests */}
+      {claimableCount > 0 && (
+        <Link href="/dashboard/missions" className="flex items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm font-semibold text-green-400 hover:bg-green-500/20 transition-colors">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-[11px] font-black text-white shrink-0">
+            {claimableCount}
+          </span>
+          {claimableCount === 1 ? 'Tenes 1 mision lista para reclamar' : `Tenes ${claimableCount} misiones listas para reclamar`} &rarr;
+        </Link>
+      )}
 
     </div>
   )
