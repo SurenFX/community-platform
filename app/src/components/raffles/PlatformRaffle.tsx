@@ -77,7 +77,7 @@ export default function PlatformRaffleClient({
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Sorteo de la plataforma</h1>
