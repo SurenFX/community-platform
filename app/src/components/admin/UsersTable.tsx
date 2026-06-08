@@ -294,5 +294,4 @@ export default function UsersTable({ users: initialUsers }: UsersTableProps) {
       </div>
     )}
     </>
-  )
-}
+ 

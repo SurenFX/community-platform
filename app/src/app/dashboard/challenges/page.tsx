@@ -148,38 +148,4 @@ export default async function ChallengesPage() {
                       </span>
                       <span className={myXp > 0 ? 'text-primary font-semibold' : ''}>
                         {myXp.toLocaleString('es-AR')} XP · {myPct}%
-                      </span>
-                    </div>
-                    <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all duration-700"
-                        style={{ width: `${myPct}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Recompensas */}
-                {(ch.reward_xp_per_user > 0 || ch.reward_sc_per_user > 0) && (
-                  <div className="flex items-center gap-3 pt-3 border-t border-border">
-                    <p className="text-xs text-muted-foreground">Recompensa para todos:</p>
-                    {ch.reward_xp_per_user > 0 && (
-                      <span className="flex items-center gap-1 text-xs font-semibold text-purple-400">
-                        <Zap className="w-3.5 h-3.5" />+{ch.reward_xp_per_user} XP
-                      </span>
-                    )}
-                    {ch.reward_sc_per_user > 0 && (
-                      <span className="flex items-center gap-1 text-xs font-semibold text-yellow-400">
-                        <CircleDollarSign className="w-3.5 h-3.5" />+{ch.reward_sc_per_user} SC
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
+                     

@@ -33,29 +33,4 @@ export async function loadMoreNotifications(cursor: string): Promise<{ data: any
 
   const items = data ?? []
   const hasMore = items.length > PAGE_SIZE
-  return { data: items.slice(0, PAGE_SIZE), hasMore }
-}
-
-export async function markAllAsRead() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
-
-  await supabase
-    .from('notifications')
-    .update({ is_read: true })
-    .eq('user_id', user.id)
-    .eq('is_read', false)
-}
-
-export async function markAsRead(id: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
-
-  await supabase
-    .from('notifications')
-    .update({ is_read: true })
-    .eq('id', id)
-    .eq('user_id', user.id)
-}
+  return { 

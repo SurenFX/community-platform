@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Swords, MapPin } from 'lucide-react'
+import { Swords, MapPin, Flame, Zap } from 'lucide-react'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import OnboardingModal from '@/components/dashboard/OnboardingModal'
 import DailyBonusCard from '@/components/dashboard/DailyBonusCard'
@@ -52,7 +52,6 @@ export default async function DashboardPage() {
       .from('user_badges')
       .select('badge_id')
       .eq('user_id', user.id),
-    // Desafío comunitario activo
     admin
       .from('community_challenges')
       .select('id, title, goal_xp, starts_at, ends_at, reward_xp_per_user, reward_sc_per_user')
@@ -69,7 +68,6 @@ export default async function DashboardPage() {
   const claimableCount = claimableRes.count ?? 0
   const challenge      = (challengeRes as any).data
 
-  // Progreso del desafío activo desde xp_events
   let challengePct = 0
   if (challenge) {
     const { data: evts } = await admin
@@ -81,7 +79,6 @@ export default async function DashboardPage() {
     challengePct = challenge.goal_xp > 0 ? Math.min(100, Math.round((total / challenge.goal_xp) * 100)) : 0
   }
 
-  // Posición en ranking (usuarios con más XP que yo + 1)
   const myTotalXp = (profile as any)?.user_reputation?.total_xp ?? 0
   const { count: usersAhead } = await supabase
     .from('user_reputation')
@@ -89,17 +86,21 @@ export default async function DashboardPage() {
     .gt('total_xp', myTotalXp)
   const myRank = (usersAhead ?? 0) + 1
 
-  // Daily bonus — resetea a las 00:00 UTC cada día
   const lastBonusAt  = (profile as any)?.user_reputation?.last_daily_bonus_at ?? null
   const nowMs        = Date.now()
   const todayUTC     = new Date().toISOString().slice(0, 10)
   const lastBonusDay = lastBonusAt ? (lastBonusAt as string).slice(0, 10) : null
   const claimedToday = lastBonusDay === todayUTC
-  // Tiempo hasta el próximo 00:00 UTC
   const nextMidnightUTC = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
   const msUntilNext  = claimedToday ? Math.max(0, nextMidnightUTC - nowMs) : 0
   const canClaimBonus = !claimedToday
   const streak = (profile as any)?.user_reputation?.current_streak ?? 0
+
+  const buffs: { icon: JSX.Element; label: string; color: string }[] = []
+  if (streak >= 30)      buffs.push({ icon: <Flame className="w-3 h-3" />, label: `Racha ${streak}d +200 XP +10 SC`, color: 'bg-orange-500/15 text-orange-400 border-orange-500/25' })
+  else if (streak >= 7)  buffs.push({ icon: <Flame className="w-3 h-3" />, label: `Racha ${streak}d +100 XP +5 SC`,  color: 'bg-orange-400/15 text-orange-400 border-orange-400/25' })
+  else if (streak >= 3)  buffs.push({ icon: <Flame className="w-3 h-3" />, label: `Racha ${streak}d +50 XP +2 SC`,   color: 'bg-amber-400/15 text-amber-400 border-amber-400/25'   })
+  if (challenge)         buffs.push({ icon: <Swords className="w-3 h-3" />, label: `Raid: ${challenge.title}`,       color: 'bg-primary/10 text-primary border-primary/25'         })
 
   return (
     <>
@@ -114,28 +115,38 @@ export default async function DashboardPage() {
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500 text-[11px] font-black text-white shrink-0">
             {claimableCount}
           </span>
-          {claimableCount === 1 ? 'Tenés 1 misión lista para reclamar' : `Tenés ${claimableCount} misiones listas para reclamar`} →
+          {claimableCount === 1 ? 'Tenes 1 mision lista para reclamar' : `Tenes ${claimableCount} misiones listas para reclamar`} &rarr;
         </Link>
       )}
       <div className="mb-4">
         <DailyBonusCard canClaim={canClaimBonus} streak={streak} nextClaimMs={msUntilNext} />
       </div>
 
-      {/* Fila: posición en ranking + desafío activo */}
+      {buffs.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4 items-center">
+          <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
+            <Zap className="w-3 h-3" /> BUFFS ACTIVOS
+          </span>
+          {buffs.map((b, i) => (
+            <span key={i} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${b.color}`}>
+              {b.icon}{b.label}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-        {/* Posición global */}
         <Link href="/dashboard/comunidad"
           className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3 hover:border-primary/40 transition-colors">
           <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
             <MapPin className="w-4 h-4 text-primary" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">Tu posición global</p>
+            <p className="text-xs text-muted-foreground">Tu posicion global</p>
             <p className="text-sm font-black text-foreground">#{myRank}</p>
           </div>
         </Link>
 
-        {/* Desafío activo */}
         {challenge ? (() => {
           const pct = challengePct
           return (
@@ -162,8 +173,8 @@ export default async function DashboardPage() {
               <Swords className="w-4 h-4 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Desafío comunitario</p>
-              <p className="text-xs font-semibold text-foreground">Sin desafío activo</p>
+              <p className="text-xs text-muted-foreground">Desafio comunitario</p>
+              <p className="text-xs font-semibold text-foreground">Sin desafio activo</p>
             </div>
           </Link>
         )}

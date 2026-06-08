@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Target, CheckCircle2, Gift, Loader2 } from 'lucide-react'
+import { Sword, CheckCircle2, Scroll, Loader2, Zap, CircleDollarSign, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Mission, UserMission } from '@/types/database'
 import { claimMission } from '@/app/actions/missions'
+import { useConfetti } from '@/hooks/useConfetti'
 
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   DAILY:   { label: 'Diaria',   color: 'bg-blue-400/15 text-blue-400'    },
@@ -47,11 +48,10 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
   const [isPending, startTransition] = useTransition()
   const [actionId, setActionId] = useState<string | null>(null)
   const [claimedIds, setClaimedIds] = useState<Set<string>>(new Set())
+  const { questClaim } = useConfetti()
 
   const progressMap = new Map(localUserMissions.map(um => [um.mission_id, um]))
 
-  // Misiones activas: todas las que no están completadas/reclamadas
-  // Ordenadas: en progreso primero, luego no iniciadas
   const active = missions
     .filter(m => {
       const um = progressMap.get(m.id)
@@ -61,7 +61,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
     .sort((a, b) => {
       const pa = progressMap.get(a.id)?.progress ?? 0
       const pb = progressMap.get(b.id)?.progress ?? 0
-      return pb - pa  // mayor progreso primero
+      return pb - pa
     })
 
   const toClaim = missions.filter(m => {
@@ -71,7 +71,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
   })
 
   const completed = missions.filter(m => {
-    if ((m as any)._expired_unclaimed) return true   // expiradas van aquí
+    if ((m as any)._expired_unclaimed) return true
     const um = progressMap.get(m.id)
     return um && um.is_completed && (um.is_claimed || claimedIds.has(um.id))
   })
@@ -86,6 +86,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
         setLocalUserMissions(prev =>
           prev.map(um => um.id === userMissionId ? { ...um, is_claimed: true } : um)
         )
+        questClaim()
       }
       setActionId(null)
     })
@@ -116,88 +117,114 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
     const isExpiringSoon = !isExpiredUnclaimed && !isCompleted && msLeft > 0 && hoursLeft <= 24
     const isActioning = actionId === userMission?.id
 
+    const borderClass = isExpiredUnclaimed
+      ? 'border-border/30 opacity-40'
+      : isClaimed
+      ? 'border-green-500/30 bg-green-500/5 opacity-70'
+      : isCompleted
+      ? 'border-yellow-400/50 bg-yellow-400/5 shadow-[0_0_20px_rgba(251,191,36,0.08)]'
+      : isExpiringSoon
+      ? 'border-orange-400/40 bg-orange-400/5'
+      : !hasStarted
+      ? 'border-border/50 opacity-55'
+      : 'border-border hover:border-primary/30 transition-colors'
+
     return (
-      <div className={cn(
-        'bg-card border rounded-xl p-5 transition-all',
-        isExpiredUnclaimed ? 'border-border opacity-50' :
-        isClaimed          ? 'border-green-500/30 bg-green-500/5 opacity-70' :
-        isCompleted        ? 'border-yellow-400/40 bg-yellow-400/5' :
-        isExpiringSoon     ? 'border-orange-400/40 bg-orange-400/5' :
-        !hasStarted        ? 'border-border opacity-60' :
-        'border-border'
-      )}>
-        <div className="flex items-start justify-between gap-4 mb-3">
+      <div className={cn('bg-card border rounded-2xl p-5 transition-all', borderClass)}>
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${type?.color}`}>
-                {type?.label}
-              </span>
+            <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+              {type && (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${type.color}`}>
+                  {type.label}
+                </span>
+              )}
               {platform && (
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${platform.bg} ${platform.color}`}>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${platform.bg} ${platform.color}`}>
                   {platform.label}
                 </span>
               )}
               {isExpiringSoon && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-orange-400/15 text-orange-400 flex items-center gap-1 pulse-soft">
-                  ⚠️ Expira en {hoursLeft}h
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-400/15 text-orange-400">
+                  {hoursLeft}h restantes
                 </span>
               )}
               {isExpiredUnclaimed && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-red-500/15 text-red-400">
-                  Expirada sin reclamar
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/15 text-red-400">
+                  Expirada
                 </span>
               )}
-              {!isExpiredUnclaimed && isClaimed && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-green-500/15 text-green-400 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Reclamada
+              {isClaimed && !isExpiredUnclaimed && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Completada
                 </span>
               )}
               {!hasStarted && (
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-secondary text-muted-foreground">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
                   No iniciada
                 </span>
               )}
             </div>
-            <h3 className="text-sm font-semibold text-foreground">{mission.title}</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">{mission.description}</p>
+            <h3 className="text-sm font-bold text-foreground leading-snug">{mission.title}</h3>
+            <p className="text-xs text-muted-foreground mt-1">{mission.description}</p>
           </div>
-          <div className="text-right shrink-0 space-y-0.5">
-            <p className="text-base font-bold text-purple-400">+{mission.xp_reward} XP</p>
+
+          <div className="shrink-0 flex flex-col items-end gap-1">
+            <div className="flex items-center gap-1 bg-purple-400/10 border border-purple-400/20 rounded-xl px-2.5 py-1">
+              <Zap className="w-3.5 h-3.5 text-purple-400" />
+              <span className="text-sm font-black text-purple-400">+{mission.xp_reward}</span>
+              <span className="text-[10px] text-purple-400/70 font-medium">XP</span>
+            </div>
             {(mission as any).coin_reward > 0 && (
-              <p className="text-xs font-semibold text-yellow-400">+{(mission as any).coin_reward} SC</p>
+              <div className="flex items-center gap-1 bg-yellow-400/10 border border-yellow-400/20 rounded-xl px-2.5 py-1">
+                <CircleDollarSign className="w-3.5 h-3.5 text-yellow-400" />
+                <span className="text-sm font-black text-yellow-400">+{(mission as any).coin_reward}</span>
+                <span className="text-[10px] text-yellow-400/70 font-medium">SC</span>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Barra de progreso */}
-        <div className="space-y-1 mb-3">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{progress} / {mission.target_count}</span>
-            {!isExpiringSoon && endsIn <= 365 && <span>Vence en {endsIn}d</span>}
+        <div className="space-y-1.5 mb-4">
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-muted-foreground font-medium">
+              Progreso: <span className="text-foreground font-bold">{progress}</span>/{mission.target_count}
+            </span>
+            {!isExpiringSoon && !isExpiredUnclaimed && endsIn <= 365 && (
+              <span className="flex items-center gap-1 text-muted-foreground">
+                <Clock className="w-3 h-3" />{endsIn}d
+              </span>
+            )}
           </div>
-          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+          <div className="h-3 bg-secondary rounded-full overflow-hidden">
             <div
               className={cn(
-                'h-full rounded-full transition-all duration-500',
-                isClaimed ? 'bg-green-400' : isCompleted ? 'bg-yellow-400' : 'xp-bar'
+                'h-full rounded-full transition-all duration-700',
+                isClaimed    ? 'bg-green-400'  :
+                isCompleted  ? 'bg-yellow-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]' :
+                'xp-bar'
               )}
               style={{ width: `${pct}%` }}
             />
           </div>
+          {!isCompleted && !isExpiredUnclaimed && (
+            <p className="text-[10px] text-muted-foreground text-right">
+              {pct >= 100 ? 'Listo para reclamar!' : `${Math.round(pct)}% completado`}
+            </p>
+          )}
         </div>
 
-        {/* Botón reclamar */}
         {showClaim && !isClaimed && !isExpiredUnclaimed && userMission && (
           <button
             onClick={() => handleClaim(userMission.id)}
             disabled={isActioning}
-            className="w-full mt-1 py-2 rounded-lg bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-sm font-bold text-black transition-all flex items-center justify-center gap-2"
+            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-400 hover:from-yellow-300 hover:to-amber-300 disabled:opacity-50 text-sm font-black text-black transition-all flex items-center justify-center gap-2 shadow-[0_0_16px_rgba(251,191,36,0.3)]"
           >
             {isActioning
               ? <Loader2 className="w-4 h-4 animate-spin" />
-              : <Gift className="w-4 h-4" />
+              : <Sword className="w-4 h-4" />
             }
-            Reclamar recompensa
+            Reclamar botin!
           </button>
         )}
       </div>
@@ -209,20 +236,22 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Misiones</h1>
+        <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
+          <Scroll className="w-6 h-6 text-primary" />
+          Log de Quests
+        </h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Completá misiones para ganar XP y SalchiCoins. Se activan solas cuando empezás a participar.
+          Completa quests para ganar XP y SalchiCoins. Se activan solas cuando participas.
         </p>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 bg-secondary/50 p-1 rounded-xl overflow-x-auto">
         {tabs.map(({ key, label, count }) => (
           <button
             key={key}
             onClick={() => setTab(key)}
             className={cn(
-              'px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5',
+              'px-3 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-1.5',
               tab === key
                 ? 'bg-card text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -243,26 +272,25 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
         ))}
       </div>
 
-      {/* Contenido */}
       {currentList.length === 0 ? (
-        <div className="bg-card border border-border rounded-xl p-12 text-center">
+        <div className="bg-card border border-border rounded-2xl p-12 text-center">
           {tab === 'claim' ? (
             <>
-              <Gift className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
-              <p className="text-foreground font-semibold mb-1">Nada por reclamar</p>
-              <p className="text-sm text-muted-foreground">Completá misiones para ver tus recompensas acá.</p>
+              <Sword className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+              <p className="text-foreground font-bold mb-1">Nada por reclamar</p>
+              <p className="text-sm text-muted-foreground">Completa quests para ver tu botin aqui.</p>
             </>
           ) : tab === 'completed' ? (
             <>
               <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto mb-3 opacity-60" />
-              <p className="text-foreground font-semibold mb-1">Sin misiones completadas aún</p>
-              <p className="text-sm text-muted-foreground">Las misiones reclamadas aparecerán acá.</p>
+              <p className="text-foreground font-bold mb-1">Sin quests completadas aun</p>
+              <p className="text-sm text-muted-foreground">Las quests reclamadas apareceran aqui.</p>
             </>
           ) : (
             <>
-              <Target className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
-              <p className="text-foreground font-semibold mb-1">Sin misiones activas</p>
-              <p className="text-sm text-muted-foreground">Participá en Discord, Twitch, YouTube o Telegram para activar misiones.</p>
+              <Scroll className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+              <p className="text-foreground font-bold mb-1">Sin quests activas</p>
+              <p className="text-sm text-muted-foreground">Participa en Discord, Twitch, YouTube o Telegram para activar quests.</p>
             </>
           )}
         </div>

@@ -231,14 +231,4 @@ export default async function AdminUserDetailPage({
             return (
               <div key={i} className="flex items-center gap-3 px-5 py-3">
                 <div className={`w-2 h-2 rounded-full shrink-0 ${pc.dot}`} />
-                <p className="text-sm text-foreground flex-1">{EVENT_LABELS[e.event_type] ?? e.event_type}</p>
-                <span className="text-xs text-muted-foreground">{timeAgo(e.created_at)}</span>
-                <span className="text-sm font-bold text-primary shrink-0 w-20 text-right">+{e.xp_awarded} XP</span>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
+                <p className="text-sm text-foreground flex-1">{EVENT_LABELS[e.event_typ

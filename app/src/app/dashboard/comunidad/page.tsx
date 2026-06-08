@@ -44,30 +44,4 @@ export default async function ComunidadPage() {
       total_xp:    myRep.total_xp,
       weekly_xp:   myRep.weekly_xp,
       monthly_xp:  myRep.monthly_xp,
-      rank_total:   (rankTotal.count  ?? 0) + 1,
-      rank_weekly:  (rankWeekly.count ?? 0) + 1,
-      rank_monthly: (rankMonthly.count ?? 0) + 1,
-    }
-  }
-
-  return (
-    <div className="space-y-6 max-w-2xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Ranking</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Los miembros más activos de la comunidad</p>
-      </div>
-
-      {/* Season banner */}
-      {activeSeason && (
-        <SeasonCountdown endsAt={activeSeason.ends_at} name={activeSeason.name} />
-      )}
-
-      <LeaderboardTable
-        entries={(entries ?? []) as any}
-        currentUserId={user.id}
-        myRank={myRank}
-        seasonName={activeSeason?.name ?? null}
-      />
-    </div>
-  )
-}
+      ran

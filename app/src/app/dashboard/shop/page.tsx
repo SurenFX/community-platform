@@ -35,9 +35,4 @@ export default async function ShopPage() {
       inventoryIds={inventoryIds}
       equippedBorder={profile?.equipped_border_color ?? null}
       equippedEmoji={profile?.equipped_name_emoji ?? null}
-      equippedTitle={profile?.equipped_title_override ?? null}
-      username={profile?.username ?? '?'}
-      avatarUrl={profile?.avatar_url ?? null}
-    />
-  )
-}
+      equippedTitle={profile?.equipped_title_override

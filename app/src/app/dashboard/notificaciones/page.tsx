@@ -16,8 +16,4 @@ export default async function NotificacionesPage() {
 
   return (
     <NotificacionesClient
-      initialNotifications={notifications ?? []}
-      totalCount={count ?? 0}
-    />
-  )
-}
+      initialNot

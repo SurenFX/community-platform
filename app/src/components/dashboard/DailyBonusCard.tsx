@@ -3,11 +3,12 @@
 import { useState, useTransition } from 'react'
 import { Sword, Zap, CircleDollarSign, Flame, Loader2, CheckCircle } from 'lucide-react'
 import { claimDailyBonus } from '@/app/actions/shop'
+import { useConfetti } from '@/hooks/useConfetti'
 
 interface Props {
   canClaim:    boolean
   streak:      number
-  nextClaimMs: number   // ms until next claim (0 if claimable now)
+  nextClaimMs: number
 }
 
 function nextReward(streak: number) {
@@ -24,44 +25,84 @@ function fmtTime(ms: number) {
   return `${m}m`
 }
 
+const DAY_NAMES = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
+
+function StreakCalendar({ streak, canClaim }: { streak: number; canClaim: boolean }) {
+  const today = new Date()
+
+  return (
+    <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border/50">
+      {Array.from({ length: 7 }, (_, i) => {
+        const daysAgo = 6 - i
+        const date    = new Date(today)
+        date.setDate(date.getDate() - daysAgo)
+        const dayName = DAY_NAMES[date.getDay()]
+        const isToday = daysAgo === 0
+
+        const filled = canClaim
+          ? daysAgo >= 1 && daysAgo <= streak
+          : daysAgo < streak
+
+        return (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+            <span className="text-[9px] text-muted-foreground font-medium">{dayName}</span>
+            <div
+              className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                filled
+                  ? 'bg-orange-400 text-white shadow-[0_0_6px_rgba(251,146,60,0.6)]'
+                  : isToday && canClaim
+                  ? 'bg-primary/20 border-2 border-primary/60 animate-pulse'
+                  : 'bg-secondary border border-border/50'
+              }`}
+            >
+              {filled ? (
+                <Flame className="w-3 h-3" />
+              ) : isToday && canClaim ? (
+                <Sword className="w-3 h-3 text-primary" />
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full bg-border" />
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props) {
-  const [claimed,    setClaimed]    = useState(false)
-  const [reward,     setReward]     = useState<{ xp: number; sc: number } | null>(null)
-  const [error,      setError]      = useState<string | null>(null)
-  const [isPending,  startTransition] = useTransition()
+  const [claimed,   setClaimed]   = useState(false)
+  const [reward,    setReward]    = useState<{ xp: number; sc: number } | null>(null)
+  const [error,     setError]     = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const { burst } = useConfetti()
 
   const { xp: previewXp, sc: previewSc } = nextReward(streak)
+  const alreadyClaimed = !canClaim || claimed
 
   function handleClaim() {
     startTransition(async () => {
       const result = await claimDailyBonus()
-      if (result.error) {
-        setError(result.error)
-        return
-      }
+      if (result.error) { setError(result.error); return }
       setReward({ xp: result.xp!, sc: result.sc! })
       setClaimed(true)
+      burst()
     })
   }
 
-  const alreadyClaimed = !canClaim || claimed
-
   return (
-    <div className={`relative overflow-hidden rounded-2xl border p-5 transition-all duration-500 ${
-      alreadyClaimed
-        ? 'border-border bg-card'
-        : 'border-primary/30 bg-card'
-    }`}
-    style={alreadyClaimed ? undefined : { boxShadow: '0 0 30px hsl(185 100% 45% / 0.1)' }}
+    <div
+      className={`relative overflow-hidden rounded-2xl border p-5 transition-all duration-500 ${
+        alreadyClaimed ? 'border-border bg-card' : 'border-primary/30 bg-card'
+      }`}
+      style={alreadyClaimed ? undefined : { boxShadow: '0 0 30px hsl(185 100% 45% / 0.1)' }}
     >
-      {/* Glow bg cuando disponible */}
       {!alreadyClaimed && (
         <div className="absolute inset-0 pointer-events-none"
           style={{ background: 'radial-gradient(ellipse at 0% 50%, hsl(185 100% 45% / 0.08) 0%, transparent 60%)' }} />
       )}
 
       <div className="relative flex items-center gap-4">
-        {/* Icono */}
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-all ${
           alreadyClaimed ? 'bg-secondary' : 'bg-primary/15'
         }`}>
@@ -71,11 +112,10 @@ export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props)
           }
         </div>
 
-        {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <p className="text-sm font-bold text-foreground">
-              {claimed ? '¡Misión completada!' : 'Misión diaria'}
+              {claimed ? 'Mision completada!' : 'Mision diaria'}
             </p>
             {streak >= 3 && (
               <span className="flex items-center gap-0.5 text-[10px] font-bold text-orange-400">
@@ -94,9 +134,7 @@ export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props)
               </span>
             </div>
           ) : alreadyClaimed ? (
-            <p className="text-xs text-muted-foreground">
-              Próximo en {fmtTime(nextClaimMs)}
-            </p>
+            <p className="text-xs text-muted-foreground">Proximo en {fmtTime(nextClaimMs)}</p>
           ) : (
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -111,7 +149,6 @@ export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props)
           {error && <p className="text-xs text-destructive mt-1">{error}</p>}
         </div>
 
-        {/* Botón */}
         {!alreadyClaimed && (
           <button
             onClick={handleClaim}
@@ -123,6 +160,8 @@ export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props)
           </button>
         )}
       </div>
+
+      <StreakCalendar streak={claimed ? streak + 1 : streak} canClaim={claimed ? false : canClaim} />
     </div>
   )
 }

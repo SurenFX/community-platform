@@ -160,36 +160,4 @@ export default function NotificacionesClient({
                           title="Marcar como leído"
                           className="w-5 h-5 rounded-full bg-primary flex items-center justify-center hover:bg-primary/80 transition-all disabled:opacity-50"
                         >
-                          <span className="w-2 h-2 rounded-full bg-primary-foreground block" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {(n.body ?? n.message) && (
-                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                      {n.body ?? n.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Cargar más */}
-      {hasMore && filter === 'all' && (
-        <div className="flex justify-center">
-          <button
-            onClick={handleLoadMore}
-            disabled={loading}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-secondary text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            {loading ? 'Cargando...' : 'Cargar más'}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
+                          <span c

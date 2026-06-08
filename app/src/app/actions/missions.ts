@@ -98,26 +98,4 @@ export async function claimMission(userMissionId: string): Promise<{ error?: str
   // Otorgar SC + notificación
   if ((mission.coin_reward ?? 0) > 0) {
     const { data: rep } = await admin
-      .from('user_reputation')
-      .select('salchi_coins')
-      .eq('user_id', user.id)
-      .single()
-
-    const current = (rep as any)?.salchi_coins ?? 0
-    await Promise.all([
-      admin
-        .from('user_reputation')
-        .update({ salchi_coins: current + mission.coin_reward })
-        .eq('user_id', user.id),
-      admin.from('notifications').insert({
-        user_id: user.id,
-        type:    'MISSION_COMPLETED',
-        title:   `+${mission.coin_reward} SalchiCoins — ${mission.title}`,
-        body:    `Reclamaste la recompensa de la misión.`,
-        is_read: false,
-      }),
-    ])
-  }
-
-  return { xpReward: mission.xp_reward, coinReward: mission.coin_reward ?? 0 }
-}
+      .from('user_reput

@@ -111,46 +111,4 @@ export default async function CoinsPage() {
           <p className="text-xs text-muted-foreground">Ganados</p>
         </div>
         <div className="bg-card border border-border rounded-2xl p-4 flex flex-col items-center justify-center gap-1">
-          <p className="text-lg font-black text-pink-400">−{totalSpent.toLocaleString('es-AR')}</p>
-          <p className="text-xs text-muted-foreground">Gastados</p>
-        </div>
-      </div>
-
-      {/* Historial */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-border">
-          <h2 className="text-sm font-bold text-foreground">Movimientos</h2>
-        </div>
-
-        {txs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-            <CircleDollarSign className="w-8 h-8 text-muted-foreground mb-3 opacity-40" />
-            <p className="text-foreground font-semibold mb-1">Sin movimientos aún</p>
-            <p className="text-sm text-muted-foreground">Completá misiones o reclamá el bono diario para ganar SC.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {txs.map((tx, i) => {
-              const cfg = SOURCE_ICON[tx.source] ?? SOURCE_ICON.SYSTEM
-              const Icon = cfg.icon
-              return (
-                <div key={i} className="flex items-center gap-4 px-5 py-3.5">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${cfg.bg}`}>
-                    <Icon className={`w-4 h-4 ${cfg.color}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{tx.label}</p>
-                    <p className="text-xs text-muted-foreground">{timeAgo(tx.date)}</p>
-                  </div>
-                  <span className={`text-sm font-bold shrink-0 ${tx.type === 'earn' ? 'text-green-400' : 'text-pink-400'}`}>
-                    {tx.type === 'earn' ? '+' : '−'}{tx.amount} SC
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+          <p clas
