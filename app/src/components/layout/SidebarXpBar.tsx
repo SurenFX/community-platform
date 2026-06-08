@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getLevelColor, getLevelTitle, xpForCurrentLevel, xpForNextLevel, getRankTier } from '@/lib/utils'
 import type { UserReputation } from '@/types/database'
 import LevelUpModal from '@/components/profile/LevelUpModal'
+import RankUpModal from '@/components/profile/RankUpModal'
 
 interface SidebarXpBarProps {
   userId:        string
@@ -21,8 +22,10 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
   const [rep,        setRep]        = useState(initialRep)
   const [flashing,   setFlashing]   = useState(false)
   const [levelUp,    setLevelUp]    = useState<number | null>(null)
+  const [rankUp,     setRankUp]     = useState<{ newLevel: number; prevLevel: number } | null>(null)
   const prevXpRef    = useRef(initialRep?.total_xp ?? 0)
   const prevLevelRef = useRef(initialRep?.level ?? 1)
+  const prevTierRef  = useRef(getRankTier(initialRep?.level ?? 1).label)
 
   useEffect(() => {
     const supabase = createClient()
@@ -41,8 +44,14 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
           setTimeout(() => setFlashing(false), 1000)
         }
         if (newRep.level > prevLevelRef.current) {
+          const newTierLabel = getRankTier(newRep.level).label
+          if (newTierLabel !== prevTierRef.current) {
+            setRankUp({ newLevel: newRep.level, prevLevel: prevLevelRef.current })
+            prevTierRef.current = newTierLabel
+          } else {
+            setLevelUp(newRep.level)
+          }
           prevLevelRef.current = newRep.level
-          setLevelUp(newRep.level)
         }
         setRep(newRep)
       })
@@ -63,7 +72,8 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
   if (compact) {
     return (
       <>
-        {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
+        {levelUp  && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
+        {rankUp   && <RankUpModal newLevel={rankUp.newLevel} prevLevel={rankUp.prevLevel} onClose={() => setRankUp(null)} />}
         <div className="space-y-1">
           <div className="flex justify-between items-center text-[10px] text-muted-foreground">
             <div className="flex items-center gap-1.5">
@@ -87,7 +97,8 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
 
   return (
     <>
-    {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
+    {levelUp  && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
+    {rankUp   && <RankUpModal newLevel={rankUp.newLevel} prevLevel={rankUp.prevLevel} onClose={() => setRankUp(null)} />}
     <div className="flex flex-col gap-3">
       <Link
         href={`/dashboard/profile/${username}`}

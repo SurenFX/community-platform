@@ -6,6 +6,7 @@ import { Swords, MapPin, Flame, Zap, Target, ChevronRight } from 'lucide-react'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import OnboardingModal from '@/components/dashboard/OnboardingModal'
 import DailyBonusCard from '@/components/dashboard/DailyBonusCard'
+import StreakCalendar from '@/components/dashboard/StreakCalendar'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -124,8 +125,9 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* 3. Mision diaria */}
+      {/* 3. Mision diaria + calendario de racha */}
       <DailyBonusCard canClaim={canClaimBonus} streak={streak} nextClaimMs={msUntilNext} />
+      <StreakCalendar streak={streak} lastClaimedAt={lastBonusAt} />
 
       {/* 4. Quest tracker */}
       {activeMissions.length > 0 && (
