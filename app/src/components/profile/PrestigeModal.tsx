@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { X, Loader2, AlertTriangle } from 'lucide-react'
-import { prestigeUser, PRESTIGE_LEVEL } from '@/app/actions/shop'
+import { prestigeUser } from '@/app/actions/shop'
+import { PRESTIGE_LEVEL } from '@/lib/constants'
 
 interface PrestigeModalProps {
   currentPrestige: number

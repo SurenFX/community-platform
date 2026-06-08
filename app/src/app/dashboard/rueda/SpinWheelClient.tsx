@@ -2,7 +2,8 @@
 
 import { useState, useRef, useTransition } from 'react'
 import { CircleDollarSign, Loader2, RotateCcw, History } from 'lucide-react'
-import { spinWheel, SPIN_COST } from '@/app/actions/shop'
+import { spinWheel } from '@/app/actions/shop'
+import { SPIN_COST } from '@/lib/constants'
 
 const RARITY_STYLES: Record<string, string> = {
   COMMON:    'text-slate-400 bg-slate-400/10 border-slate-400/30',

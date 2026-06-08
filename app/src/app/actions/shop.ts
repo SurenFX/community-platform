@@ -1,5 +1,6 @@
 'use server'
 
+import { SPIN_COST, PRESTIGE_LEVEL } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
@@ -204,7 +205,6 @@ export async function unequipItem(type: string): Promise<{ error?: string }> {
 }
 
 // ── Rueda de la suerte ─────────────────────────────────────────────────────────
-const SPIN_COST = 20
 
 export async function spinWheel(): Promise<{
   error?: string
@@ -285,10 +285,8 @@ export async function spinWheel(): Promise<{
   }
 }
 
-export { SPIN_COST }
 
 // ── Prestige ───────────────────────────────────────────────────────────────────
-export const PRESTIGE_LEVEL = 200
 
 export async function prestigeUser(): Promise<{ error?: string; newPrestige?: number }> {
   const supabase = await createClient()

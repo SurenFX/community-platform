@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { getLevelColor, getLevelTitle, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'
 import type { Profile, UserReputation } from '@/types/database'
 import PrestigeModal, { PrestigeBadge } from '@/components/profile/PrestigeModal'
-import { PRESTIGE_LEVEL } from '@/app/actions/shop'
+import { PRESTIGE_LEVEL } from '@/lib/constants'
 
 const BORDER_COLOR_HEX: Record<string, string> = {
   'cyan-400':   '#22d3ee',
