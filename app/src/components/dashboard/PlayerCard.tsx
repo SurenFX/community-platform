@@ -2,7 +2,7 @@
 import StreakFlame from '@/components/ui/StreakFlame'
 
 import { useState } from 'react'
-import { getLevelColor, getLevelTitle, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'
+import { getLevelColor, getLevelTitle, xpForCurrentLevel, xpForNextLevel, getRankTier } from '@/lib/utils'
 import type { Profile, UserReputation } from '@/types/database'
 import PrestigeModal, { PrestigeBadge } from '@/components/profile/PrestigeModal'
 import { PRESTIGE_LEVEL } from '@/lib/constants'
@@ -99,11 +99,8 @@ export default function PlayerCard({ profile, myRank }: Props) {
           <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
             <h1 className="text-xl font-black text-foreground truncate">{username}</h1>
             {nameEmoji && <span className="text-base leading-none">{nameEmoji}</span>}
+            {(() => { const t = getRankTier(level); return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ml-auto ${t.bg} ${t.color} ${t.border}`}>{t.label}</span> })()}
             {prestigeLevel > 0 && <PrestigeBadge prestige={prestigeLevel} />}
-            <span className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              En línea
-            </span>
           </div>
           <p className={`text-sm font-bold ${levelColor}`}>{titleOverride ?? title}</p>
         </div>
