@@ -273,7 +273,7 @@ export default function DashboardClient({
                           <div className="min-w-0">
                             <p className="text-xs font-semibold text-foreground truncate">{badge.name}</p>
                             <p className="text-xs text-muted-foreground truncate">
-                              {isEarned ? badge.description : '???'}
+                              {badge.description}
                             </p>
                           </div>
                         </div>
