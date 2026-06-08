@@ -111,7 +111,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   const [repRes, badgesRes, allBadgesRes, linksRes, eventsRes, allEventsRes, levelHistoryRes] = await Promise.all([
     supabase.from('user_reputation').select('total_xp, level, weekly_xp, monthly_xp, current_streak, longest_streak, prestige_level').eq('user_id', profile.id).single(),
     supabase.from('user_badges').select('badge_id, earned_at').eq('user_id', profile.id),
-    supabase.from('badges').select('id, slug, name, description, image_url, tier, family, family_order').eq('is_secret', false).not('family', 'is', null).order('family').order('family_order'),
+    supabase.from('badges').select('id, slug, name, description, image_url, tier, family, family_order, is_secret').not('family', 'is', null).order('family').order('family_order'),
     supabase.from('user_social_links').select('platform, username').eq('user_id', profile.id).eq('is_public', true),
     supabase.from('xp_events').select('event_type, xp_awarded, created_at, platform').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(8),
     supabase.from('xp_events').select('platform, xp_awarded').eq('user_id', profile.id),
@@ -360,9 +360,10 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {fBadges.map((badge: any, bi) => {
-                    const isEarned = earnedIds.has(badge.id)
-                    const glow     = isEarned ? RARITY_GLOW[badge.tier ?? ''] : undefined
-                    const earnedAt = earnedDates.get(badge.id)
+                    const isEarned   = earnedIds.has(badge.id)
+                    const isSecret   = badge.is_secret && !isEarned
+                    const glow       = isEarned ? RARITY_GLOW[badge.tier ?? ''] : undefined
+                    const earnedAt   = earnedDates.get(badge.id)
                     return (
                       <div key={badge.id}
                         title={earnedAt ? `Ganado el ${new Date(earnedAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })}` : undefined}
@@ -372,8 +373,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                         style={{ animationDelay: `${(fi * 3 + bi) * 20}ms`, ...(glow ? { boxShadow: glow } : {}) }}>
                         <span className="text-2xl shrink-0">{badge.image_url || '?'}</span>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-foreground truncate">{badge.name}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{badge.description}</p>
+                          <p className="text-sm font-semibold text-foreground truncate">{isSecret ? '???' : badge.name}</p>
+                          {!isSecret && <p className="text-[10px] text-muted-foreground truncate">{badge.description}</p>}
                           {isEarned && badge.tier && (
                             <span className={`text-[9px] font-black uppercase tracking-widest mt-0.5 inline-block ${
                               badge.tier === 'LEGENDARY' ? 'text-purple-400' : badge.tier === 'GOLD' ? 'text-yellow-400' : badge.tier === 'SILVER' ? 'text-slate-400' : 'text-amber-700'
