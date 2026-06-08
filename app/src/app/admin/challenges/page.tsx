@@ -121,23 +121,6 @@ export default async function AdminChallengesPage() {
                 />
               </div>
             </div>
-
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1.5">
-                Duración (días)
-              </label>
-              <select
-                name="duration_days"
-                defaultValue="7"
-                className="w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/50"
-              >
-                <option value="1">1 día</option>
-                <option value="3">3 días</option>
-                <option value="7">7 días</option>
-                <option value="14">14 días</option>
-                <option value="30">30 días</option>
-              </select>
-            </div>
           </div>
 
           <div className="flex justify-end pt-2">

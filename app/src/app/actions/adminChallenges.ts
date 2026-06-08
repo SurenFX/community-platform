@@ -30,13 +30,18 @@ export async function createChallenge(formData: FormData) {
   const goal_xp      = parseInt(formData.get('goal_xp') as string ?? '0', 10)
   const reward_xp    = parseInt(formData.get('reward_xp') as string ?? '0', 10)
   const reward_sc    = parseInt(formData.get('reward_sc') as string ?? '0', 10)
-  const durationDays = parseInt(formData.get('duration_days') as string ?? '7', 10)
-
-  if (!title) return { error: 'El título es obligatorio.' }
+  if (!title) return { error: 'El titulo es obligatorio.' }
   if (!goal_xp || goal_xp < 1) return { error: 'El objetivo de XP debe ser mayor que 0.' }
 
-  const now    = new Date()
-  const endsAt = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString()
+  // Siempre empieza ahora y termina el proximo lunes a las 00:00 UTC
+  const now = new Date()
+  const msUntilMonday = (() => {
+    const day = now.getUTCDay() // 0=dom, 1=lun, ...6=sab
+    const daysUntilMonday = day === 1 ? 7 : (8 - day) % 7 || 7
+    const nextMonday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + daysUntilMonday))
+    return nextMonday
+  })()
+  const endsAt = msUntilMonday.toISOString()
 
   const { error } = await admin.from('community_challenges').insert({
     title, description, goal_xp,
