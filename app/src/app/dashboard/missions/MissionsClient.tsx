@@ -7,11 +7,12 @@ import type { Mission, UserMission } from '@/types/database'
 import { claimMission } from '@/app/actions/missions'
 import { useConfetti } from '@/hooks/useConfetti'
 
-const TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  DAILY:   { label: 'Diaria',   color: 'bg-blue-400/15 text-blue-400'    },
-  WEEKLY:  { label: 'Semanal',  color: 'bg-purple-400/15 text-purple-400' },
-  SPECIAL: { label: 'Especial', color: 'bg-amber-400/15 text-amber-400'  },
-  EVENT:   { label: 'Evento',   color: 'bg-pink-400/15 text-pink-400'    },
+const PERIOD_LABELS: Record<string, { label: string; color: string }> = {
+  PERMANENT: { label: 'Permanente', color: 'bg-secondary text-muted-foreground'  },
+  DAILY:     { label: 'Diaria',     color: 'bg-blue-400/15 text-blue-400'        },
+  WEEKLY:    { label: 'Semanal',    color: 'bg-purple-400/15 text-purple-400'    },
+  MONTHLY:   { label: 'Mensual',    color: 'bg-cyan-400/15 text-cyan-400'        },
+  SEASONAL:  { label: 'Temporada',  color: 'bg-amber-400/15 text-amber-400'      },
 }
 
 const PLATFORM_FROM_OBJECTIVE: Record<string, { label: string; color: string; bg: string }> = {
@@ -29,9 +30,9 @@ const PLATFORM_FROM_OBJECTIVE: Record<string, { label: string; color: string; bg
   TWITCH_RAID_PARTICIPATE:   { label: 'Twitch',   color: 'text-purple-400', bg: 'bg-purple-400/15' },
   YOUTUBE_COMMENT:           { label: 'YouTube',  color: 'text-red-400',    bg: 'bg-red-400/15'    },
   YOUTUBE_SUBSCRIBE:         { label: 'YouTube',  color: 'text-red-400',    bg: 'bg-red-400/15'    },
-  TELEGRAM_MESSAGE:          { label: 'Telegram', color: 'text-[#26A5E4]',  bg: 'bg-[#26A5E4]/15' },
-  TELEGRAM_JOIN:             { label: 'Telegram', color: 'text-[#26A5E4]',  bg: 'bg-[#26A5E4]/15' },
-  TELEGRAM_REACTION:         { label: 'Telegram', color: 'text-[#26A5E4]',  bg: 'bg-[#26A5E4]/15' },
+  TELEGRAM_MESSAGE:          { label: 'Telegram', color: 'text-sky-400',    bg: 'bg-sky-400/15'    },
+  TELEGRAM_JOIN:             { label: 'Telegram', color: 'text-sky-400',    bg: 'bg-sky-400/15'    },
+  TELEGRAM_REACTION:         { label: 'Telegram', color: 'text-sky-400',    bg: 'bg-sky-400/15'    },
 }
 
 type Tab = 'active' | 'claim' | 'completed'
@@ -90,7 +91,6 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
           prev.map(um => um.id === userMissionId ? { ...um, is_claimed: true } : um)
         )
         questClaim()
-        // Si no quedan mas items por reclamar, ir a Completadas
         const remaining = toClaim.filter(m => {
           const um = progressMap.get(m.id)
           return um && !newClaimedIds.has(um.id)
@@ -105,7 +105,7 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: 'active',    label: 'Quests activas', count: active.length    },
-    { key: 'claim',     label: 'Por reclamar',   count: toClaim.length  },
+    { key: 'claim',     label: 'Por reclamar',   count: toClaim.length   },
     { key: 'completed', label: 'Completadas',     count: completed.length },
   ]
 
@@ -121,7 +121,7 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
     const isClaimed   = userMission?.is_claimed || claimedIds.has(userMission?.id ?? '')
     const hasStarted  = !!userMission
     const pct         = mission.target_count > 0 ? Math.min((progress / mission.target_count) * 100, 100) : 0
-    const type        = TYPE_LABELS[mission.type]
+    const period      = PERIOD_LABELS[(mission as any).reset_period ?? 'PERMANENT']
     const platform    = PLATFORM_FROM_OBJECTIVE[mission.objective_type]
     const msLeft      = new Date(mission.ends_at).getTime() - Date.now()
     const hoursLeft   = Math.ceil(msLeft / 3600000)
@@ -153,9 +153,9 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
                   <Radio className="w-2.5 h-2.5" /> STREAM
                 </span>
               )}
-              {type && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${type.color}`}>
-                  {type.label}
+              {period && (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${period.color}`}>
+                  {period.label}
                 </span>
               )}
               {platform && (
@@ -238,7 +238,7 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
           </div>
           {!isCompleted && !isExpiredUnclaimed && (
             <p className={`text-[10px] text-right font-semibold ${pct >= 100 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
-              {pct >= 100 ? '✓ Ve al tab "Por reclamar" para cobrar' : `${Math.round(pct)}% completado`}
+              {pct >= 100 ? 'Ve al tab "Por reclamar" para cobrar' : `${Math.round(pct)}% completado`}
             </p>
           )}
         </div>
@@ -274,7 +274,6 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
         </p>
       </div>
 
-      {/* Banner de misiones de stream cuando no esta en vivo */}
       {!isStreamLive && streamMissions.length > 0 && (
         <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
@@ -297,9 +296,7 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
             <Radio className="w-4 h-4 text-red-400" />
           </div>
           <div>
-            <p className="text-sm font-bold text-red-400 flex items-center gap-1.5">
-              Stream en vivo
-            </p>
+            <p className="text-sm font-bold text-red-400">Stream en vivo</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               {streamMissions.length} quest{streamMissions.length > 1 ? 's' : ''} de stream activa{streamMissions.length > 1 ? 's' : ''}. Participa ahora para progresar.
             </p>

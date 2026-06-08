@@ -30,6 +30,7 @@ export type XpEventType =
   | 'ADMIN_MANUAL_GRANT'
 
 export type MissionType = 'DAILY' | 'WEEKLY' | 'SPECIAL' | 'EVENT'
+export type MissionResetPeriod = 'PERMANENT' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'SEASONAL'
 export type BadgeTier = 'BRONZE' | 'SILVER' | 'GOLD' | 'LEGENDARY'
 export type RaffleStatus = 'PENDING' | 'ACTIVE' | 'DRAWN' | 'CANCELLED'
 export type StreakType = 'DAILY_ACTIVE' | 'STREAM_VIEWER' | 'WEEKLY_PARTICIPANT'
@@ -119,6 +120,7 @@ export interface Mission {
   ticket_reward: number
   badge_reward: string | null
   is_stream_only: boolean
+  reset_period: MissionResetPeriod
   starts_at: string
   ends_at: string
   min_level: number | null
@@ -364,6 +366,5 @@ export type Database = {
       raffle_status: RaffleStatus
       streak_type: StreakType
     }
-    CompositeTypes: {}
   }
 }

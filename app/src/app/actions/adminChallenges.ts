@@ -16,7 +16,7 @@ async function requireAdmin() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('No autenticado')
-  const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single()
+  const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single() as any
   if (!profile?.is_admin) throw new Error('Sin permisos')
   return user
 }

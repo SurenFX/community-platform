@@ -2,6 +2,7 @@
 
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { revalidatePath } from 'next/cache'
 import type { Mission, MissionType, XpEventType } from '@/types/database'
 
 // ── Helper ─────────────────────────────────────────────────────────────────
