@@ -8,7 +8,6 @@ import OnboardingModal from '@/components/dashboard/OnboardingModal'
 import DailyBonusCard from '@/components/dashboard/DailyBonusCard'
 import SeasonPassTrack from '@/components/dashboard/SeasonPassTrack'
 import GlobalXpEventBanner from '@/components/layout/GlobalXpEventBanner'
-import StreakCalendar from '@/components/dashboard/StreakCalendar'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -154,7 +153,6 @@ export default async function DashboardPage() {
 
       {/* 3. Mision diaria + calendario de racha */}
       <DailyBonusCard canClaim={canClaimBonus} streak={streak} nextClaimMs={msUntilNext} />
-      <StreakCalendar streak={streak} lastClaimedAt={lastBonusAt} />
 
       {/* 4. Battle Pass */}
       <SeasonPassTrack currentLevel={currentLevel} seasonName={activeSeason?.name ?? null} />
