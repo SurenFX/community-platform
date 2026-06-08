@@ -84,11 +84,20 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
     startTransition(async () => {
       const result = await claimMission(userMissionId)
       if (!result.error) {
-        setClaimedIds(prev => new Set([...prev, userMissionId]))
+        const newClaimedIds = new Set([...claimedIds, userMissionId])
+        setClaimedIds(newClaimedIds)
         setLocalUserMissions(prev =>
           prev.map(um => um.id === userMissionId ? { ...um, is_claimed: true } : um)
         )
         questClaim()
+        // Si no quedan mas items por reclamar, ir a Completadas
+        const remaining = toClaim.filter(m => {
+          const um = progressMap.get(m.id)
+          return um && !newClaimedIds.has(um.id)
+        })
+        if (remaining.length === 0) {
+          setTimeout(() => setTab('completed'), 600)
+        }
       }
       setActionId(null)
     })
@@ -228,8 +237,8 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
             />
           </div>
           {!isCompleted && !isExpiredUnclaimed && (
-            <p className="text-[10px] text-muted-foreground text-right">
-              {pct >= 100 ? 'Listo para reclamar!' : `${Math.round(pct)}% completado`}
+            <p className={`text-[10px] text-right font-semibold ${pct >= 100 ? 'text-yellow-400' : 'text-muted-foreground'}`}>
+              {pct >= 100 ? '✓ Ve al tab "Por reclamar" para cobrar' : `${Math.round(pct)}% completado`}
             </p>
           )}
         </div>
@@ -315,7 +324,7 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
               <span className={cn(
                 'text-[10px] px-1.5 py-0.5 rounded-full font-bold',
                 key === 'claim'
-                  ? 'bg-yellow-400/20 text-yellow-400'
+                  ? 'bg-yellow-400/20 text-yellow-400 animate-pulse'
                   : 'bg-primary/20 text-primary'
               )}>
                 {count}
