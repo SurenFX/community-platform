@@ -30,7 +30,7 @@ export default async function ChallengesPage() {
   const [challengesRes, bossRes] = await Promise.all([
     admin.from('community_challenges')
       .select('*')
-      .in('status', ['ACTIVE', 'COMPLETED', 'FAILED'])
+      .eq('status', 'ACTIVE')
       .order('created_at', { ascending: false })
       .limit(20),
     admin.from('boss_raids')
