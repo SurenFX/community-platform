@@ -79,11 +79,7 @@ export default function PlatformRaffleClient({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Sorteo de la plataforma</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Usá tus tickets para participar</p>
-        </div>
-        <div className="ml-auto bg-card border border-border rounded-xl px-4 py-2.5 flex items-center gap-2">
+<div className="ml-auto bg-card border border-border rounded-xl px-4 py-2.5 flex items-center gap-2">
           <Ticket className="w-4 h-4 text-green-400" />
           <span className="text-lg font-bold text-foreground">{tickets}</span>
           <span className="text-xs text-muted-foreground">tickets</span>
