@@ -35,7 +35,7 @@ const BORDER_COLOR_HEX: Record<string, string> = {
 }
 
 const navItems = [
-  { href: '/dashboard',               label: 'Inicio',         icon: Home,              exact: true },
+  { href: '/dashboard',               label: 'Dashboard',         icon: Home,              exact: true },
   { href: '/dashboard/comunidad',     label: 'Ranking',        icon: Trophy                         },
   { href: '/dashboard/missions',      label: 'Quests',         icon: Sword                          },
   { href: '/dashboard/challenges',    label: 'Raids',          icon: Swords                         },
