@@ -102,12 +102,12 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
   const podiumOrder = top3.length >= 3 ? [top3[1], top3[0], top3[2]] : top3
   const podiumHeights = ['h-20', 'h-28', 'h-16']
   const podiumColors  = ['bg-slate-400/20 border-slate-400/40', 'bg-yellow-400/20 border-yellow-400/50', 'bg-amber-700/20 border-amber-700/40']
-  const podiumEmojis  = ['🥈', '🥇', '🥉']
+  const podiumEmojis  = ['', '', '']
   const podiumTextColors = ['text-slate-300', 'text-yellow-400', 'text-amber-600']
 
   return (
     <div className="space-y-3">
-      {/* Podio top 3 — solo cuando no hay busqueda activa */}
+      {/* Podio top 3 */}
       {!search && sorted.length >= 3 && (
         <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
@@ -119,14 +119,12 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
               const xp       = entry[period]
               const username = entry.profiles?.username ?? '?'
               const borderHex = BORDER_COLOR_HEX[entry.profiles?.equipped_border_color ?? '']
-              const isCenter  = podiumIdx === 1  // gold
+              const isCenter  = podiumIdx === 1
               return (
                 <div key={entry.user_id} className={`flex flex-col items-center gap-2 ${isCenter ? 'scale-105' : ''}`} style={{ flex: isCenter ? '0 0 38%' : '0 0 28%' }}>
-                  {/* Crown for #1 */}
                   {realRank === 1 && (
-                    <div className="text-2xl animate-bounce" style={{ animationDuration: '2s' }}>👑</div>
+                    <div className="text-2xl animate-bounce" style={{ animationDuration: '2s' }}></div>
                   )}
-                  {/* Avatar */}
                   <div className="relative">
                     {entry.profiles?.avatar_url ? (
                       <img
@@ -143,14 +141,12 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
                         {username[0].toUpperCase()}
                       </div>
                     )}
-                    <span className={`absolute -bottom-1.5 -right-1.5 text-sm ${podiumEmojis[podiumIdx] ? '' : ''}`}>{podiumEmojis[podiumIdx]}</span>
+                    <span className="absolute -bottom-1.5 -right-1.5 text-sm">{podiumEmojis[podiumIdx]}</span>
                   </div>
-                  {/* Name + XP */}
                   <div className="text-center min-w-0 w-full">
                     <p className={`text-xs font-black truncate ${podiumTextColors[podiumIdx]}`}>{username}</p>
                     <p className="text-[10px] text-muted-foreground font-semibold">{formatNumber(xp)} XP</p>
                   </div>
-                  {/* Plataforma del podio */}
                   <div className={`w-full border rounded-t-xl ${podiumColors[podiumIdx]} ${podiumHeights[podiumIdx]} flex items-center justify-center`}>
                     <span className={`text-2xl font-black ${podiumTextColors[podiumIdx]}`}>#{realRank}</span>
                   </div>
@@ -315,4 +311,20 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-f
+                <p className="text-sm font-semibold text-foreground">Tu</p>
+                <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium">Tu</span>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold text-foreground">
+                {formatNumber(myRank[xpField[period]] as number)}
+              </p>
+              <p className="text-xs text-muted-foreground">XP</p>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+    </div>
+  )
+}
