@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { Sword, CheckCircle2, Scroll, Loader2, Zap, CircleDollarSign, Clock, Radio } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Mission, UserMission } from '@/types/database'
@@ -13,6 +13,56 @@ const PERIOD_LABELS: Record<string, { label: string; color: string }> = {
   WEEKLY:    { label: 'Semanal',    color: 'bg-purple-400/15 text-purple-400'    },
   MONTHLY:   { label: 'Mensual',    color: 'bg-cyan-400/15 text-cyan-400'        },
   SEASONAL:  { label: 'Temporada',  color: 'bg-amber-400/15 text-amber-400'      },
+}
+
+function getNextReset(period: string): Date | null {
+  const now = new Date()
+  if (period === 'DAILY') {
+    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0))
+    return next
+  }
+  if (period === 'WEEKLY') {
+    // Sunday 23:50 UTC
+    const day = now.getUTCDay() // 0=Sun
+    const daysUntilSun = day === 0 ? 7 : 7 - day
+    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + daysUntilSun, 23, 50, 0))
+    return next
+  }
+  if (period === 'MONTHLY') {
+    const lastDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate()
+    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), lastDay, 23, 55, 0))
+    if (next <= now) {
+      // already past, use next month
+      const lastDay2 = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 2, 0)).getUTCDate()
+      return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, lastDay2, 23, 55, 0))
+    }
+    return next
+  }
+  return null
+}
+
+function formatCountdown(ms: number): string {
+  if (ms <= 0) return 'pronto'
+  const totalSec = Math.floor(ms / 1000)
+  const d = Math.floor(totalSec / 86400)
+  const h = Math.floor((totalSec % 86400) / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  if (d > 0)  return `${d}d ${h}h`
+  if (h > 0)  return `${h}h ${m}m`
+  return `${m}m`
+}
+
+function useResetCountdown(period: string) {
+  const [label, setLabel] = useState('')
+  useEffect(() => {
+    const target = getNextReset(period)
+    if (!target) { setLabel(''); return }
+    const update = () => setLabel(formatCountdown(target.getTime() - Date.now()))
+    update()
+    const interval = setInterval(update, 30000)
+    return () => clearInterval(interval)
+  }, [period])
+  return label
 }
 
 const PLATFORM_FROM_OBJECTIVE: Record<string, { label: string; color: string; bg: string }> = {
@@ -122,6 +172,7 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
     const hasStarted  = !!userMission
     const pct         = mission.target_count > 0 ? Math.min((progress / mission.target_count) * 100, 100) : 0
     const period      = PERIOD_LABELS[(mission as any).reset_period ?? 'PERMANENT']
+    const resetIn     = useResetCountdown((mission as any).reset_period ?? 'PERMANENT')
     const platform    = PLATFORM_FROM_OBJECTIVE[mission.objective_type]
     const msLeft      = new Date(mission.ends_at).getTime() - Date.now()
     const hoursLeft   = Math.ceil(msLeft / 3600000)
@@ -154,8 +205,11 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
                 </span>
               )}
               {period && (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${period.color}`}>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${period.color}`}>
                   {period.label}
+                  {resetIn && (mission as any).reset_period !== 'PERMANENT' && (mission as any).reset_period !== 'SEASONAL' && !isClaimed && !isExpiredUnclaimed && (
+                    <span className="opacity-70">· {resetIn}</span>
+                  )}
                 </span>
               )}
               {platform && (

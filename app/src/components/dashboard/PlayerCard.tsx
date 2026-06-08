@@ -1,4 +1,5 @@
 'use client'
+import StreakFlame from '@/components/ui/StreakFlame'
 
 import { useState } from 'react'
 import { getLevelColor, getLevelTitle, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'

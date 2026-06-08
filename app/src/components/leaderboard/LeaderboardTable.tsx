@@ -5,7 +5,8 @@ import { PrestigeBadge } from '@/components/profile/PrestigeModal'
 import { useState } from 'react'
 import Link from 'next/link'
 import { cn, getLevelColor, getLevelTitle, formatNumber, getRankTier } from '@/lib/utils'
-import { Trophy, Medal, User, ChevronDown, Flame, Search, Users, Shield } from 'lucide-react'
+import { Trophy, Medal, User, ChevronDown, Search, Users, Shield } from 'lucide-react'
+import StreakFlame from '@/components/ui/StreakFlame'
 
 type Period = 'total_xp' | 'weekly_xp' | 'monthly_xp'
 
@@ -249,11 +250,7 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
                       <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium">Tu</span>
                     )}
                     {(entry as any).prestige_level > 0 && <PrestigeBadge prestige={(entry as any).prestige_level} />}
-                    {entry.current_streak >= 3 && (
-                      <span className="flex items-center gap-0.5 text-[10px] text-orange-400 font-bold">
-                        <Flame className="w-3 h-3" />{entry.current_streak}
-                      </span>
-                    )}
+                    {entry.current_streak >= 2 && <StreakFlame days={entry.current_streak} />}
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     <p className={cn('text-xs font-medium', getLevelColor(entry.level))}>
@@ -263,9 +260,16 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
+                <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
                   <p className="text-sm font-bold text-foreground">{formatNumber(xp)}</p>
-                  <p className="text-xs text-muted-foreground">XP</p>
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground">XP</p>
+                    {(entry as any).rank_delta !== undefined && (entry as any).rank_delta !== 0 && (
+                      <span className={`text-[10px] font-bold ${(entry as any).rank_delta > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {(entry as any).rank_delta > 0 ? `+${(entry as any).rank_delta}` : (entry as any).rank_delta}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </>
             )
@@ -311,20 +315,4 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-foreground">Tu</p>
-                <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium">Tu</span>
-              </div>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-sm font-bold text-foreground">
-                {formatNumber(myRank[xpField[period]] as number)}
-              </p>
-              <p className="text-xs text-muted-foreground">XP</p>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-    </div>
-  )
-}
+                <p className="text-sm font-semibold text-f

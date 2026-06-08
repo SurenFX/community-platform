@@ -1,4 +1,5 @@
 'use client'
+import StreakFlame from '@/components/ui/StreakFlame'
 
 import { useState, useTransition } from 'react'
 import { Sword, Zap, CircleDollarSign, Flame, Loader2, CheckCircle } from 'lucide-react'
@@ -106,11 +107,7 @@ export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props)
             <p className="text-sm font-bold text-foreground">
               {claimed ? 'Mision completada!' : 'Mision diaria'}
             </p>
-            {streak >= 3 && (
-              <span className="flex items-center gap-0.5 text-[10px] font-bold text-orange-400">
-                <Flame className="w-3 h-3" />{streak}d
-              </span>
-            )}
+            {streak >= 1 && <StreakFlame days={streak} />}
             {mult && !alreadyClaimed && (
               <span className="px-2 py-0.5 rounded-full bg-orange-400/15 border border-orange-400/30 text-[11px] font-black text-orange-400 tracking-wide">
                 {mult} XP

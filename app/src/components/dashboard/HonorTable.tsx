@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { getLevelColor, getLevelTitle, formatNumber } from '@/lib/utils'
-import { Flame, Star } from 'lucide-react'
+import {  Star } from 'lucide-react'
 
 interface HonorMember {
   user_id:        string
