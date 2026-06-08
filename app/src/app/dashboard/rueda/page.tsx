@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
@@ -14,21 +16,32 @@ export default async function RuedaPage() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const [prizesRes, repRes, historyRes] = await Promise.all([
-    admin.from('spin_wheel_prizes').select('*').order('sort_order'),
-    admin.from('user_reputation').select('salchi_coins').eq('user_id', user.id).single(),
-    admin.from('spin_wheel_history')
-      .select('id, prize_snapshot, cost_sc, created_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(10),
-  ])
+  let prizes: any[] = []
+  let balance = 0
+  let history: any[] = []
+
+  try {
+    const [prizesRes, repRes, historyRes] = await Promise.all([
+      admin.from('spin_wheel_prizes').select('*').order('sort_order'),
+      admin.from('user_reputation').select('salchi_coins').eq('user_id', user.id).single(),
+      admin.from('spin_wheel_history')
+        .select('id, prize_snapshot, cost_sc, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10),
+    ])
+    prizes  = (prizesRes.data ?? []) as any[]
+    balance = (repRes.data as any)?.salchi_coins ?? 0
+    history = (historyRes.data ?? []) as any[]
+  } catch (e) {
+    console.error('[RuedaPage]', e)
+  }
 
   return (
     <SpinWheelClient
-      prizes={(prizesRes.data ?? []) as any}
-      balance={(repRes.data as any)?.salchi_coins ?? 0}
-      history={(historyRes.data ?? []) as any}
+      prizes={prizes}
+      balance={balance}
+      history={history}
     />
   )
 }

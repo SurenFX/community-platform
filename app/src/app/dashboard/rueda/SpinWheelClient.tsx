@@ -39,8 +39,8 @@ export default function SpinWheelClient({ prizes, balance: initialBalance, histo
   const [isPending, start]        = useTransition()
   const currentRotation           = useRef(0)
 
-  const segCount = prizes.length
-  const segAngle = 360 / segCount
+  const segCount = prizes.length || 1
+  const segAngle = segCount > 0 ? 360 / segCount : 45
 
   // Build conic-gradient from prize colors
   const gradient = prizes.map((p, i) => {
