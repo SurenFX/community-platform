@@ -68,15 +68,6 @@ export async function claimSeasonMilestone(seasonId: string, milestoneXp: number
     await admin.from('user_reputation')
       .update({ salchi_coins: ((rep as any)?.salchi_coins ?? 0) + milestone.amount })
       .eq('user_id', user.id)
-
-    await admin.from('coin_history').insert({
-      user_id: user.id,
-      amount: milestone.amount,
-      type: 'EARN',
-      source: 'SEASON_PASS',
-      description: `Hito de temporada: ${milestone.reward}`,
-    })
-
     await admin.from('notifications').insert({
       user_id: user.id,
       type: 'SEASON_MILESTONE',
