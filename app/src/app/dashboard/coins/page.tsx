@@ -93,7 +93,7 @@ export default async function CoinsPage() {
   const totalSpent  = txs.filter(t => t.type === 'spend').reduce((s, t) => s + t.amount, 0)
 
   return (
-    <div className="max-w-xl mx-auto space-y-5">
+    <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-foreground">SalchiCoins</h1>
         <p className="text-muted-foreground mt-1 text-sm">Tu historial de monedas</p>

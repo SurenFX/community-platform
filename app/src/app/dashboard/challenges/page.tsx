@@ -99,7 +99,7 @@ export default async function ChallengesPage() {
   const PHASE_COLORS = ['', 'text-slate-400', 'text-orange-400', 'text-red-400']
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="space-y-8">
 
       {/* ── BOSS RAID ── */}
       {boss && (
