@@ -5,7 +5,6 @@ import { Lock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import PlayerCard from '@/components/dashboard/PlayerCard'
 import RecentActivity from '@/components/profile/RecentActivity'
-import ActiveMissions from '@/components/missions/ActiveMissions'
 import XpToast from '@/components/dashboard/XpToast'
 import LevelUpModal from '@/components/dashboard/LevelUpModal'
 import BadgeUnlockModal from '@/components/profile/BadgeUnlockModal'
@@ -214,10 +213,7 @@ export default function DashboardClient({
 
       <PlayerCard profile={profile as any} myRank={myRank} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecentActivity events={events} />
-        <ActiveMissions missions={missions} />
-      </div>
+      <RecentActivity events={events} />
 
       {allBadges.length > 0 && (
         <div className="gradient-border rounded-2xl p-6">
