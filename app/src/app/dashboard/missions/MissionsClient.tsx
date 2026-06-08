@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Sword, CheckCircle2, Scroll, Loader2, Zap, CircleDollarSign, Clock } from 'lucide-react'
+import { Sword, CheckCircle2, Scroll, Loader2, Zap, CircleDollarSign, Clock, Radio } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Mission, UserMission } from '@/types/database'
 import { claimMission } from '@/app/actions/missions'
@@ -37,12 +37,14 @@ const PLATFORM_FROM_OBJECTIVE: Record<string, { label: string; color: string; bg
 type Tab = 'active' | 'claim' | 'completed'
 
 interface Props {
-  missions:     Mission[]
-  userMissions: UserMission[]
-  userId:       string
+  missions:       Mission[]
+  userMissions:   UserMission[]
+  userId:         string
+  isStreamLive:   boolean
+  streamMissions: Mission[]
 }
 
-export default function MissionsClient({ missions, userMissions, userId }: Props) {
+export default function MissionsClient({ missions, userMissions, userId, isStreamLive, streamMissions }: Props) {
   const [tab, setTab] = useState<Tab>('active')
   const [localUserMissions, setLocalUserMissions] = useState<UserMission[]>(userMissions)
   const [isPending, startTransition] = useTransition()
@@ -104,6 +106,7 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
     showClaim?:   boolean
   }) {
     const isExpiredUnclaimed = !!(mission as any)._expired_unclaimed
+    const isStream    = !!mission.is_stream_only
     const progress    = userMission?.progress ?? 0
     const isCompleted = userMission?.is_completed ?? false
     const isClaimed   = userMission?.is_claimed || claimedIds.has(userMission?.id ?? '')
@@ -125,6 +128,8 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
       ? 'border-yellow-400/50 bg-yellow-400/5 shadow-[0_0_20px_rgba(251,191,36,0.08)]'
       : isExpiringSoon
       ? 'border-orange-400/40 bg-orange-400/5'
+      : isStream
+      ? 'border-red-500/40 bg-red-500/5'
       : !hasStarted
       ? 'border-border/50 opacity-55'
       : 'border-border hover:border-primary/30 transition-colors'
@@ -134,6 +139,11 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+              {isStream && isStreamLive && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 flex items-center gap-1 animate-pulse">
+                  <Radio className="w-2.5 h-2.5" /> STREAM
+                </span>
+              )}
               {type && (
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${type.color}`}>
                   {type.label}
@@ -244,6 +254,39 @@ export default function MissionsClient({ missions, userMissions, userId }: Props
           Completa quests para ganar XP y SalchiCoins. Se activan solas cuando participas.
         </p>
       </div>
+
+      {/* Banner de misiones de stream cuando no esta en vivo */}
+      {!isStreamLive && streamMissions.length > 0 && (
+        <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
+            <Radio className="w-4 h-4 text-red-400" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">
+              {streamMissions.length} quest{streamMissions.length > 1 ? 's' : ''} de stream disponible{streamMissions.length > 1 ? 's' : ''}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Se activan automaticamente cuando el stream este en vivo en Twitch.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isStreamLive && streamMissions.length > 0 && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0 animate-pulse">
+            <Radio className="w-4 h-4 text-red-400" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-red-400 flex items-center gap-1.5">
+              Stream en vivo
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {streamMissions.length} quest{streamMissions.length > 1 ? 's' : ''} de stream activa{streamMissions.length > 1 ? 's' : ''}. Participa ahora para progresar.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-1 bg-secondary/50 p-1 rounded-xl overflow-x-auto">
         {tabs.map(({ key, label, count }) => (

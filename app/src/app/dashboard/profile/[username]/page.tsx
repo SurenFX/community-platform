@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { Shield, Flame, Trophy, Zap, Calendar } from 'lucide-react'
 import { getLevelTitle, getLevelColor, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'
 import ProfileEditButton from '@/components/profile/ProfileEditButton'
+import { PrestigeBadge } from '@/components/profile/PrestigeModal'
 import CopyProfileLink from '@/components/profile/CopyProfileLink'
 
 export async function generateMetadata({
@@ -178,7 +179,7 @@ export default async function PublicProfilePage({
   const [repRes, badgesRes, allBadgesRes, linksRes, eventsRes, eventsRes2] = await Promise.all([
     supabase
       .from('user_reputation')
-      .select('total_xp, level, weekly_xp, monthly_xp, current_streak, longest_streak, raffle_tickets')
+      .select('total_xp, level, weekly_xp, monthly_xp, current_streak, longest_streak, raffle_tickets, prestige_level')
       .eq('user_id', profile.id)
       .single(),
     supabase
@@ -307,9 +308,12 @@ export default async function PublicProfilePage({
             )}
             <div className="mb-1 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-black text-foreground">
+                <h1 className="text-xl font-black text-foreground flex items-center gap-2">
                   {nameEmoji && <span className="mr-1">{nameEmoji}</span>}
                   {profile.username}
+                  {(repRes.data as any)?.prestige_level > 0 && (
+                    <PrestigeBadge prestige={(repRes.data as any).prestige_level} />
+                  )}
                 </h1>
                 {isOwner && (
                   <ProfileEditButton username={profile.username} bio={profile.bio} />

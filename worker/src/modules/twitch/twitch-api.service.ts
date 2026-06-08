@@ -5,6 +5,7 @@ import { EmbedBuilder } from 'discord.js'
 import { DiscordBotService } from '../discord-bot/discord-bot.service'
 import { TelegramService } from '../telegram/telegram.service'
 import { RedisService } from '../../infrastructure/redis/redis.service'
+import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
 
 interface StreamInfo {
   isLive:    boolean
@@ -20,7 +21,7 @@ export class TwitchApiService {
   private appToken: string | null = null
   private tokenExpiry: number = 0
 
-  // Estado en memoria para detectar transición offline → online
+  // Estado en memoria para detectar transicion offline -> online
   private wasLive = false
 
   constructor(
@@ -28,6 +29,7 @@ export class TwitchApiService {
     private discordBot:  DiscordBotService,
     private telegram:    TelegramService,
     private redis:       RedisService,
+    private supabase:    SupabaseService,
   ) {}
 
   private get clientId(): string {
@@ -65,7 +67,7 @@ export class TwitchApiService {
     return this.appToken!
   }
 
-  // Verificar si el streamer está en vivo
+  // Verificar si el streamer esta en vivo
   async getStreamInfo(): Promise<StreamInfo> {
     try {
       const token = await this.getAppToken()
@@ -123,7 +125,24 @@ export class TwitchApiService {
     }
   }
 
-  // ── Detección de stream en vivo — cada 3 minutos ──────────
+  // Actualizar stream_status en Supabase
+  private async updateStreamStatus(isLive: boolean, startedAt: string | null): Promise<void> {
+    try {
+      await this.supabase.db
+        .from('stream_status')
+        .update({
+          is_live:    isLive,
+          started_at: isLive ? startedAt : null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', 1)
+      this.logger.log(`stream_status actualizado: is_live=${isLive}`)
+    } catch (err) {
+      this.logger.warn(`updateStreamStatus error: ${err}`)
+    }
+  }
+
+  // -- Deteccion de stream en vivo -- cada 3 minutos --
   @Cron('*/3 * * * *')
   async checkStreamLive() {
     const channelId = this.config.get<string>('DISCORD_TWITCH_CHANNEL_ID')
@@ -131,11 +150,14 @@ export class TwitchApiService {
 
     const stream = await this.getStreamInfo()
 
+    // Transicion: offline -> online
     if (stream.isLive && !this.wasLive) {
-      this.logger.log(`🔴 Stream en vivo detectado: ${stream.title}`)
+      this.logger.log(`Stream en vivo detectado: ${stream.title}`)
 
-      // Usar Redis para que solo UNA máquina anuncie (anti-duplicado)
-      // TTL de 2 horas — si el stream dura más, no re-anuncia
+      // Actualizar estado en Supabase (activa misiones de stream)
+      await this.updateStreamStatus(true, stream.startedAt)
+
+      // Anti-duplicado: solo UN pod anuncia
       const isFirst = await this.redis.setNX(
         `twitch:live:${this.channel}`,
         '1',
@@ -145,29 +167,35 @@ export class TwitchApiService {
       if (isFirst) {
         const embed = new EmbedBuilder()
           .setColor(0x9146FF)
-          .setTitle(`🔴 ¡${this.channel} está en vivo!`)
+          .setTitle(`LIVE: ${this.channel} esta en vivo!`)
           .setDescription(stream.title)
           .addFields(
-            { name: '🎮 Juego',   value: stream.game || 'Sin categoría', inline: true },
-            { name: '👥 Viewers', value: String(stream.viewers),          inline: true },
+            { name: 'Juego',    value: stream.game || 'Sin categoria', inline: true },
+            { name: 'Viewers',  value: String(stream.viewers),          inline: true },
           )
           .setURL(`https://twitch.tv/${this.channel}`)
           .setTimestamp()
 
         await this.discordBot.announce(channelId, embed, '@everyone')
         await this.telegram.announce(
-          `🔴 <b>¡${this.channel} está en vivo!</b>\n\n` +
-          `🎮 ${stream.game || 'Sin categoría'} · 👥 ${stream.viewers} viewers\n` +
-          `📺 ${stream.title}\n\n` +
-          `<a href="https://twitch.tv/${this.channel}">¡Unite al stream!</a>`,
+          `LIVE: <b>${this.channel} esta en vivo!</b>\n\n` +
+          `${stream.game || 'Sin categoria'} - ${stream.viewers} viewers\n` +
+          `${stream.title}\n\n` +
+          `<a href="https://twitch.tv/${this.channel}">Unite al stream!</a>`,
           'TELEGRAM_TWITCH_THREAD_ID'
         )
-        this.logger.log(`🔴 Anuncio enviado a Discord y Telegram`)
+        this.logger.log(`Anuncio enviado a Discord y Telegram`)
       }
     }
 
-    // Limpiar clave de Redis cuando el stream termina
+    // Transicion: online -> offline
     if (!stream.isLive && this.wasLive) {
+      this.logger.log(`Stream termino`)
+
+      // Actualizar estado en Supabase (desactiva misiones de stream)
+      await this.updateStreamStatus(false, null)
+
+      // Limpiar clave Redis
       await this.redis.del(`twitch:live:${this.channel}`)
     }
 

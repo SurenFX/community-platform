@@ -383,3 +383,87 @@ export async function createBossRaid(data: {
   revalidatePath('/admin/boss-raids')
   return {}
 }
+
+// ── Rueda de la suerte — premios ──────────────────────────────────────────────
+export async function createWheelPrize(data: {
+  name:        string
+  description: string
+  prize_type:  string
+  prize_value: number
+  rarity:      string
+  weight:      number
+  color:       string
+  emoji:       string
+  sort_order:  number
+}): Promise<{ error?: string }> {
+  'use server'
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const adminDb = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+  const { data: profile } = await adminDb.from('profiles').select('is_admin').eq('id', user.id).single()
+  if (!(profile as any)?.is_admin) return { error: 'Sin permisos' }
+
+  const { error } = await adminDb.from('spin_wheel_prizes').insert(data)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/rueda')
+  revalidatePath('/dashboard/rueda')
+  return {}
+}
+
+export async function updateWheelPrize(id: string, data: {
+  name:        string
+  description: string
+  prize_type:  string
+  prize_value: number
+  rarity:      string
+  weight:      number
+  color:       string
+  emoji:       string
+  sort_order:  number
+}): Promise<{ error?: string }> {
+  'use server'
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const adminDb = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+  const { data: profile } = await adminDb.from('profiles').select('is_admin').eq('id', user.id).single()
+  if (!(profile as any)?.is_admin) return { error: 'Sin permisos' }
+
+  const { error } = await adminDb.from('spin_wheel_prizes').update(data).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/rueda')
+  revalidatePath('/dashboard/rueda')
+  return {}
+}
+
+export async function deleteWheelPrize(id: string): Promise<{ error?: string }> {
+  'use server'
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const adminDb = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+  const { data: profile } = await adminDb.from('profiles').select('is_admin').eq('id', user.id).single()
+  if (!(profile as any)?.is_admin) return { error: 'Sin permisos' }
+
+  const { error } = await adminDb.from('spin_wheel_prizes').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/rueda')
+  revalidatePath('/dashboard/rueda')
+  return {}
+}

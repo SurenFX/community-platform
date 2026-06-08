@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Shield, Flame, Trophy, Zap, Calendar } from 'lucide-react'
 import { getLevelTitle, getLevelColor, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'
 import ProfileEditButton from '@/components/profile/ProfileEditButton'
+import { PrestigeBadge } from '@/components/profile/PrestigeModal'
 
 export async function generateMetadata({
   params,
@@ -98,7 +99,7 @@ export default async function PublicProfilePage({
 
   const [repRes, badgesRes, allBadgesRes, linksRes] = await Promise.all([
     supabase.from('user_reputation')
-      .select('total_xp, level, current_streak, longest_streak').eq('user_id', profile.id).single(),
+      .select('total_xp, level, current_streak, longest_streak, prestige_level').eq('user_id', profile.id).single(),
     supabase.from('user_badges').select('badge_id, earned_at').eq('user_id', profile.id),
     supabase.from('badges').select('id, name, description, image_url, tier, family, family_order')
       .eq('is_secret', false).not('family', 'is', null).order('family').order('family_order'),
@@ -165,9 +166,12 @@ export default async function PublicProfilePage({
               )}
               <div className="mb-1 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl font-black text-foreground">
+                  <h1 className="text-xl font-black text-foreground flex items-center gap-2">
                     {nameEmoji && <span className="mr-1">{nameEmoji}</span>}
                     {profile.username}
+                    {(rep as any)?.prestige_level > 0 && (
+                      <PrestigeBadge prestige={(rep as any).prestige_level} />
+                    )}
                   </h1>
                   {isOwner && (
                     <ProfileEditButton username={profile.username} bio={profile.bio} />

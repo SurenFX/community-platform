@@ -118,6 +118,7 @@ export interface Mission {
   coin_reward: number
   ticket_reward: number
   badge_reward: string | null
+  is_stream_only: boolean
   starts_at: string
   ends_at: string
   min_level: number | null

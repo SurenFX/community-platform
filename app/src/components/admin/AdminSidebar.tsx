@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, Target, Zap,
-  BarChart3, ArrowLeft, Shield, Ticket, Award, CalendarDays, Swords, Flame, Skull,
+  BarChart3, ArrowLeft, Shield, Ticket, Award, CalendarDays, Swords, Flame, Skull, Dices,
 } from 'lucide-react'
 
 const navItems = [
@@ -18,6 +18,7 @@ const navItems = [
   { href: '/admin/seasons',      label: 'Temporadas',  icon: CalendarDays     },
   { href: '/admin/challenges',   label: 'Desafios',    icon: Swords           },
   { href: '/admin/boss-raids',    label: 'Boss Raids',  icon: Skull            },
+  { href: '/admin/rueda',          label: 'Rueda',       icon: Dices            },
   { href: '/admin/daily-bonus',  label: 'Bono diario', icon: Flame            },
   { href: '/admin/analytics',    label: 'Analytics',   icon: BarChart3        },
 ]

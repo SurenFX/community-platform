@@ -39,6 +39,8 @@ const EMPTY_FORM = {
   xp_reward:     50,
   coin_reward:   0,
   ticket_reward: 0,
+  coin_reward:   0,
+  is_stream_only: false,
   starts_at:     new Date().toISOString().slice(0, 16),
   ends_at:       new Date(Date.now() + 86400000).toISOString().slice(0, 16),
 }
@@ -65,6 +67,8 @@ export default function MissionsAdmin({ missions: initialMissions }: MissionsAdm
       target_count:   mission.target_count,
       xp_reward:      mission.xp_reward,
       ticket_reward:  mission.ticket_reward,
+      coin_reward:   (mission as any).coin_reward ?? 0,
+      is_stream_only: (mission as any).is_stream_only ?? false,
       starts_at:      mission.starts_at.slice(0, 16),
       ends_at:        mission.ends_at.slice(0, 16),
     })
@@ -175,6 +179,21 @@ export default function MissionsAdmin({ missions: initialMissions }: MissionsAdm
               </div>
             </div>
 
+            {/* Mision de stream */}
+            <div className="col-span-2 flex items-center gap-3 p-3 bg-secondary/50 rounded-xl border border-border">
+              <input
+                type="checkbox"
+                id="is_stream_only"
+                checked={(form as any).is_stream_only ?? false}
+                onChange={e => setForm(f => ({ ...f, is_stream_only: e.target.checked }))}
+                className="w-4 h-4 accent-red-500 cursor-pointer"
+              />
+              <label htmlFor="is_stream_only" className="text-sm text-foreground cursor-pointer select-none">
+                <span className="font-semibold">Solo en stream</span>
+                <span className="text-xs text-muted-foreground ml-1.5">Se activa automaticamente cuando el stream esta en vivo</span>
+              </label>
+            </div>
+
             <div className="flex gap-3 pt-2">
               <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary transition-all">
                 Cancelar
@@ -201,6 +220,9 @@ export default function MissionsAdmin({ missions: initialMissions }: MissionsAdm
                   </span>
                   {!mission.is_active && (
                     <span className="text-[10px] bg-secondary text-muted-foreground px-2 py-0.5 rounded">Inactiva</span>
+                  )}
+                  {(mission as any).is_stream_only && (
+                    <span className="text-[10px] bg-red-500/15 text-red-400 px-2 py-0.5 rounded font-semibold">STREAM</span>
                   )}
                 </div>
                 <p className="text-sm font-semibold text-foreground">{mission.title}</p>
