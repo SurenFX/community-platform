@@ -286,4 +286,14 @@ export default async function PublicProfilePage({
         )}
 
         {/* CTA */}
-        <div className="bg-card border b
+        <div className="bg-card border border-border rounded-2xl p-6 text-center">
+          <p className="text-sm text-muted-foreground mb-3">¿Sos parte de la comunidad?</p>
+          <Link href="/login"
+            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all">
+            Entrar a SalchiNeta 🌭
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}

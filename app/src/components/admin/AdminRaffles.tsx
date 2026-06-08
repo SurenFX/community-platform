@@ -284,4 +284,17 @@ export default function AdminRafflesClient({ raffles: initial, poolMap }: AdminR
               </div>
 
               {(raffleWinner || raffle.status === 'DRAWN') && (
-                <div className="mt-3 flex items-center
+                <div className="mt-3 flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/20 px-3 py-2 rounded-lg">
+                  <Crown className="w-4 h-4 text-yellow-400" />
+                  <span className="text-sm font-semibold text-yellow-400">
+                    Ganador: @{raffleWinner ?? '—'}
+                  </span>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
