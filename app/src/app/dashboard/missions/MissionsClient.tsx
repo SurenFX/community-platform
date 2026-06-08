@@ -318,14 +318,26 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-foreground flex items-center gap-2">
-          <Scroll className="w-6 h-6 text-primary" />
-          Log de Quests
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Completa quests para ganar XP y SalchiCoins. Se activan solas cuando participas.
-        </p>
+      {/* ── BOARD HEADER ── */}
+      <div className="relative overflow-hidden bg-card border border-border rounded-2xl p-5"
+        style={{ background: 'radial-gradient(ellipse at 50% 0%, hsl(185 100% 45% / 0.07) 0%, transparent 70%)' }}>
+        <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
+          style={{ backgroundImage: 'repeating-linear-gradient(45deg, hsl(var(--foreground)) 0px, hsl(var(--foreground)) 1px, transparent 1px, transparent 8px)' }} />
+        <div className="relative flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0 shadow-[0_0_20px_hsl(185_100%_45%/0.2)]">
+            <Scroll className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-foreground tracking-tight">Tablero de Misiones</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Participa en Discord, Twitch, YouTube o Telegram para activar quests y ganar XP.
+            </p>
+          </div>
+          <div className="ml-auto hidden sm:flex flex-col items-end gap-1">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Activas</span>
+            <span className="text-2xl font-black text-primary">{active.length + toClaim.length}</span>
+          </div>
+        </div>
       </div>
 
       {!isStreamLive && streamMissions.length > 0 && (
@@ -406,6 +418,32 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
               <p className="text-sm text-muted-foreground">Participa en Discord, Twitch, YouTube o Telegram para activar quests.</p>
             </>
           )}
+        </div>
+      ) : tab === 'active' ? (
+        <div className="space-y-6">
+          {(['DAILY', 'WEEKLY', 'MONTHLY', 'SEASONAL', 'PERMANENT'] as const).map(period => {
+            const group = currentList.filter(m => ((m as any).reset_period ?? 'PERMANENT') === period)
+            if (group.length === 0) return null
+            const pl = PERIOD_LABELS[period]
+            return (
+              <div key={period}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${pl.color}`}>
+                    {pl.label}
+                  </span>
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-[10px] text-muted-foreground">{group.length}</span>
+                </div>
+                <div className="grid gap-3">
+                  {group.map((mission, i) => (
+                    <div key={mission.id} className="fade-in-up" style={{ animationDelay: `${i * 40}ms` }}>
+                      <MissionCard mission={mission} userMission={progressMap.get(mission.id)} showClaim={false} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
       ) : (
         <div className="grid gap-4">

@@ -7,6 +7,7 @@ import { getLevelTitle, getLevelColor, xpForCurrentLevel, xpForNextLevel, getRan
 import ProfileEditButton from '@/components/profile/ProfileEditButton'
 import { PrestigeBadge } from '@/components/profile/PrestigeModal'
 import CopyProfileLink from '@/components/profile/CopyProfileLink'
+import ActivityHeatmap from '@/components/profile/ActivityHeatmap'
 
 export async function generateMetadata({
   params,
@@ -114,7 +115,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     supabase.from('badges').select('id, slug, name, description, image_url, tier, family, family_order, is_secret').not('family', 'is', null).order('family').order('family_order'),
     supabase.from('user_social_links').select('platform, username').eq('user_id', profile.id).eq('is_public', true),
     supabase.from('xp_events').select('event_type, xp_awarded, created_at, platform').eq('user_id', profile.id).order('created_at', { ascending: false }).limit(8),
-    supabase.from('xp_events').select('platform, xp_awarded').eq('user_id', profile.id),
+    supabase.from('xp_events').select('platform, xp_awarded, created_at').eq('user_id', profile.id),
     supabase.from('level_history').select('new_level, achieved_at').eq('user_id', profile.id).order('new_level', { ascending: false }).limit(10),
   ])
 
@@ -333,6 +334,11 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── HEATMAP DE ACTIVIDAD ── */}
+      {allEvents.length > 0 && (
+        <ActivityHeatmap events={allEvents as any} />
       )}
 
       {/* ── LOGROS ── */}

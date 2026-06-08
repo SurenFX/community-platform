@@ -6,6 +6,7 @@ import { Swords, MapPin, Flame, Zap, Target, ChevronRight } from 'lucide-react'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import OnboardingModal from '@/components/dashboard/OnboardingModal'
 import DailyBonusCard from '@/components/dashboard/DailyBonusCard'
+import SeasonPassTrack from '@/components/dashboard/SeasonPassTrack'
 import StreakCalendar from '@/components/dashboard/StreakCalendar'
 
 export default async function DashboardPage() {
@@ -44,9 +45,16 @@ export default async function DashboardPage() {
     challengePct = challenge.goal_xp > 0 ? Math.min(100, Math.round((total / challenge.goal_xp) * 100)) : 0
   }
 
+  const currentLevel = (profile as any)?.user_reputation?.level ?? 1
   const myTotalXp = (profile as any)?.user_reputation?.total_xp ?? 0
   const { count: usersAhead } = await supabase.from('user_reputation').select('*', { count: 'exact', head: true }).gt('total_xp', myTotalXp)
   const myRank = (usersAhead ?? 0) + 1
+
+  const { data: activeSeason } = await admin
+    .from('seasons')
+    .select('id, name, ends_at')
+    .eq('status', 'ACTIVE')
+    .maybeSingle()
 
   const lastBonusAt     = (profile as any)?.user_reputation?.last_daily_bonus_at ?? null
   const todayUTC        = new Date().toISOString().slice(0, 10)
@@ -138,7 +146,10 @@ export default async function DashboardPage() {
       <DailyBonusCard canClaim={canClaimBonus} streak={streak} nextClaimMs={msUntilNext} />
       <StreakCalendar streak={streak} lastClaimedAt={lastBonusAt} />
 
-      {/* 4. Quest tracker */}
+      {/* 4. Battle Pass */}
+      <SeasonPassTrack currentLevel={currentLevel} seasonName={activeSeason?.name ?? null} />
+
+      {/* 5. Quest tracker */}
       {activeMissions.length > 0 && (
         <div className="bg-card border border-border rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
