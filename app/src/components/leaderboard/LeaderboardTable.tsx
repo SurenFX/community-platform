@@ -97,8 +97,69 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
   const isInTopList = sorted.some(e => e.user_id === currentUserId)
   const myPosition  = myRank ? (myRank[rankField[period]] as number) : null
 
+  const top3 = sorted.slice(0, 3)
+  const podiumOrder = top3.length >= 3 ? [top3[1], top3[0], top3[2]] : top3
+  const podiumHeights = ['h-20', 'h-28', 'h-16']
+  const podiumColors  = ['bg-slate-400/20 border-slate-400/40', 'bg-yellow-400/20 border-yellow-400/50', 'bg-amber-700/20 border-amber-700/40']
+  const podiumEmojis  = ['🥈', '🥇', '🥉']
+  const podiumTextColors = ['text-slate-300', 'text-yellow-400', 'text-amber-600']
+
   return (
     <div className="space-y-3">
+      {/* Podio top 3 — solo cuando no hay busqueda activa */}
+      {!search && sorted.length >= 3 && (
+        <div className="bg-card border border-border rounded-2xl p-6 overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
+          <p className="text-xs font-bold text-muted-foreground text-center mb-5 tracking-widest uppercase">Podio</p>
+          <div className="flex items-end justify-center gap-3">
+            {podiumOrder.map((entry, podiumIdx) => {
+              if (!entry) return null
+              const realRank = sorted.indexOf(entry) + 1
+              const xp       = entry[period]
+              const username = entry.profiles?.username ?? '?'
+              const borderHex = BORDER_COLOR_HEX[entry.profiles?.equipped_border_color ?? '']
+              const isCenter  = podiumIdx === 1  // gold
+              return (
+                <div key={entry.user_id} className={`flex flex-col items-center gap-2 ${isCenter ? 'scale-105' : ''}`} style={{ flex: isCenter ? '0 0 38%' : '0 0 28%' }}>
+                  {/* Crown for #1 */}
+                  {realRank === 1 && (
+                    <div className="text-2xl animate-bounce" style={{ animationDuration: '2s' }}>👑</div>
+                  )}
+                  {/* Avatar */}
+                  <div className="relative">
+                    {entry.profiles?.avatar_url ? (
+                      <img
+                        src={entry.profiles.avatar_url}
+                        alt={username}
+                        className={`rounded-2xl object-cover ${isCenter ? 'w-16 h-16' : 'w-12 h-12'}`}
+                        style={borderHex ? { border: `3px solid ${borderHex}`, boxShadow: `0 0 16px ${borderHex}60` } : {}}
+                      />
+                    ) : (
+                      <div
+                        className={`rounded-2xl bg-primary/20 flex items-center justify-center font-black text-primary ${isCenter ? 'w-16 h-16 text-2xl' : 'w-12 h-12 text-lg'}`}
+                        style={borderHex ? { border: `3px solid ${borderHex}`, boxShadow: `0 0 16px ${borderHex}60` } : {}}
+                      >
+                        {username[0].toUpperCase()}
+                      </div>
+                    )}
+                    <span className={`absolute -bottom-1.5 -right-1.5 text-sm ${podiumEmojis[podiumIdx] ? '' : ''}`}>{podiumEmojis[podiumIdx]}</span>
+                  </div>
+                  {/* Name + XP */}
+                  <div className="text-center min-w-0 w-full">
+                    <p className={`text-xs font-black truncate ${podiumTextColors[podiumIdx]}`}>{username}</p>
+                    <p className="text-[10px] text-muted-foreground font-semibold">{formatNumber(xp)} XP</p>
+                  </div>
+                  {/* Plataforma del podio */}
+                  <div className={`w-full border rounded-t-xl ${podiumColors[podiumIdx]} ${podiumHeights[podiumIdx]} flex items-center justify-center`}>
+                    <span className={`text-2xl font-black ${podiumTextColors[podiumIdx]}`}>#{realRank}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
         <input

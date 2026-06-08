@@ -200,9 +200,19 @@ export default function MissionsClient({ missions, userMissions, userId, isStrea
             <span className="text-muted-foreground font-medium">
               Progreso: <span className="text-foreground font-bold">{progress}</span>/{mission.target_count}
             </span>
-            {!isExpiringSoon && !isExpiredUnclaimed && endsIn <= 365 && (
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <Clock className="w-3 h-3" />{endsIn}d
+            {!isExpiredUnclaimed && !isClaimed && msLeft > 0 && (
+              <span className={`flex items-center gap-1 font-semibold px-2 py-0.5 rounded-full text-[10px] ${
+                isExpiringSoon
+                  ? 'bg-orange-400/15 text-orange-400'
+                  : 'bg-secondary text-muted-foreground'
+              }`}>
+                <Clock className="w-3 h-3" />
+                Plazo:{' '}
+                {isExpiringSoon
+                  ? hoursLeft <= 1 ? 'menos de 1h' : `${hoursLeft}h`
+                  : endsIn === 0 ? 'hoy'
+                  : endsIn === 1 ? 'manana'
+                  : `${endsIn}d`}
               </span>
             )}
           </div>
