@@ -88,7 +88,7 @@ export default function NotificacionesClient({
   const visible = filter === 'unread' ? notifs.filter(n => !n.is_read) : notifs
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

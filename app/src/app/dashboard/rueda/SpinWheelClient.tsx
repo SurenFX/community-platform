@@ -87,7 +87,7 @@ export default function SpinWheelClient({ prizes, balance: initialBalance, histo
   }
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

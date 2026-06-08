@@ -54,7 +54,7 @@ export default async function PlatformRafflePage() {
 
   if (!raffles.length) {
     return (
-      <div className="max-w-2xl mx-auto">
+      <div className="">
         {header}
         <div className="bg-card border border-border rounded-xl p-12 text-center">
           <Ticket className="w-10 h-10 text-muted-foreground mx-auto mb-3 opacity-40" />
@@ -71,7 +71,7 @@ export default async function PlatformRafflePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="">
       {header}
       <PlatformRaffleClient
         raffles={raffles as any}

@@ -164,7 +164,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   })
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="space-y-4">
 
       {/* ── CARD PRINCIPAL: identidad del personaje ── */}
       <div className="fade-in-up bg-card border border-border rounded-2xl overflow-hidden">

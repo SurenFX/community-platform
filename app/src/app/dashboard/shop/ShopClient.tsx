@@ -132,7 +132,7 @@ export default function ShopClient({
   ]
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6">
       {/* Header con balance */}
       <div className="flex items-center justify-between">
         <div>
