@@ -30,7 +30,7 @@ export default async function DashboardLayout({
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar profile={profile} unreadNotifs={unreadNotifs ?? 0} />
-      <main className="flex-1 ml-0 md:ml-64 p-4 md:p-8 mt-14 md:mt-0">
+      <main className="flex-1 min-w-0 ml-0 md:ml-64 p-4 md:p-8 mt-14 md:mt-0 overflow-x-hidden">
         {children}
       </main>
       <OnboardingModal username={(profile as any)?.username ?? ''} />

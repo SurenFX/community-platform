@@ -211,7 +211,7 @@ export default function DashboardClient({
   const visibleTotal = allBadges.filter(b => !b.is_secret || earnedSet.has(b.id)).length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-2xl mx-auto w-full">
 
       <PlayerCard profile={profile as any} myRank={myRank} />
 
