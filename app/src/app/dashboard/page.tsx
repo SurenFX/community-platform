@@ -60,18 +60,22 @@ export default async function DashboardPage() {
   let seasonXp = 0
   let claimedMilestones: number[] = []
   if (activeSeason) {
-    const [{ data: seasonXpRows }, { data: claimsData }] = await Promise.all([
-      admin.from('xp_events')
-        .select('xp_awarded')
-        .eq('user_id', user.id)
-        .gte('created_at', activeSeason.starts_at),
-      admin.from('season_pass_claims')
-        .select('milestone_xp')
-        .eq('user_id', user.id)
-        .eq('season_id', activeSeason.id),
-    ])
-    seasonXp = (seasonXpRows ?? []).reduce((s: number, r: any) => s + (r.xp_awarded ?? 0), 0)
-    claimedMilestones = (claimsData ?? []).map((r: any) => r.milestone_xp)
+    try {
+      const [{ data: seasonXpRows }, { data: claimsData }] = await Promise.all([
+        admin.from('xp_events')
+          .select('xp_awarded')
+          .eq('user_id', user.id)
+          .gte('created_at', activeSeason.starts_at),
+        admin.from('season_pass_claims')
+          .select('milestone_xp')
+          .eq('user_id', user.id)
+          .eq('season_id', activeSeason.id),
+      ])
+      seasonXp = (seasonXpRows ?? []).reduce((s: number, r: any) => s + (r.xp_awarded ?? 0), 0)
+      claimedMilestones = (claimsData ?? []).map((r: any) => r.milestone_xp)
+    } catch (_) {
+      // season_pass_claims tabla aun no existe, ignorar
+    }
   }
 
   const { data: activeXpEvent } = await admin
