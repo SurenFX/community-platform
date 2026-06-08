@@ -1,7 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { getLevelColor, getLevelTitle, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'
 import type { Profile, UserReputation } from '@/types/database'
+import PrestigeModal, { PrestigeBadge } from '@/components/profile/PrestigeModal'
+import { PRESTIGE_LEVEL } from '@/app/actions/shop'
 
 const BORDER_COLOR_HEX: Record<string, string> = {
   'cyan-400':   '#22d3ee',
@@ -25,6 +28,8 @@ interface Props {
 }
 
 export default function PlayerCard({ profile, myRank }: Props) {
+  const [showPrestige, setShowPrestige] = useState(false)
+  const [prestigeLevel, setPrestigeLevel] = useState((profile?.user_reputation as any)?.prestige_level ?? 0)
   const rep     = profile?.user_reputation
   const level   = rep?.level         ?? 1
   const totalXp = rep?.total_xp      ?? 0
@@ -90,9 +95,10 @@ export default function PlayerCard({ profile, myRank }: Props) {
 
         {/* Nombre + título + online */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-0.5">
+          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
             <h1 className="text-xl font-black text-foreground truncate">{username}</h1>
             {nameEmoji && <span className="text-base leading-none">{nameEmoji}</span>}
+            {prestigeLevel > 0 && <PrestigeBadge prestige={prestigeLevel} />}
             <span className="ml-auto flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
               En línea
@@ -126,6 +132,25 @@ export default function PlayerCard({ profile, myRank }: Props) {
           </p>
         )}
       </div>
+
+      {/* Prestige disponible */}
+      {level >= PRESTIGE_LEVEL && (
+        <button
+          onClick={() => setShowPrestige(true)}
+          className="w-full mb-3 py-2.5 rounded-xl text-sm font-bold border border-yellow-400/40 bg-yellow-400/10 text-yellow-400 hover:bg-yellow-400/20 transition-all flex items-center justify-center gap-2"
+          style={{ animation: 'tier-pulse 3s ease-in-out infinite' }}
+        >
+          👑 Prestige disponible — nivel {PRESTIGE_LEVEL} alcanzado
+        </button>
+      )}
+
+      {showPrestige && (
+        <PrestigeModal
+          currentPrestige={prestigeLevel}
+          onClose={() => setShowPrestige(false)}
+          onSuccess={(p) => { setPrestigeLevel(p); setShowPrestige(false) }}
+        />
+      )}
 
       {/* Stats rápidas */}
       <div className="grid grid-cols-3 gap-2">

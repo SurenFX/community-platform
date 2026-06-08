@@ -1,5 +1,7 @@
 'use client'
 
+import { PrestigeBadge } from '@/components/profile/PrestigeModal'
+
 import { useState } from 'react'
 import Link from 'next/link'
 import { cn, getLevelColor, getLevelTitle, formatNumber, getRankTier } from '@/lib/utils'
@@ -185,6 +187,7 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
                     {isCurrentUser && (
                       <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium">Tu</span>
                     )}
+                    {(entry as any).prestige_level > 0 && <PrestigeBadge prestige={(entry as any).prestige_level} />}
                     {entry.current_streak >= 3 && (
                       <span className="flex items-center gap-0.5 text-[10px] text-orange-400 font-bold">
                         <Flame className="w-3 h-3" />{entry.current_streak}

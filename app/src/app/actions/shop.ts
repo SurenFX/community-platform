@@ -286,3 +286,58 @@ export async function spinWheel(): Promise<{
 }
 
 export { SPIN_COST }
+
+// ── Prestige ───────────────────────────────────────────────────────────────────
+export const PRESTIGE_LEVEL = 200
+
+export async function prestigeUser(): Promise<{ error?: string; newPrestige?: number }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const db = adminDb()
+
+  const { data: rep } = await db
+    .from('user_reputation')
+    .select('total_xp, level, prestige_level, salchi_coins')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!rep) return { error: 'Perfil no encontrado' }
+  if ((rep as any).level < PRESTIGE_LEVEL) return { error: `Necesitas nivel ${PRESTIGE_LEVEL} para hacer Prestige` }
+
+  const currentPrestige = (rep as any).prestige_level ?? 0
+  const newPrestige     = currentPrestige + 1
+  const bonusSc         = 500 * newPrestige  // 500 SC por cada nivel de prestige
+
+  // Guardar historial
+  await db.from('prestige_history').insert({
+    user_id:        user.id,
+    prestige_level: newPrestige,
+    reset_xp:       (rep as any).total_xp,
+    reset_level:    (rep as any).level,
+    bonus_sc:       bonusSc,
+  })
+
+  // Resetear XP y nivel, incrementar prestige, dar SC de bonus
+  await db.from('user_reputation').update({
+    total_xp:       0,
+    weekly_xp:      0,
+    monthly_xp:     0,
+    level:          1,
+    prestige_level: newPrestige,
+    salchi_coins:   ((rep as any).salchi_coins ?? 0) + bonusSc,
+  }).eq('user_id', user.id)
+
+  // Notificación
+  await db.from('notifications').insert({
+    user_id: user.id,
+    type:    'PRESTIGE',
+    title:   `Prestige ${newPrestige} alcanzado!`,
+    body:    `Reseteaste al nivel 1 con Prestige ${newPrestige}. Recibiste ${bonusSc} SC de bonus.`,
+    is_read: false,
+  })
+
+  revalidatePath('/dashboard', 'layout')
+  return { newPrestige }
+}
