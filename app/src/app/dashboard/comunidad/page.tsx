@@ -17,7 +17,7 @@ export default async function ComunidadPage() {
 
   const { data: entries } = await supabase
     .from('user_reputation')
-    .select('user_id, total_xp, weekly_xp, monthly_xp, level, current_streak, profiles!inner(username, avatar_url, equipped_border_color, equipped_name_emoji, equipped_title_override)')
+    .select('user_id, total_xp, weekly_xp, monthly_xp, level, current_streak, rank_delta, profiles!inner(username, avatar_url, equipped_border_color, equipped_name_emoji, equipped_title_override)')
     .order('total_xp', { ascending: false })
     .limit(50)
 

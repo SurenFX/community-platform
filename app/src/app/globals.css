@@ -239,3 +239,12 @@ input:focus, textarea:focus, select:focus {
   50%       { opacity: 1; }
 }
 .tier-pulse { animation: tier-pulse 3s ease-in-out infinite; }
+
+/* XP floating toast */
+@keyframes xp-float-up {
+  0%   { opacity: 0; transform: translateY(0px) scale(0.8); }
+  15%  { opacity: 1; transform: translateY(-8px) scale(1.05); }
+  70%  { opacity: 1; transform: translateY(-32px) scale(1); }
+  100% { opacity: 0; transform: translateY(-56px) scale(0.9); }
+}
+.xp-float { animation: xp-float-up 2.2s cubic-bezier(0.22, 1, 0.36, 1) both; }
