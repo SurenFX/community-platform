@@ -7,7 +7,7 @@ import { signOut } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
 import {
   Home, Trophy, Sword, Settings, LogOut, Shield, Ticket,
-  CircleDollarSign, ShoppingBag, Swords, Menu, X,
+  CircleDollarSign, ShoppingBag, Swords, Menu, X, Dices,
 } from 'lucide-react'
 
 import SidebarXpBar from './SidebarXpBar'
@@ -41,6 +41,7 @@ const navItems = [
   { href: '/dashboard/challenges',    label: 'Raids',          icon: Swords                         },
   { href: '/dashboard/raffles',       label: 'Sorteos',        icon: Ticket                         },
   { href: '/dashboard/shop',          label: 'Tienda',         icon: ShoppingBag                    },
+  { href: '/dashboard/rueda',         label: 'Rueda',          icon: Dices                          },
   { href: '/dashboard/coins',          label: 'SalchiCoins',  icon: CircleDollarSign },
   { href: '/dashboard/configuracion', label: 'Configuración', icon: Settings         },
 ]

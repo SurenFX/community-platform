@@ -202,3 +202,87 @@ export async function unequipItem(type: string): Promise<{ error?: string }> {
   revalidatePath('/dashboard', 'layout')
   return {}
 }
+
+// ── Rueda de la suerte ─────────────────────────────────────────────────────────
+const SPIN_COST = 20
+
+export async function spinWheel(): Promise<{
+  error?: string
+  prize?: { name: string; description: string; prize_type: string; prize_value: number; rarity: string; emoji: string; segmentIndex: number }
+}> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const db = adminDb()
+
+  // Deducir SC
+  const { error: rpcError } = await db.rpc('deduct_sc_if_enough', {
+    p_user_id: user.id,
+    p_amount:  SPIN_COST,
+  })
+  if (rpcError) return { error: 'SC insuficientes (necesitas 20 SC)' }
+
+  // Cargar premios
+  const { data: prizes } = await db
+    .from('spin_wheel_prizes')
+    .select('*')
+    .order('sort_order')
+
+  if (!prizes || prizes.length === 0) return { error: 'No hay premios configurados' }
+
+  // Selección aleatoria ponderada
+  const totalWeight = (prizes as any[]).reduce((s: number, p: any) => s + p.weight, 0)
+  let rand = Math.random() * totalWeight
+  let winner: any = prizes[prizes.length - 1]
+  let segmentIndex = prizes.length - 1
+  for (let i = 0; i < prizes.length; i++) {
+    rand -= (prizes as any[])[i].weight
+    if (rand <= 0) { winner = prizes[i]; segmentIndex = i; break }
+  }
+
+  // Entregar premio
+  if (winner.prize_type === 'sc' && winner.prize_value > 0) {
+    const { data: rep } = await db.from('user_reputation').select('salchi_coins').eq('user_id', user.id).single()
+    await db.from('user_reputation').update({ salchi_coins: ((rep as any)?.salchi_coins ?? 0) + winner.prize_value }).eq('user_id', user.id)
+  } else if (winner.prize_type === 'xp' && winner.prize_value > 0) {
+    const { data: rep } = await db.from('user_reputation').select('total_xp, weekly_xp, monthly_xp').eq('user_id', user.id).single()
+    const newTotal = ((rep as any)?.total_xp ?? 0) + winner.prize_value
+    const newLevel = Math.min(Math.floor((-9 + Math.sqrt(121 + newTotal / 3.125)) / 2), 200)
+    await db.from('user_reputation').update({
+      total_xp:   newTotal,
+      weekly_xp:  ((rep as any)?.weekly_xp  ?? 0) + winner.prize_value,
+      monthly_xp: ((rep as any)?.monthly_xp ?? 0) + winner.prize_value,
+      level:      newLevel,
+    }).eq('user_id', user.id)
+    await db.from('xp_events').insert({
+      user_id: user.id, event_type: 'WHEEL_SPIN', xp_awarded: winner.prize_value,
+      base_xp: winner.prize_value, multiplier: 1, quality_score: 1, streak_bonus: 0,
+      platform: 'DISCORD', metadata: { source: 'SPIN_WHEEL', prize: winner.name },
+    })
+  }
+
+  // Registrar historial
+  await db.from('spin_wheel_history').insert({
+    user_id:        user.id,
+    prize_id:       winner.id,
+    prize_snapshot: winner,
+    cost_sc:        SPIN_COST,
+  })
+
+  revalidatePath('/dashboard', 'layout')
+
+  return {
+    prize: {
+      name:         winner.name,
+      description:  winner.description,
+      prize_type:   winner.prize_type,
+      prize_value:  winner.prize_value,
+      rarity:       winner.rarity,
+      emoji:        winner.emoji,
+      segmentIndex,
+    }
+  }
+}
+
+export { SPIN_COST }
