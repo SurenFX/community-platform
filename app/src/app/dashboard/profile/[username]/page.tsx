@@ -8,6 +8,7 @@ import ProfileEditButton from '@/components/profile/ProfileEditButton'
 import { PrestigeBadge } from '@/components/profile/PrestigeModal'
 import CopyProfileLink from '@/components/profile/CopyProfileLink'
 import ActivityHeatmap from '@/components/profile/ActivityHeatmap'
+import ShareCardButton from '@/components/profile/ShareCardButton'
 
 export async function generateMetadata({
   params,
@@ -220,6 +221,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                 )}
                 {isOwner && <ProfileEditButton username={profile.username} bio={profile.bio} />}
                 <CopyProfileLink username={profile.username} />
+                <ShareCardButton username={profile.username} />
               </div>
               {/* Título de rango prominente */}
               <p className={`text-sm font-bold mt-0.5 ${getLevelColor(level)}`}>{displayTitle}</p>

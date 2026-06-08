@@ -7,6 +7,7 @@ import DashboardClient from '@/components/dashboard/DashboardClient'
 import OnboardingModal from '@/components/dashboard/OnboardingModal'
 import DailyBonusCard from '@/components/dashboard/DailyBonusCard'
 import SeasonPassTrack from '@/components/dashboard/SeasonPassTrack'
+import GlobalXpEventBanner from '@/components/layout/GlobalXpEventBanner'
 import StreakCalendar from '@/components/dashboard/StreakCalendar'
 
 export default async function DashboardPage() {
@@ -54,6 +55,15 @@ export default async function DashboardPage() {
     .from('seasons')
     .select('id, name, ends_at')
     .eq('status', 'ACTIVE')
+    .maybeSingle()
+
+  const { data: activeXpEvent } = await admin
+    .from('global_xp_events')
+    .select('id, title, description, multiplier, ends_at')
+    .lte('starts_at', new Date().toISOString())
+    .gte('ends_at', new Date().toISOString())
+    .order('multiplier', { ascending: false })
+    .limit(1)
     .maybeSingle()
 
   const lastBonusAt     = (profile as any)?.user_reputation?.last_daily_bonus_at ?? null

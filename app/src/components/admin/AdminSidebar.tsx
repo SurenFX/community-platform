@@ -20,6 +20,7 @@ const navItems = [
   { href: '/admin/boss-raids',    label: 'Boss Raids',  icon: Skull            },
   { href: '/admin/rueda',          label: 'Rueda',       icon: Dices            },
   { href: '/admin/daily-bonus',  label: 'Bono diario', icon: Flame            },
+  { href: '/admin/xp-events',    label: 'Eventos XP',  icon: Zap              },
   { href: '/admin/analytics',    label: 'Analytics',   icon: BarChart3        },
 ]
 
