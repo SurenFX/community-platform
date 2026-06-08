@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Lock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import PlayerCard from '@/components/dashboard/PlayerCard'
@@ -52,6 +52,7 @@ interface DashboardClientProps {
   allBadges:       BadgeItem[]
   earnedBadgeIds:  string[]
   myRank:          number
+  middleContent?:  React.ReactNode
 }
 
 interface XpToastData {
@@ -93,6 +94,7 @@ export default function DashboardClient({
   allBadges,
   earnedBadgeIds,
   myRank,
+  middleContent,
 }: DashboardClientProps) {
   const earnedSet = new Set(earnedBadgeIds)
 
@@ -212,6 +214,8 @@ export default function DashboardClient({
     <div className="space-y-6">
 
       <PlayerCard profile={profile as any} myRank={myRank} />
+
+      {middleContent}
 
       <RecentActivity events={events} />
 
