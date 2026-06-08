@@ -70,21 +70,7 @@ export default async function DashboardPage() {
   const middleContent = (
     <div className="space-y-4">
 
-      {/* 1. Buffs activos */}
-      {buffs.length > 0 && (
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
-            <Zap className="w-3 h-3" /> BUFFS ACTIVOS
-          </span>
-          {buffs.map((b, i) => (
-            <span key={i} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${b.color}`}>
-              {b.icon}{b.label}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* 2. Posicion global + Desafio comunitario */}
+      {/* 1. Posicion global + Desafio comunitario */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Link href="/dashboard/comunidad" className="flex items-center gap-3 bg-card border border-border rounded-xl px-4 py-3 hover:border-primary/40 transition-colors">
           <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -123,6 +109,20 @@ export default async function DashboardPage() {
           </Link>
         )}
       </div>
+
+      {/* 2. Buffs activos */}
+      {buffs.length > 0 && (
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
+            <Zap className="w-3 h-3" /> BUFFS ACTIVOS
+          </span>
+          {buffs.map((b, i) => (
+            <span key={i} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-semibold ${b.color}`}>
+              {b.icon}{b.label}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* 3. Mision diaria */}
       <DailyBonusCard canClaim={canClaimBonus} streak={streak} nextClaimMs={msUntilNext} />
