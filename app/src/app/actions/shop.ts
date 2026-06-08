@@ -141,4 +141,46 @@ export async function equipItem(
   itemId: string,
   type: string
 ): Promise<{ error?: string }> {
-  const supabase = await creat
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const col = EQUIP_COLUMN[type]
+  if (!col) return { error: 'Tipo inválido' }
+
+  const db = adminDb()
+
+  // Verificar que tenga el item
+  const { data: item } = await db
+    .from('shop_items')
+    .select('value')
+    .eq('id', itemId)
+    .single()
+  if (!item) return { error: 'Item no existe' }
+
+  const { data: owned } = await db
+    .from('user_inventory')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('item_id', itemId)
+    .maybeSingle()
+  if (!owned) return { error: 'No tenés este item' }
+
+  await db.from('profiles').update({ [col]: (item as any).value }).eq('id', user.id)
+  revalidatePath('/dashboard', 'layout')
+  return {}
+}
+
+export async function unequipItem(type: string): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const col = EQUIP_COLUMN[type]
+  if (!col) return { error: 'Tipo inválido' }
+
+  const db = adminDb()
+  await db.from('profiles').update({ [col]: null }).eq('id', user.id)
+  revalidatePath('/dashboard', 'layout')
+  return {}
+}

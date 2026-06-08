@@ -305,4 +305,42 @@ export async function grantSc(
     user_id: targetUserId,
     type:    'SYSTEM',
     title:   `+${amount} SalchiCoins`,
-    body:    reaso
+    body:    reason ? `El equipo te otorgó SC: ${reason}` : 'El equipo te otorgó SalchiCoins.',
+    is_read: false,
+  })
+
+  return {}
+}
+
+// ── User reset ─────────────────────────────────────────────────────────────
+export async function resetUserProgress(targetUserId: string): Promise<{ error?: string }> {
+  const { error: authError, admin } = await getAdminClient()
+  if (authError || !admin) return { error: authError ?? 'Error' }
+
+  // Resetear reputación (XP, nivel, racha, tickets)
+  await admin
+    .from('user_reputation')
+    .update({
+      total_xp:       0,
+      weekly_xp:      0,
+      monthly_xp:     0,
+      level:          1,
+      current_streak: 0,
+      longest_streak: 0,
+      raffle_tickets: 0,
+      salchi_coins:   0,
+      last_active_date: null,
+    })
+    .eq('user_id', targetUserId)
+
+  // Borrar badges
+  await admin.from('user_badges').delete().eq('user_id', targetUserId)
+
+  // Borrar progreso de misiones
+  await admin.from('user_missions').delete().eq('user_id', targetUserId)
+
+  // Borrar historial de XP
+  await admin.from('xp_events').delete().eq('user_id', targetUserId)
+
+  return {}
+}

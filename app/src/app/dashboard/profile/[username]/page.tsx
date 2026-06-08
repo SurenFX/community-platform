@@ -458,4 +458,59 @@ export default async function PublicProfilePage({
                           </p>
                           {isEarned && badge.tier && (
                             <span className={`text-[9px] font-bold uppercase tracking-wider mt-0.5 inline-block ${
-         
+                              badge.tier === 'LEGENDARY' ? 'text-purple-400'
+                              : badge.tier === 'GOLD'    ? 'text-yellow-400'
+                              : badge.tier === 'SILVER'  ? 'text-slate-400'
+                              : 'text-amber-700'
+                            }`}>{badge.tier}</span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Actividad reciente */}
+      {events.length > 0 && (
+        <div className="fade-in-up bg-card border border-border rounded-2xl overflow-hidden" style={{ animationDelay: '160ms' }}>
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-base font-bold text-foreground">Actividad reciente</h2>
+          </div>
+          <div className="divide-y divide-border">
+            {events.map((event: any, i: number) => {
+              const platform = event.platform ?? EVENT_PLATFORM[event.event_type] ?? 'SYSTEM'
+              const colorClass = PLATFORM_COLOR[platform] ?? 'bg-primary/20 text-primary'
+              const icon = PLATFORM_ICONS[platform] ?? '⚡'
+              const sublabel = EVENT_SUBLABEL(event)
+              return (
+                <div key={i}
+                  className="fade-in-up row-hover flex items-center gap-3 px-5 py-3"
+                  style={{ animationDelay: `${160 + i * 30}ms` }}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0 ${colorClass}`}>
+                    {icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground">
+                      {EVENT_LABELS[event.event_type] ?? event.event_type}
+                    </p>
+                    {sublabel && (
+                      <p className="text-xs text-muted-foreground truncate">{sublabel}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground/60">{timeAgo(event.created_at)}</p>
+                  </div>
+                  <span className="text-sm font-bold text-primary shrink-0">+{event.xp_awarded} XP</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+    </div>
+  )
+}
