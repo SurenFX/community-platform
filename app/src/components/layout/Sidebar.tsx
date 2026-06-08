@@ -88,19 +88,7 @@ export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
         </div>
       </div>
 
-      {/* Avatar + XP */}
-      {profile && (
-        <div className="p-4 border-b border-border">
-          <SidebarXpBar
-            userId={profile.id}
-            initialRep={profile.user_reputation}
-            username={profile.username}
-            avatarUrl={profile.avatar_url}
-            avatarStyle={avatarStyle}
-            onAvatarClick={() => setMobileOpen(false)}
-          />
-        </div>
-      )}
+
 
       {/* Navegación */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
