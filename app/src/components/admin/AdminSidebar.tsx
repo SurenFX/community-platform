@@ -54,4 +54,13 @@ export default function AdminSidebar({ profile }: { profile: any }) {
       </nav>
 
       <div className="p-3 border-t border-border">
-        <Link href="/dashboar
+        <Link href="/dashboard"
+          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/80 transition-all"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Volver al dashboard
+        </Link>
+      </div>
+    </aside>
+  )
+}

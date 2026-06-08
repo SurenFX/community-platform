@@ -118,4 +118,91 @@ export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
                 {nameEmoji && <span className="mr-1">{nameEmoji}</span>}
                 {profile.username}
               </p>
-              <p className="text-xs
+              <p className="text-xs text-muted-foreground">Ver perfil</p>
+            </div>
+          </Link>
+          <SidebarXpBar
+            userId={profile.id}
+            initialRep={profile.user_reputation}
+            username={profile.username}
+            avatarUrl={profile.avatar_url}
+            compact
+          />
+        </div>
+      )}
+
+      {/* Navegación */}
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        {navItems.map(({ href, label, icon: Icon, exact }) => {
+          const isActive = exact ? pathname === href : pathname.startsWith(href)
+          return (
+            <Link key={href} href={href}
+              onClick={() => setMobileOpen(false)}
+              className={cn('nav-item', isActive ? 'active' : 'text-muted-foreground')}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="flex-1">{label}</span>
+            </Link>
+          )
+        })}
+
+        {profile?.is_admin && (
+          <>
+            <div className="pt-3 pb-1">
+              <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider px-3">
+                Admin
+              </p>
+            </div>
+            <Link href="/admin"
+              onClick={() => setMobileOpen(false)}
+              className={cn('nav-item', pathname.startsWith('/admin') ? 'active' : 'text-muted-foreground')}
+            >
+              <Shield className="w-4 h-4 shrink-0" />
+              Panel Admin
+            </Link>
+          </>
+        )}
+      </nav>
+
+      {/* Footer */}
+      <div className="p-3 border-t border-border">
+        <form action={signOut}>
+          <button type="submit"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-all duration-150"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            Cerrar sesión
+          </button>
+        </form>
+      </div>
+
+    </aside>
+  )
+
+  return (
+    <>
+      {/* Mobile top bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-card border-b border-border flex items-center gap-3 px-4 z-30">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
+          aria-label="Abrir menú"
+        >
+          <Menu className="w-5 h-5 text-foreground" />
+        </button>
+        <span className="text-xl">🌭</span>
+        <span className="font-extrabold text-foreground text-sm tracking-tight">SalchiNeta</span>
+      </div>
+
+      {/* Backdrop — mobile only */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/50 z-30 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {sidebarContent}
+    </>
+  )
+}

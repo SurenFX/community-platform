@@ -396,4 +396,17 @@ export default function ConnectedAccounts({
             <div className="flex items-center justify-center gap-2 text-[#26A5E4] text-sm">
               <Loader2 className="w-4 h-4 animate-spin" />
               Esperando confirmación...
-      
+            </div>
+            <button
+              onClick={() => setTelegramWaiting(false)}
+              className="w-full py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+    </div>
+  )
+}

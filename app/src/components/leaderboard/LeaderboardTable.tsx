@@ -216,4 +216,29 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
             <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Tu posición</span>
           </div>
-          <div className="flex items-center gap-4 px-6 py-4 bg-p
+          <div className="flex items-center gap-4 px-6 py-4 bg-primary/5 border-l-2 border-l-primary">
+            <div className="w-8 flex justify-center shrink-0">
+              <span className="text-sm font-bold text-muted-foreground">#{myPosition}</span>
+            </div>
+            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+              <User className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-foreground">Tú</p>
+                <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium">Tú</span>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold text-foreground">
+                {formatNumber(myRank[xpField[period]] as number)}
+              </p>
+              <p className="text-xs text-muted-foreground">XP</p>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+    </div>
+  )
+}

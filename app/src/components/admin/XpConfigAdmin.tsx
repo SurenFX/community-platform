@@ -114,3 +114,5 @@ export default function XpConfigAdmin({ configs: initialConfigs }: { configs: Xp
         ))}
       </div>
     </div>
+  )
+}

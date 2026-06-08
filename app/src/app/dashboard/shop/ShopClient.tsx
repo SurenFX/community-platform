@@ -212,4 +212,53 @@ export default function ShopClient({
                 {item.type === 'BORDER_COLOR' && (
                   <div
                     className="w-10 h-10 rounded-full bg-secondary"
-    
+                    style={{
+                      border:     `3px solid ${BORDER_COLOR_HEX[item.value] ?? '#888'}`,
+                      boxShadow:  `0 0 12px ${BORDER_COLOR_HEX[item.value] ?? '#888'}40`,
+                    }}
+                  />
+                )}
+                {item.type === 'NAME_EMOJI' && <span className="text-3xl">{item.value}</span>}
+                {item.type === 'CUSTOM_TITLE' && (
+                  <span className="text-xs font-bold text-center text-foreground px-1">{item.value}</span>
+                )}
+              </div>
+
+              <p className="text-xs font-semibold text-foreground mb-0.5 truncate">{item.name}</p>
+              <p className="text-[11px] text-muted-foreground mb-3 flex-1 line-clamp-2">{item.description}</p>
+
+              {owned ? (
+                <button onClick={() => handleEquip(item)} disabled={loading}
+                  className={`w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                    equipped
+                      ? 'bg-primary/20 text-primary hover:bg-primary/30'
+                      : 'bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80'
+                  }`}
+                >
+                  {loading
+                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                    : equipped ? <><Check className="w-3 h-3" /> Equipado</> : 'Equipar'}
+                </button>
+              ) : (
+                <button onClick={() => handleBuy(item)} disabled={loading || !canAfford}
+                  className="w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {loading
+                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                    : <><CircleDollarSign className="w-3 h-3" />{item.price_sc} SC</>}
+                </button>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {tabItems.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16">
+          <ShoppingBag className="w-8 h-8 text-muted-foreground mb-3 opacity-40" />
+          <p className="text-foreground font-semibold">Sin items en esta categoría</p>
+        </div>
+      )}
+    </div>
+  )
+}

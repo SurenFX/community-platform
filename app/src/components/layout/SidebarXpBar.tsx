@@ -98,4 +98,22 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-foreground truncate">{username}</p>
-          <p className={`text-xs font-medium ${getLe
+          <p className={`text-xs font-medium ${getLevelColor(level)}`}>{getLevelTitle(level)}</p>
+        </div>
+      </div>
+      <div className="space-y-1">
+        <div className="flex justify-between text-[10px] text-muted-foreground">
+          <span>{totalXp.toLocaleString('es-AR')} XP</span>
+          <span>Nv. {level} → {level + 1}</span>
+        </div>
+        <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+          <div
+            className={`h-full xp-bar rounded-full transition-all duration-700 ${flashing ? 'xp-bar-flash' : ''}`}
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+      </div>
+    </div>
+    </>
+  )
+}

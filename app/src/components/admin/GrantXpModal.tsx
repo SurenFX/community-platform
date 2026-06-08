@@ -111,4 +111,50 @@ export default function GrantXpModal({ userId, username, onClose, onGranted }: G
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foregro
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Razón (opcional)</label>
+            <input
+              type="text"
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              placeholder="Ej: Ayudó en el stream del sábado"
+              className={inputClass}
+              maxLength={100}
+            />
+          </div>
+        </div>
+
+        {error && (
+          <p className="text-xs text-destructive bg-destructive/10 px-3 py-2 rounded-lg">{error}</p>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-secondary transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={isPending || amount <= 0 || success}
+            className={`flex-1 flex items-center justify-center gap-2 disabled:opacity-50 font-semibold py-2.5 rounded-xl text-sm transition-all ${
+              mode === 'xp'
+                ? 'bg-yellow-400 hover:bg-yellow-300 text-black'
+                : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+            }`}
+          >
+            {success ? (
+              <><Check className="w-4 h-4" /> ¡Otorgado!</>
+            ) : isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : mode === 'xp' ? (
+              <><Zap className="w-4 h-4" /> +{amount} XP</>
+            ) : (
+              <><CircleDollarSign className="w-4 h-4" /> +{amount} SC</>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
