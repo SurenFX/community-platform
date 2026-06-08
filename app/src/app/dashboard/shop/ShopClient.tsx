@@ -23,12 +23,17 @@ const BORDER_COLOR_HEX: Record<string, string> = {
   'purple-500': '#a855f7',
 }
 
-type Tab = 'BORDER_COLOR' | 'NAME_EMOJI' | 'CUSTOM_TITLE'
+type Tab = 'BORDER_COLOR' | 'NAME_EMOJI' | 'CUSTOM_TITLE' | 'BOOST'
 
 interface ShopItem {
   id: string; name: string; description: string
   type: string; value: string; price_sc: number
   rarity: string; sort_order: number
+  boost_type?: string | null; boost_value?: number | null; boost_duration_hours?: number | null
+}
+
+interface ActiveBoost {
+  id: string; boost_type: string; boost_value: number; expires_at: string
 }
 
 interface Props {
@@ -40,6 +45,7 @@ interface Props {
   equippedTitle:  string | null
   username:       string
   avatarUrl:      string | null
+  activeBoosts:   ActiveBoost[]
 }
 
 export default function ShopClient({
@@ -48,7 +54,7 @@ export default function ShopClient({
   equippedBorder: initBorder,
   equippedEmoji: initEmoji,
   equippedTitle: initTitle,
-  username, avatarUrl,
+  username, avatarUrl, activeBoosts: initialBoosts,
 }: Props) {
   const [tab,        setTab]        = useState<Tab>('BORDER_COLOR')
   const [balance,    setBalance]    = useState(initialBalance)
@@ -60,6 +66,7 @@ export default function ShopClient({
   const [error,      setError]      = useState<string | null>(null)
   const [previewItem, setPreviewItem] = useState<ShopItem | null>(null)
   const [isPending, start]          = useTransition()
+  const [activeBoosts, setActiveBoosts] = useState<ActiveBoost[]>(initialBoosts)
 
   const tabItems = items.filter(i => i.type === tab).sort((a, b) => a.sort_order - b.sort_order)
 
@@ -80,8 +87,23 @@ export default function ShopClient({
     setError(null); setActionId(item.id)
     start(async () => {
       const r = await purchaseItem(item.id)
-      if (r.error) setError(r.error)
-      else { setInv(prev => new Set([...prev, item.id])); setBalance(b => b - item.price_sc) }
+      if (r.error) { setError(r.error) }
+      else {
+        setBalance(b => b - item.price_sc)
+        if (item.boost_type) {
+          // Boost consumible: mostrar en lista de activos optimisticamente
+          const hours = item.boost_duration_hours ?? 1
+          const fake: ActiveBoost = {
+            id: Date.now().toString(),
+            boost_type: item.boost_type,
+            boost_value: item.boost_value ?? 1,
+            expires_at: new Date(Date.now() + hours * 3600 * 1000).toISOString(),
+          }
+          setActiveBoosts(prev => [...prev, fake])
+        } else {
+          setInv(prev => new Set([...prev, item.id]))
+        }
+      }
       setActionId(null)
     })
   }
@@ -106,6 +128,7 @@ export default function ShopClient({
     { key: 'BORDER_COLOR',  label: 'Marcos',   icon: '🖼️' },
     { key: 'NAME_EMOJI',    label: 'Emojis',   icon: '✨' },
     { key: 'CUSTOM_TITLE',  label: 'Títulos',  icon: '📛' },
+    { key: 'BOOST',         label: 'Boosts',   icon: '⚡' },
   ]
 
   return (
@@ -170,6 +193,21 @@ export default function ShopClient({
         </div>
       )}
 
+      {activeBoosts.filter(b => new Date(b.expires_at) > new Date()).length > 0 && (
+        <div className="flex flex-wrap gap-2 items-center bg-yellow-500/5 border border-yellow-500/20 rounded-xl px-4 py-3">
+          <span className="text-xs font-bold text-yellow-400 mr-1">BOOSTS ACTIVOS:</span>
+          {activeBoosts.filter(b => new Date(b.expires_at) > new Date()).map(b => {
+            const mins = Math.round((new Date(b.expires_at).getTime() - Date.now()) / 60000)
+            const timeLeft = mins >= 60 ? `${Math.floor(mins/60)}h ${mins%60}m` : `${mins}m`
+            return (
+              <span key={b.id} className="flex items-center gap-1 bg-yellow-500/10 border border-yellow-500/25 text-yellow-300 text-xs font-semibold px-2.5 py-1 rounded-full">
+                ⚡ x{b.boost_value} XP — {timeLeft}
+              </span>
+            )
+          })}
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex border-b border-border">
         {tabs.map(t => (
@@ -222,12 +260,27 @@ export default function ShopClient({
                 {item.type === 'CUSTOM_TITLE' && (
                   <span className="text-xs font-bold text-center text-foreground px-1">{item.value}</span>
                 )}
+                {item.type === 'BOOST' && (
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="text-3xl">{item.boost_value && item.boost_value >= 4 ? '⚡' : item.boost_value && item.boost_value >= 2 ? '🔥' : '✨'}</span>
+                    <span className="text-[10px] font-bold text-yellow-400">x{item.boost_value} XP</span>
+                    <span className="text-[9px] text-muted-foreground">{item.boost_duration_hours}h</span>
+                  </div>
+                )}
               </div>
 
               <p className="text-xs font-semibold text-foreground mb-0.5 truncate">{item.name}</p>
               <p className="text-[11px] text-muted-foreground mb-3 flex-1 line-clamp-2">{item.description}</p>
 
-              {owned ? (
+              {item.type === 'BOOST' ? (
+                <button onClick={() => handleBuy(item)} disabled={loading || !canAfford}
+                  className="w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {loading
+                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                    : <><CircleDollarSign className="w-3 h-3" />{item.price_sc} SC — Activar</>}
+                </button>
+              ) : owned ? (
                 <button onClick={() => handleEquip(item)} disabled={loading}
                   className={`w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
                     equipped

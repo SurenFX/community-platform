@@ -19,7 +19,7 @@ export default async function DashboardPage() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const [profileRes, activityRes, missionsRes, claimableRes, allBadgesRes, earnedBadgesRes, challengeRes] = await Promise.all([
+  const [profileRes, activityRes, missionsRes, claimableRes, allBadgesRes, earnedBadgesRes, challengeRes, boostsRes] = await Promise.all([
     supabase.from('profiles').select('*, user_reputation(*), user_badges(*, badges(*))').eq('id', user.id).single(),
     supabase.from('xp_events').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50),
     supabase.from('user_missions').select('*, missions(*)').eq('user_id', user.id).eq('is_completed', false),
@@ -27,6 +27,7 @@ export default async function DashboardPage() {
     supabase.from('badges').select('id, slug, name, description, image_url, tier, family, family_order, is_secret').not('family', 'is', null).order('family').order('family_order'),
     supabase.from('user_badges').select('badge_id').eq('user_id', user.id),
     admin.from('community_challenges').select('id, title, goal_xp, starts_at, ends_at, reward_xp_per_user, reward_sc_per_user').eq('status', 'ACTIVE').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    admin.from('active_boosts').select('boost_type, boost_value, expires_at').eq('user_id', user.id).gt('expires_at', new Date().toISOString()),
   ])
 
   const profile        = profileRes.data
@@ -60,6 +61,14 @@ export default async function DashboardPage() {
   if (streak >= 30)     buffs.push({ icon: <Flame className="w-3 h-3" />, label: `Racha ${streak}d +200 XP +10 SC`, color: 'bg-orange-500/15 text-orange-400 border-orange-500/25' })
   else if (streak >= 7) buffs.push({ icon: <Flame className="w-3 h-3" />, label: `Racha ${streak}d +100 XP +5 SC`,  color: 'bg-orange-400/15 text-orange-400 border-orange-400/25' })
   else if (streak >= 3) buffs.push({ icon: <Flame className="w-3 h-3" />, label: `Racha ${streak}d +50 XP +2 SC`,   color: 'bg-amber-400/15 text-amber-400 border-amber-400/25'   })
+
+  // Boosts activos del shop
+  const activeBoostsList = (boostsRes.data ?? []) as any[]
+  for (const b of activeBoostsList) {
+    const mins = Math.round((new Date(b.expires_at).getTime() - Date.now()) / 60000)
+    const timeLeft = mins >= 60 ? `${Math.floor(mins/60)}h ${mins%60}m` : `${mins}m`
+    buffs.push({ icon: <Zap className="w-3 h-3" />, label: `x${b.boost_value} XP (${timeLeft})`, color: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/25' })
+  }
   if (challenge)        buffs.push({ icon: <Swords className="w-3 h-3" />, label: `Raid: ${challenge.title}`,       color: 'bg-primary/10 text-primary border-primary/25'         })
 
   const activeMissions = (missionsRes.data ?? [])

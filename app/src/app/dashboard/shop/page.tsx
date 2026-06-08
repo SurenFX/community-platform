@@ -14,7 +14,7 @@ export default async function ShopPage() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const [itemsRes, inventoryRes, repRes, profileRes] = await Promise.all([
+  const [itemsRes, inventoryRes, repRes, profileRes, boostsRes] = await Promise.all([
     admin.from('shop_items').select('*').eq('is_available', true).order('sort_order'),
     admin.from('user_inventory').select('item_id').eq('user_id', user.id),
     admin.from('user_reputation').select('salchi_coins').eq('user_id', user.id).single(),
@@ -22,6 +22,10 @@ export default async function ShopPage() {
       .select('username, avatar_url, equipped_border_color, equipped_name_emoji, equipped_title_override')
       .eq('id', user.id)
       .single(),
+    admin.from('active_boosts')
+      .select('id, boost_type, boost_value, expires_at')
+      .eq('user_id', user.id)
+      .gt('expires_at', new Date().toISOString()),
   ])
 
   const inventoryIds = (inventoryRes.data ?? []).map((i: any) => i.item_id as string)
@@ -38,6 +42,7 @@ export default async function ShopPage() {
       equippedTitle={profile?.equipped_title_override ?? null}
       username={profile?.username ?? '?'}
       avatarUrl={profile?.avatar_url ?? null}
+      activeBoosts={(boostsRes.data ?? []) as any}
     />
   )
 }

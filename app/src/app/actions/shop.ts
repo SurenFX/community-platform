@@ -104,19 +104,24 @@ export async function purchaseItem(itemId: string): Promise<{ error?: string }> 
 
   const { data: item } = await db
     .from('shop_items')
-    .select('id, price_sc, is_available')
+    .select('id, price_sc, is_available, boost_type, boost_value, boost_duration_hours')
     .eq('id', itemId)
     .single()
 
   if (!item || !(item as any).is_available) return { error: 'Item no disponible' }
 
-  const { data: owned } = await db
-    .from('user_inventory')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('item_id', itemId)
-    .maybeSingle()
-  if (owned) return { error: 'Ya tenés este item' }
+  const isBoost = !!(item as any).boost_type
+
+  // Cosmeticos: verificar que no lo tenga ya
+  if (!isBoost) {
+    const { data: owned } = await db
+      .from('user_inventory')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('item_id', itemId)
+      .maybeSingle()
+    if (owned) return { error: 'Ya tenés este item' }
+  }
 
   // Deducción atómica via RPC (evita race condition de balance negativo)
   const { error: rpcError } = await db.rpc('deduct_sc_if_enough', {
@@ -125,8 +130,21 @@ export async function purchaseItem(itemId: string): Promise<{ error?: string }> 
   })
   if (rpcError) return { error: 'SC insuficientes' }
 
-  await db.from('user_inventory').insert({ user_id: user.id, item_id: itemId })
+  if (isBoost) {
+    // Boost consumible: insertar en active_boosts con tiempo de expiración
+    const hours      = (item as any).boost_duration_hours ?? 1
+    const expiresAt  = new Date(Date.now() + hours * 3600 * 1000).toISOString()
+    await db.from('active_boosts').insert({
+      user_id:     user.id,
+      boost_type:  (item as any).boost_type,
+      boost_value: (item as any).boost_value,
+      expires_at:  expiresAt,
+    })
+  } else {
+    await db.from('user_inventory').insert({ user_id: user.id, item_id: itemId })
+  }
 
+  revalidatePath('/dashboard', 'layout')
   return {}
 }
 
