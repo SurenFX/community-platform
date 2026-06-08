@@ -35,7 +35,7 @@ export default async function ChallengesPage() {
       .limit(20),
     admin.from('boss_raids')
       .select('*')
-      .in('status', ['ACTIVE', 'DEFEATED'])
+      .eq('status', 'ACTIVE')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
