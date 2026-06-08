@@ -344,3 +344,42 @@ export async function resetUserProgress(targetUserId: string): Promise<{ error?:
 
   return {}
 }
+
+// ── Boss Raids ─────────────────────────────────────────────────────────────────
+export async function createBossRaid(data: {
+  name: string; emoji: string; lore: string
+  max_hp: number; reward_xp: number; reward_sc: number; duration_hours: number
+}): Promise<{ error?: string }> {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const adminDb = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+  const { data: profile } = await adminDb.from('profiles').select('is_admin').eq('id', user.id).single()
+  if (!(profile as any)?.is_admin) return { error: 'Sin permisos' }
+
+  const endsAt = new Date(Date.now() + data.duration_hours * 3600 * 1000).toISOString()
+
+  const { error } = await adminDb.from('boss_raids').insert({
+    name:       data.name,
+    emoji:      data.emoji || '👹',
+    lore:       data.lore || null,
+    max_hp:     data.max_hp,
+    current_hp: data.max_hp,
+    reward_xp:  data.reward_xp,
+    reward_sc:  data.reward_sc,
+    status:     'ACTIVE',
+    phase:      1,
+    starts_at:  new Date().toISOString(),
+    ends_at:    endsAt,
+  })
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/challenges')
+  revalidatePath('/admin/boss-raids')
+  return {}
+}
