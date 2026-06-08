@@ -91,42 +91,13 @@ export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
       {/* Avatar + XP */}
       {profile && (
         <div className="p-4 border-b border-border">
-          <Link
-            href={`/dashboard/profile/${profile.username}`}
-            className="flex items-center gap-3 mb-3 group rounded-xl hover:bg-secondary/60 transition-all p-1 -m-1"
-            onClick={() => setMobileOpen(false)}
-          >
-            {profile.avatar_url ? (
-              <img
-                src={profile.avatar_url}
-                alt={profile.username}
-                className="w-9 h-9 rounded-xl transition-all"
-                style={avatarStyle ?? { border: '2px solid hsl(var(--border))' }}
-              />
-            ) : (
-              <div
-                className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center transition-all"
-                style={avatarStyle ?? { border: '2px solid hsl(var(--border))' }}
-              >
-                <span className="text-sm font-bold text-primary">
-                  {profile.username?.[0]?.toUpperCase()}
-                </span>
-              </div>
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                {nameEmoji && <span className="mr-1">{nameEmoji}</span>}
-                {profile.username}
-              </p>
-              <p className="text-xs text-muted-foreground">Ver perfil</p>
-            </div>
-          </Link>
           <SidebarXpBar
             userId={profile.id}
             initialRep={profile.user_reputation}
             username={profile.username}
             avatarUrl={profile.avatar_url}
-            compact
+            avatarStyle={avatarStyle}
+            onAvatarClick={() => setMobileOpen(false)}
           />
         </div>
       )}

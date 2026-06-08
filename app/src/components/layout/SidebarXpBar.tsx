@@ -1,20 +1,23 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { getLevelColor, getLevelTitle, xpForCurrentLevel, xpForNextLevel, getRankTier } from '@/lib/utils'
 import type { UserReputation } from '@/types/database'
 import LevelUpModal from '@/components/profile/LevelUpModal'
 
 interface SidebarXpBarProps {
-  userId:     string
-  initialRep: UserReputation | null
-  username:   string
-  avatarUrl:  string | null
-  compact?:   boolean
+  userId:        string
+  initialRep:    UserReputation | null
+  username:      string
+  avatarUrl:     string | null
+  compact?:      boolean
+  avatarStyle?:  React.CSSProperties
+  onAvatarClick?: () => void
 }
 
-export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, compact }: SidebarXpBarProps) {
+export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, compact, avatarStyle, onAvatarClick }: SidebarXpBarProps) {
   const [rep,        setRep]        = useState(initialRep)
   const [flashing,   setFlashing]   = useState(false)
   const [levelUp,    setLevelUp]    = useState<number | null>(null)
@@ -86,12 +89,24 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
     <>
     {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-3">
+      <Link
+        href={`/dashboard/profile/${username}`}
+        onClick={onAvatarClick}
+        className="flex items-center gap-3 group rounded-xl hover:bg-secondary/60 transition-all p-1 -m-1"
+      >
         <div className="relative shrink-0">
           {avatarUrl ? (
-            <img src={avatarUrl} alt={username} className="w-10 h-10 rounded-full ring-2 ring-primary/30" />
+            <img
+              src={avatarUrl}
+              alt={username}
+              className="w-10 h-10 rounded-xl transition-all"
+              style={avatarStyle ?? { border: '2px solid hsl(var(--border))' }}
+            />
           ) : (
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+            <div
+              className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center transition-all"
+              style={avatarStyle ?? { border: '2px solid hsl(var(--border))' }}
+            >
               <span className="text-primary font-bold text-sm">{username[0]?.toUpperCase()}</span>
             </div>
           )}
@@ -103,7 +118,7 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate">{username}</p>
+          <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{username}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <p className={`text-xs font-medium ${getLevelColor(level)}`}>{getLevelTitle(level)}</p>
             <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${tier.color} ${tier.bg} ${tier.border}`}>
@@ -111,7 +126,7 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
             </span>
           </div>
         </div>
-      </div>
+      </Link>
       <div className="space-y-1">
         <div className="flex justify-between text-[10px] text-muted-foreground">
           <span>{totalXp.toLocaleString('es-AR')} XP</span>
