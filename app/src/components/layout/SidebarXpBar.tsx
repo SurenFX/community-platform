@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { getLevelColor, getLevelTitle, xpForCurrentLevel, xpForNextLevel } from '@/lib/utils'
+import { getLevelColor, getLevelTitle, xpForCurrentLevel, xpForNextLevel, getRankTier } from '@/lib/utils'
 import type { UserReputation } from '@/types/database'
 import LevelUpModal from '@/components/profile/LevelUpModal'
 
@@ -55,14 +55,20 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
   const progressPct = nextLvXp > currentLvXp
     ? Math.min(((totalXp - currentLvXp) / (nextLvXp - currentLvXp)) * 100, 100)
     : 100
+  const tier = getRankTier(level)
 
   if (compact) {
     return (
       <>
         {levelUp && <LevelUpModal level={levelUp} onClose={() => setLevelUp(null)} />}
         <div className="space-y-1">
-          <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span className={`font-medium ${getLevelColor(level)}`}>Nv. {level} — {getLevelTitle(level)}</span>
+          <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <span className={`font-medium ${getLevelColor(level)}`}>Nv. {level}</span>
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${tier.color} ${tier.bg} ${tier.border}`}>
+                {tier.label}
+              </span>
+            </div>
             <span>{totalXp.toLocaleString('es-AR')} XP</span>
           </div>
           <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
@@ -98,13 +104,18 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-foreground truncate">{username}</p>
-          <p className={`text-xs font-medium ${getLevelColor(level)}`}>{getLevelTitle(level)}</p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <p className={`text-xs font-medium ${getLevelColor(level)}`}>{getLevelTitle(level)}</p>
+            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${tier.color} ${tier.bg} ${tier.border}`}>
+              {tier.label}
+            </span>
+          </div>
         </div>
       </div>
       <div className="space-y-1">
         <div className="flex justify-between text-[10px] text-muted-foreground">
           <span>{totalXp.toLocaleString('es-AR')} XP</span>
-          <span>Nv. {level} → {level + 1}</span>
+          <span>Nv. {level} a {level + 1}</span>
         </div>
         <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
           <div

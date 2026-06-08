@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { cn, getLevelColor, getLevelTitle, formatNumber } from '@/lib/utils'
-import { Trophy, Medal, User, ChevronDown, Flame, Search, Users } from 'lucide-react'
+import { cn, getLevelColor, getLevelTitle, formatNumber, getRankTier } from '@/lib/utils'
+import { Trophy, Medal, User, ChevronDown, Flame, Search, Users, Shield } from 'lucide-react'
 
 type Period = 'total_xp' | 'weekly_xp' | 'monthly_xp'
 
@@ -50,9 +50,23 @@ const BORDER_COLOR_HEX: Record<string, string> = {
   'purple-500': '#a855f7',
 }
 
+function RankTierBadge({ level }: { level: number }) {
+  const tier = getRankTier(level)
+  return (
+    <span className={cn(
+      'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold border',
+      tier.color, tier.bg, tier.border
+    )}>
+      <Shield className="w-2.5 h-2.5" />
+      {tier.label}
+    </span>
+  )
+}
+
 export default function LeaderboardTable({ entries, currentUserId, myRank, seasonName }: LeaderboardTableProps) {
-  const [period, setPeriod]   = useState<Period>('total_xp')
-  const [search, setSearch]   = useState('')
+  const [period, setPeriod] = useState<Period>('total_xp')
+  const [search, setSearch] = useState('')
+  const [hoveredId, setHoveredId] = useState<string | null>(null)
 
   const periodLabels: Record<Period, string> = {
     total_xp:   'Global',
@@ -83,7 +97,6 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
 
   return (
     <div className="space-y-3">
-      {/* Search — fuera del card */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
         <input
@@ -96,7 +109,6 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
       </div>
 
     <div className="bg-card border border-border rounded-xl overflow-hidden">
-      {/* Tabs */}
       <div className="flex border-b border-border">
         {(Object.keys(periodLabels) as Period[]).map((p) => (
           <button
@@ -114,7 +126,6 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
         ))}
       </div>
 
-      {/* Table */}
       <div className="divide-y divide-border">
         {visible.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center px-6">
@@ -122,39 +133,29 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
               <>
                 <Search className="w-8 h-8 text-muted-foreground mb-3 opacity-40" />
                 <p className="text-foreground font-semibold mb-1">Sin resultados</p>
-                <p className="text-sm text-muted-foreground">No hay ningún usuario que coincida con "{query}".</p>
+                <p className="text-sm text-muted-foreground">No hay usuarios con ese nombre.</p>
               </>
             ) : (
               <>
                 <Users className="w-8 h-8 text-muted-foreground mb-3 opacity-40" />
-                <p className="text-foreground font-semibold mb-1">Sin miembros aún</p>
-                <p className="text-sm text-muted-foreground">El ranking aparecerá cuando haya actividad.</p>
+                <p className="text-foreground font-semibold mb-1">Sin miembros aun</p>
+                <p className="text-sm text-muted-foreground">El ranking aparecera cuando haya actividad.</p>
               </>
             )}
           </div>
         ) : (
-          visible.map((entry, index) => {
-            // rank real en el sorted total, no en el filtrado
+          visible.map((entry) => {
             const rank          = sorted.indexOf(entry) + 1
             const isCurrentUser = entry.user_id === currentUserId
             const xp            = entry[period]
             const username      = entry.profiles?.username
             const topGlow       = rank === 1 ? 'bg-yellow-400/5' : rank === 2 ? 'bg-slate-400/5' : rank === 3 ? 'bg-amber-600/5' : ''
+            const isHovered     = hoveredId === entry.user_id
+            const borderHex     = BORDER_COLOR_HEX[entry.profiles?.equipped_border_color ?? '']
+            const borderStyle   = borderHex ? { border: `2.5px solid ${borderHex}`, boxShadow: `0 0 8px ${borderHex}50` } : undefined
 
-            const RowWrapper = ({ children }: { children: React.ReactNode }) =>
-              !isCurrentUser && username ? (
-                <Link href={`/dashboard/profile/${username}`}
-                  className={`row-hover flex items-center gap-4 px-6 py-4 ${topGlow}`}>
-                  {children}
-                </Link>
-              ) : (
-                <div className={`flex items-center gap-4 px-6 py-4 bg-primary/5 border-l-2 border-l-primary ${topGlow}`}>
-                  {children}
-                </div>
-              )
-
-            return (
-              <RowWrapper key={entry.user_id}>
+            const inner = (
+              <>
                 <div className="w-8 flex justify-center shrink-0">
                   {rank === 1 ? <Trophy className="w-5 h-5 text-yellow-400" />
                     : rank === 2 ? <Medal className="w-5 h-5 text-slate-400" />
@@ -162,23 +163,19 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
                     : <span className="text-sm font-bold text-muted-foreground">{rank}</span>}
                 </div>
 
-                {(() => {
-                  const borderHex = BORDER_COLOR_HEX[entry.profiles?.equipped_border_color ?? '']
-                  const borderStyle = borderHex ? { border: `2.5px solid ${borderHex}`, boxShadow: `0 0 8px ${borderHex}50` } : undefined
-                  return entry.profiles?.avatar_url ? (
-                    <img src={entry.profiles.avatar_url} alt={entry.profiles.username}
-                      className="w-9 h-9 rounded-full shrink-0"
-                      style={borderStyle} />
-                  ) : (
-                    <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0"
-                      style={borderStyle}>
-                      <User className="w-4 h-4 text-primary" />
-                    </div>
-                  )
-                })()}
+                {entry.profiles?.avatar_url ? (
+                  <img src={entry.profiles.avatar_url} alt={entry.profiles.username}
+                    className="w-9 h-9 rounded-full shrink-0"
+                    style={borderStyle} />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0"
+                    style={borderStyle}>
+                    <User className="w-4 h-4 text-primary" />
+                  </div>
+                )}
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-foreground truncate">
                       {entry.profiles?.equipped_name_emoji && (
                         <span className="mr-1">{entry.profiles.equipped_name_emoji}</span>
@@ -186,7 +183,7 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
                       {entry.profiles?.username ?? 'Usuario'}
                     </p>
                     {isCurrentUser && (
-                      <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium">Tú</span>
+                      <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium">Tu</span>
                     )}
                     {entry.current_streak >= 3 && (
                       <span className="flex items-center gap-0.5 text-[10px] text-orange-400 font-bold">
@@ -194,27 +191,52 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
                       </span>
                     )}
                   </div>
-                  <p className={cn('text-xs font-medium', getLevelColor(entry.level))}>
-                    Nv. {entry.level} · {entry.profiles?.equipped_title_override ?? getLevelTitle(entry.level)}
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <p className={cn('text-xs font-medium', getLevelColor(entry.level))}>
+                      Nv. {entry.level} {entry.profiles?.equipped_title_override ?? getLevelTitle(entry.level)}
+                    </p>
+                    <RankTierBadge level={entry.level} />
+                  </div>
                 </div>
 
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-foreground">{formatNumber(xp)}</p>
                   <p className="text-xs text-muted-foreground">XP</p>
                 </div>
-              </RowWrapper>
+              </>
+            )
+
+            return isCurrentUser || !username ? (
+              <div
+                key={entry.user_id}
+                className={`flex items-center gap-4 px-6 py-4 bg-primary/5 border-l-2 border-l-primary ${topGlow}`}
+              >
+                {inner}
+              </div>
+            ) : (
+              <Link
+                key={entry.user_id}
+                href={`/dashboard/profile/${username}`}
+                className={cn(
+                  'row-hover flex items-center gap-4 px-6 py-4 transition-colors',
+                  topGlow,
+                  isHovered && 'bg-secondary/40'
+                )}
+                onMouseEnter={() => setHoveredId(entry.user_id)}
+                onMouseLeave={() => setHoveredId(null)}
+              >
+                {inner}
+              </Link>
             )
           })
         )}
       </div>
 
-      {/* Mi posición — solo si no estoy en el top visible y no hay búsqueda activa */}
       {!isInTopList && myRank && myPosition && !query && (
         <>
           <div className="flex items-center gap-2 px-6 py-2 bg-secondary/40">
             <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Tu posición</span>
+            <span className="text-xs text-muted-foreground">Tu posicion</span>
           </div>
           <div className="flex items-center gap-4 px-6 py-4 bg-primary/5 border-l-2 border-l-primary">
             <div className="w-8 flex justify-center shrink-0">
@@ -225,8 +247,8 @@ export default function LeaderboardTable({ entries, currentUserId, myRank, seaso
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-foreground">Tú</p>
-                <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium">Tú</span>
+                <p className="text-sm font-semibold text-foreground">Tu</p>
+                <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-medium">Tu</span>
               </div>
             </div>
             <div className="text-right shrink-0">

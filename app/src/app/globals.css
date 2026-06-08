@@ -215,3 +215,27 @@ input:focus, textarea:focus, select:focus {
   mask-composite: exclude;
   pointer-events: none;
 }
+
+/* XP bar spring overshoot */
+@keyframes xp-spring {
+  0%   { transform: scaleX(1); }
+  60%  { transform: scaleX(1.03); }
+  80%  { transform: scaleX(0.99); }
+  100% { transform: scaleX(1); }
+}
+.xp-spring { animation: xp-spring 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* Shop border shimmer */
+@keyframes border-shimmer {
+  0%   { opacity: 0.6; }
+  50%  { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+.border-animated { animation: border-shimmer 2s ease-in-out infinite; }
+
+/* Rank tier glow */
+@keyframes tier-pulse {
+  0%, 100% { opacity: 0.8; }
+  50%       { opacity: 1; }
+}
+.tier-pulse { animation: tier-pulse 3s ease-in-out infinite; }

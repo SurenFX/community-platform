@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Swords, MapPin, Flame, Zap } from 'lucide-react'
+import { Swords, MapPin, Flame, Zap, Target, ChevronRight } from 'lucide-react'
 import DashboardClient from '@/components/dashboard/DashboardClient'
 import OnboardingModal from '@/components/dashboard/OnboardingModal'
 import DailyBonusCard from '@/components/dashboard/DailyBonusCard'
@@ -43,8 +43,7 @@ export default async function DashboardPage() {
       .eq('is_claimed', false),
     supabase
       .from('badges')
-      .select('id, slug, name, description, image_url, tier, family, family_order')
-      .eq('is_secret', false)
+      .select('id, slug, name, description, image_url, tier, family, family_order, is_secret')
       .not('family', 'is', null)
       .order('family')
       .order('family_order'),
@@ -102,6 +101,19 @@ export default async function DashboardPage() {
   else if (streak >= 3)  buffs.push({ icon: <Flame className="w-3 h-3" />, label: `Racha ${streak}d +50 XP +2 SC`,   color: 'bg-amber-400/15 text-amber-400 border-amber-400/25'   })
   if (challenge)         buffs.push({ icon: <Swords className="w-3 h-3" />, label: `Raid: ${challenge.title}`,       color: 'bg-primary/10 text-primary border-primary/25'         })
 
+  // Quest tracker — top 3 activas mas cercanas a completarse
+  const activeMissions = (missionsRes.data ?? [])
+    .filter((um: any) => !um.is_completed && um.missions)
+    .map((um: any) => ({
+      id:          um.id,
+      title:       um.missions.title,
+      progress:    um.progress ?? 0,
+      target:      um.missions.target_count ?? 1,
+      xp_reward:   um.missions.xp_reward ?? 0,
+    }))
+    .sort((a: any, b: any) => (b.progress / b.target) - (a.progress / a.target))
+    .slice(0, 3)
+
   return (
     <>
       {showOnboarding && (
@@ -132,6 +144,37 @@ export default async function DashboardPage() {
               {b.icon}{b.label}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Quest Tracker */}
+      {activeMissions.length > 0 && (
+        <div className="mb-4 bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <Target className="w-3.5 h-3.5 text-primary" />
+              QUESTS EN PROGRESO
+            </span>
+            <Link href="/dashboard/missions" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">
+              Ver todas <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+          <div className="space-y-2.5">
+            {activeMissions.map((m: any) => {
+              const pct = m.target > 0 ? Math.min(100, Math.round((m.progress / m.target) * 100)) : 0
+              return (
+                <div key={m.id}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-foreground font-medium truncate flex-1 mr-2">{m.title}</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">{m.progress}/{m.target}</span>
+                  </div>
+                  <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full xp-bar rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 

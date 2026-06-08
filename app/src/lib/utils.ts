@@ -98,3 +98,14 @@ export function timeAgo(date: string): string {
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d`
   return new Date(date).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
 }
+
+// Tier de rango basado en nivel (estilo MOBA/Battle Royale)
+export function getRankTier(level: number): { label: string; color: string; bg: string; border: string } {
+  if (level >= 80)  return { label: 'Maestro',  color: 'text-rose-400',   bg: 'bg-rose-400/10',   border: 'border-rose-400/30'   }
+  if (level >= 50)  return { label: 'Diamante', color: 'text-violet-400', bg: 'bg-violet-400/10', border: 'border-violet-400/30' }
+  if (level >= 35)  return { label: 'Platino',  color: 'text-cyan-400',   bg: 'bg-cyan-400/10',   border: 'border-cyan-400/30'   }
+  if (level >= 20)  return { label: 'Oro',      color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/30' }
+  if (level >= 10)  return { label: 'Plata',    color: 'text-slate-400',  bg: 'bg-slate-400/10',  border: 'border-slate-400/30'  }
+  if (level >= 5)   return { label: 'Bronce',   color: 'text-amber-600',  bg: 'bg-amber-600/10',  border: 'border-amber-600/30'  }
+  return               { label: 'Hierro',   color: 'text-slate-500',  bg: 'bg-slate-500/10',  border: 'border-slate-500/30'  }
+}

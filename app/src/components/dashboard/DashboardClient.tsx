@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Lock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import PlayerCard from '@/components/dashboard/PlayerCard'
 import RecentActivity from '@/components/profile/RecentActivity'
@@ -22,6 +23,7 @@ interface MissionWithData extends UserMission {
 interface BadgeItem {
   id: string; slug: string; name: string; description: string
   image_url: string; tier: string; family: string; family_order: number
+  is_secret?: boolean
 }
 
 const TIER_COLORS: Record<string, string> = {
@@ -39,7 +41,7 @@ const FAMILY_LABELS: Record<string, string> = {
   missions:  '🎯 Quests',
   youtube:   '📹 YouTube',
   telegram:  '✈️ Telegram',
-  seniority: '🏛️ Antigüedad',
+  seniority: '🏛️ Antiguedad',
   special:   '🏅 Especiales',
 }
 
@@ -61,8 +63,8 @@ interface XpToastData {
 
 const EVENT_LABELS: Record<string, string> = {
   DISCORD_MESSAGE:           'Mensaje en Discord',
-  DISCORD_REACTION_RECEIVED: 'Reacción recibida',
-  DISCORD_REACTION_GIVEN:    'Reacción dada',
+  DISCORD_REACTION_RECEIVED: 'Reaccion recibida',
+  DISCORD_REACTION_GIVEN:    'Reaccion dada',
   DISCORD_HELPED_USER:       'Ayudaste a alguien',
   DISCORD_VOICE_TIME:        'Tiempo en voz',
   DISCORD_JOIN:              'Te uniste al servidor',
@@ -77,9 +79,9 @@ const EVENT_LABELS: Record<string, string> = {
   YOUTUBE_SHARE:             'Compartiste video',
   TELEGRAM_MESSAGE:          'Mensaje en Telegram',
   TELEGRAM_JOIN:             'Te uniste al grupo',
-  TELEGRAM_REACTION:         'Reacción en Telegram',
+  TELEGRAM_REACTION:         'Reaccion en Telegram',
   MISSION_COMPLETED:         'Quest completada',
-  STREAK_BONUS:              'Misión diaria 🔥',
+  STREAK_BONUS:              'Mision diaria 🔥',
   BADGE_EARNED:              'Logro desbloqueado',
   ADMIN_MANUAL_GRANT:        'XP otorgado por admin',
 }
@@ -121,7 +123,6 @@ export default function DashboardClient({
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000)
   }, [])
 
-  // ── Polling cada 8 segundos ───────────────────────────────
   useEffect(() => {
     async function poll() {
       try {
@@ -174,7 +175,6 @@ export default function DashboardClient({
     return () => clearInterval(interval)
   }, [userId])
 
-  // ── Realtime level ups ────────────────────────────────────
   useEffect(() => {
     const channel = supabase
       .channel(`levelups:${userId}`)
@@ -192,7 +192,6 @@ export default function DashboardClient({
     return () => { supabase.removeChannel(channel) }
   }, [userId])
 
-  // ── Realtime badges ───────────────────────────────────────
   useEffect(() => {
     const channel = supabase
       .channel(`badges:${userId}`)
@@ -207,25 +206,25 @@ export default function DashboardClient({
     return () => { supabase.removeChannel(channel) }
   }, [userId, allBadges])
 
+  // Badges visibles en el contador: no-secretos siempre + secretos solo si ganados
+  const visibleTotal = allBadges.filter(b => !b.is_secret || earnedSet.has(b.id)).length
+
   return (
     <div className="space-y-6">
 
-      {/* Tarjeta de personaje */}
       <PlayerCard profile={profile as any} myRank={myRank} />
 
-      {/* Actividad + Quests activas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RecentActivity events={events} />
         <ActiveMissions missions={missions} />
       </div>
 
-      {/* Logros */}
       {allBadges.length > 0 && (
         <div className="gradient-border rounded-2xl p-6">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-base font-bold text-foreground">🏆 Logros</h2>
             <span className="text-xs text-muted-foreground">
-              {earnedSet.size} / {allBadges.length} desbloqueados
+              {earnedSet.size} / {visibleTotal} desbloqueados
             </span>
           </div>
           <div className="space-y-5">
@@ -242,6 +241,25 @@ export default function DashboardClient({
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                     {fBadges.map((badge, bi) => {
                       const isEarned = earnedSet.has(badge.id)
+                      const isSecret = badge.is_secret && !isEarned
+
+                      if (isSecret) {
+                        return (
+                          <div key={badge.id}
+                            className="border border-border/40 rounded-xl p-3 flex items-center gap-3 bg-secondary/10 fade-in-up"
+                            style={{ animationDelay: `${bi * 40}ms` }}
+                          >
+                            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                              <Lock className="w-4 h-4 text-muted-foreground/50" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-muted-foreground/50">???</p>
+                              <p className="text-xs text-muted-foreground/30">Logro secreto</p>
+                            </div>
+                          </div>
+                        )
+                      }
+
                       return (
                         <div key={badge.id}
                           className={`border rounded-xl p-3 flex items-center gap-3 transition-all duration-200 fade-in-up ${
@@ -269,7 +287,6 @@ export default function DashboardClient({
         </div>
       )}
 
-      {/* Toasts XP */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
         {toasts.map(toast => (
           <XpToast key={toast.id} xp={toast.xp} label={EVENT_LABELS[toast.eventType] ?? toast.eventType} />
