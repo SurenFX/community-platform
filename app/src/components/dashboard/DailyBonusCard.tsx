@@ -105,7 +105,7 @@ export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props)
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
             <p className="text-sm font-bold text-foreground">
-              {claimed ? 'Mision completada!' : 'Mision diaria'}
+              {claimed ? 'Bonus reclamado!' : 'Bonus diario'}
             </p>
             {streak >= 1 && <StreakFlame days={streak} />}
             {mult && !alreadyClaimed && (
