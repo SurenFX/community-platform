@@ -111,12 +111,8 @@ export default function PlayerCard({ profile, myRank }: Props) {
 
       {/* Barra de XP — estilo HP bar */}
       <div className="relative mb-4">
-        <div className="flex justify-between text-[11px] mb-1.5">
-          <span className={`font-bold ${levelColor}`}>NV {level}</span>
-          <span className="text-muted-foreground">
-            {totalXp.toLocaleString('es-AR')} / {nextLvXp.toLocaleString('es-AR')} XP
-          </span>
-          <span className="font-semibold text-muted-foreground">NV {level + 1}</span>
+        <div className="text-center text-[11px] mb-1.5 text-muted-foreground">
+          {totalXp.toLocaleString('es-AR')} / {nextLvXp.toLocaleString('es-AR')} XP
         </div>
         <div className="h-3 bg-secondary rounded-full overflow-hidden">
           <div
@@ -127,11 +123,6 @@ export default function PlayerCard({ profile, myRank }: Props) {
             }}
           />
         </div>
-        {xpNeeded > 0 && (
-          <p className="text-[10px] text-muted-foreground/60 mt-1 text-right">
-            {xpNeeded.toLocaleString('es-AR')} XP para el siguiente nivel
-          </p>
-        )}
       </div>
 
       {/* Prestige disponible */}
