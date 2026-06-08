@@ -1,37 +1,8 @@
 'use client'
 
-import { useRef } from 'react'
-import { cn } from '@/lib/utils'
-import { getRankTier } from '@/lib/utils'
-import { CheckCircle2, Lock, ChevronRight } from 'lucide-react'
-
-interface Milestone {
-  level:   number
-  reward:  string
-  icon:    string
-  type:    'xp' | 'sc' | 'badge' | 'cosmetic' | 'title'
-}
-
-const MILESTONES: Milestone[] = [
-  { level:  3, reward: '+50 SC',          icon: '', type: 'sc'       },
-  { level:  5, reward: 'Titulo: Soldado', icon: '', type: 'title'    },
-  { level:  8, reward: '+100 SC',         icon: '', type: 'sc'       },
-  { level: 10, reward: 'Border Cyan',     icon: '', type: 'cosmetic' },
-  { level: 15, reward: '+200 SC',         icon: '', type: 'sc'       },
-  { level: 20, reward: 'Badge Rango',     icon: '', type: 'badge'    },
-  { level: 25, reward: '+300 SC',         icon: '', type: 'sc'       },
-  { level: 30, reward: 'Border Gold',     icon: '', type: 'cosmetic' },
-  { level: 40, reward: 'Badge Leyenda',   icon: '', type: 'badge'    },
-  { level: 50, reward: 'Prestirio +1',    icon: '', type: 'badge'    },
-]
-
-const TYPE_ICONS: Record<string, string> = {
-  xp:       '',
-  sc:       '',
-  badge:    '',
-  cosmetic: '',
-  title:    '',
-}
+import { useState, useTransition } from 'react'
+import { CheckCircle2, Lock, Gift } from 'lucide-react'
+import { claimSeasonMilestone, SEASON_MILESTONES } from '@/app/actions/seasonPass'
 
 const TYPE_COLORS: Record<string, string> = {
   xp:       'text-purple-400 bg-purple-400/15 border-purple-400/30',
@@ -41,16 +12,39 @@ const TYPE_COLORS: Record<string, string> = {
   title:    'text-green-400  bg-green-400/15  border-green-400/30',
 }
 
-interface Props {
-  currentLevel: number
-  seasonName?:  string | null
+const TYPE_ICONS: Record<string, string> = {
+  xp: '', sc: '', badge: '', cosmetic: '', title: '',
 }
 
-export default function SeasonPassTrack({ currentLevel, seasonName }: Props) {
-  const scrollRef = useRef<HTMLDivElement>(null)
+interface Props {
+  seasonXp:         number
+  seasonId:         string | null
+  seasonName?:      string | null
+  claimedMilestones: number[]
+}
 
-  // Find the index of the next unclaimed milestone to auto-scroll to
-  const nextIdx = MILESTONES.findIndex(m => m.level > currentLevel)
+export default function SeasonPassTrack({ seasonXp, seasonId, seasonName, claimedMilestones }: Props) {
+  const [claimed, setClaimed]   = useState<number[]>(claimedMilestones)
+  const [pending, startTransition] = useTransition()
+  const [feedback, setFeedback] = useState<string | null>(null)
+
+  const completedCount = SEASON_MILESTONES.filter(m => seasonXp >= m.xp).length
+  const totalCount     = SEASON_MILESTONES.length
+
+  function handleClaim(milestoneXp: number) {
+    if (!seasonId) return
+    startTransition(async () => {
+      const res = await claimSeasonMilestone(seasonId, milestoneXp)
+      if (res.ok) {
+        setClaimed(prev => [...prev, milestoneXp])
+        setFeedback(res.reward ?? 'Reclamado!')
+        setTimeout(() => setFeedback(null), 3000)
+      } else {
+        setFeedback(res.error ?? 'Error')
+        setTimeout(() => setFeedback(null), 3000)
+      }
+    })
+  }
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
@@ -59,81 +53,82 @@ export default function SeasonPassTrack({ currentLevel, seasonName }: Props) {
         <div className="flex items-center gap-2">
           <span className="text-base"></span>
           <div>
-            <p className="text-sm font-black text-foreground">
-              Pase de Temporada
-            </p>
+            <p className="text-sm font-black text-foreground">Pase de Temporada</p>
             {seasonName && <p className="text-[10px] text-muted-foreground">{seasonName}</p>}
           </div>
         </div>
-        <div className={cn(
-          'px-2.5 py-1 rounded-lg border text-xs font-bold',
-          getRankTier(currentLevel).color,
-          getRankTier(currentLevel).bg,
-          getRankTier(currentLevel).border,
-        )}>
-          Nv. {currentLevel}
-        </div>
+        <span className="text-xs text-muted-foreground font-semibold">
+          {completedCount}/{totalCount} hitos
+        </span>
       </div>
 
-      {/* Track — horizontal scroll */}
-      <div ref={scrollRef} className="overflow-x-auto scrollbar-none px-5 py-5">
+      {/* Feedback toast */}
+      {feedback && (
+        <div className="mx-5 mt-3 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary font-semibold text-center">
+          {feedback}
+        </div>
+      )}
+
+      {/* Track */}
+      <div className="overflow-x-auto scrollbar-none px-5 py-5">
         <div className="flex items-center gap-0 min-w-max">
-          {MILESTONES.map((m, i) => {
-            const done    = currentLevel >= m.level
-            const current = !done && (i === 0 || currentLevel >= MILESTONES[i - 1].level)
-            const pct     = current
-              ? Math.round(((currentLevel - (MILESTONES[i - 1]?.level ?? 0)) / (m.level - (MILESTONES[i - 1]?.level ?? 0))) * 100)
-              : 0
-            const tier    = getRankTier(m.level)
+          {SEASON_MILESTONES.map((m, i) => {
+            const reached  = seasonXp >= m.xp
+            const isClaimed = claimed.includes(m.xp)
+            const canClaim  = reached && !isClaimed
+            const prev      = SEASON_MILESTONES[i - 1]
+            const segmentPct = !reached && prev
+              ? Math.min(100, Math.round(((seasonXp - prev.xp) / (m.xp - prev.xp)) * 100))
+              : reached ? 100 : (i === 0 ? Math.min(100, Math.round((seasonXp / m.xp) * 100)) : 0)
 
             return (
-              <div key={m.level} className="flex items-center">
-                {/* Connecting line before node */}
+              <div key={m.xp} className="flex items-center">
+                {/* Connecting line */}
                 {i > 0 && (
                   <div className="relative w-12 h-1.5 rounded-full bg-secondary overflow-hidden mx-1">
-                    {done && <div className="absolute inset-0 xp-bar rounded-full" />}
-                    {current && (
-                      <div
-                        className="absolute inset-y-0 left-0 xp-bar rounded-full transition-all duration-700"
-                        style={{ width: `${pct}%` }}
-                      />
-                    )}
+                    <div
+                      className="absolute inset-y-0 left-0 xp-bar rounded-full transition-all duration-700"
+                      style={{ width: `${segmentPct}%` }}
+                    />
                   </div>
                 )}
 
-                {/* Milestone node */}
-                <div className="flex flex-col items-center gap-1.5 group">
-                  {/* Reward label (above) */}
-                  <div className={cn(
-                    'text-[9px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap transition-all',
-                    done || current ? TYPE_COLORS[m.type] : 'text-muted-foreground/40 bg-transparent border-transparent',
-                  )}>
+                {/* Node */}
+                <div className="flex flex-col items-center gap-1.5">
+                  {/* Reward label */}
+                  <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap transition-all ${
+                    reached || canClaim ? TYPE_COLORS[m.type] : 'text-muted-foreground/30 border-transparent'
+                  }`}>
                     {TYPE_ICONS[m.type]} {m.reward}
                   </div>
 
-                  {/* Circle node */}
-                  <div className={cn(
-                    'w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all duration-300',
-                    done
-                      ? `${tier.bg} ${tier.border} shadow-[0_0_12px_hsl(185_100%_45%/0.3)]`
-                      : current
-                      ? 'border-primary/60 bg-primary/10 shadow-[0_0_8px_hsl(185_100%_45%/0.2)] scale-110'
-                      : 'border-border/40 bg-secondary/30',
-                  )}>
-                    {done
-                      ? <CheckCircle2 className={cn('w-5 h-5', tier.color)} />
-                      : current
-                      ? <span className={cn('text-base font-black', getRankTier(currentLevel).color)}>{currentLevel}</span>
-                      : <Lock className="w-4 h-4 text-muted-foreground/30" />
-                    }
-                  </div>
+                  {/* Circle */}
+                  {canClaim ? (
+                    <button
+                      onClick={() => handleClaim(m.xp)}
+                      disabled={pending}
+                      className="w-10 h-10 rounded-2xl flex items-center justify-center border-2 border-yellow-400/60 bg-yellow-400/10 shadow-[0_0_10px_rgba(250,204,21,0.3)] hover:bg-yellow-400/20 transition-all scale-110 animate-pulse disabled:opacity-60"
+                    >
+                      <Gift className="w-5 h-5 text-yellow-400" />
+                    </button>
+                  ) : (
+                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all duration-300 ${
+                      isClaimed
+                        ? 'bg-primary/10 border-primary/40 shadow-[0_0_8px_hsl(185_100%_45%/0.25)]'
+                        : 'border-border/40 bg-secondary/30'
+                    }`}>
+                      {isClaimed
+                        ? <CheckCircle2 className="w-5 h-5 text-primary" />
+                        : <Lock className="w-4 h-4 text-muted-foreground/30" />
+                      }
+                    </div>
+                  )}
 
-                  {/* Level label (below) */}
-                  <span className={cn(
-                    'text-[10px] font-bold',
-                    done    ? tier.color : current ? 'text-primary' : 'text-muted-foreground/30'
-                  )}>
-                    {m.level}
+                  {/* XP label */}
+                  <span className={`text-[10px] font-bold ${
+                    reached ? 'text-primary' : 'text-muted-foreground/30'
+                  }`}>
+                    {m.xp >= 1000 ? `${m.xp / 1000}k` : m.xp}
                   </span>
                 </div>
               </div>
@@ -145,28 +140,29 @@ export default function SeasonPassTrack({ currentLevel, seasonName }: Props) {
             <div className="w-12 h-1.5 rounded-full bg-secondary mx-1" />
             <div className="flex flex-col items-center gap-1.5">
               <div className="text-[9px] font-bold px-2 py-0.5 rounded-full border text-muted-foreground/30 border-transparent">
-                Prestirio
+                Final
               </div>
               <div className="w-10 h-10 rounded-2xl border-2 border-dashed border-yellow-400/20 bg-yellow-400/5 flex items-center justify-center">
                 <span className="text-xl"></span>
               </div>
-              <span className="text-[10px] font-bold text-muted-foreground/30">Max</span>
+              <span className="text-[10px] font-bold text-muted-foreground/30">60k</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Progress summary */}
-      <div className="px-5 pb-4 flex items-center justify-between text-xs text-muted-foreground">
-        <span>
-          {MILESTONES.filter(m => currentLevel >= m.level).length}/{MILESTONES.length} hitos
-        </span>
-        {nextIdx >= 0 && (
-          <span className="flex items-center gap-1 text-primary font-semibold">
-            <ChevronRight className="w-3.5 h-3.5" />
-            Prox: Nv. {MILESTONES[nextIdx].level} — {MILESTONES[nextIdx].reward}
-          </span>
-        )}
+      {/* XP progress */}
+      <div className="px-5 pb-4 text-xs text-muted-foreground">
+        <div className="flex justify-between mb-1">
+          <span>XP de temporada</span>
+          <span className="text-foreground font-semibold">{seasonXp.toLocaleString('es-AR')} XP</span>
+        </div>
+        <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+          <div
+            className="h-full xp-bar rounded-full transition-all duration-700"
+            style={{ width: `${Math.min(100, Math.round((seasonXp / 60_000) * 100))}%` }}
+          />
+        </div>
       </div>
     </div>
   )

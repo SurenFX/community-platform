@@ -52,9 +52,27 @@ export default async function DashboardPage() {
 
   const { data: activeSeason } = await admin
     .from('seasons')
-    .select('id, name, ends_at')
+    .select('id, name, starts_at, ends_at')
     .eq('status', 'ACTIVE')
     .maybeSingle()
+
+  // Season pass: XP earned this season + claimed milestones
+  let seasonXp = 0
+  let claimedMilestones: number[] = []
+  if (activeSeason) {
+    const [{ data: seasonXpRows }, { data: claimsData }] = await Promise.all([
+      admin.from('xp_events')
+        .select('xp_awarded')
+        .eq('user_id', user.id)
+        .gte('created_at', activeSeason.starts_at),
+      admin.from('season_pass_claims')
+        .select('milestone_xp')
+        .eq('user_id', user.id)
+        .eq('season_id', activeSeason.id),
+    ])
+    seasonXp = (seasonXpRows ?? []).reduce((s: number, r: any) => s + (r.xp_awarded ?? 0), 0)
+    claimedMilestones = (claimsData ?? []).map((r: any) => r.milestone_xp)
+  }
 
   const { data: activeXpEvent } = await admin
     .from('global_xp_events')
@@ -155,7 +173,7 @@ export default async function DashboardPage() {
       <DailyBonusCard canClaim={canClaimBonus} streak={streak} nextClaimMs={msUntilNext} />
 
       {/* 4. Battle Pass */}
-      <SeasonPassTrack currentLevel={currentLevel} seasonName={activeSeason?.name ?? null} />
+      <SeasonPassTrack seasonXp={seasonXp} seasonId={activeSeason?.id ?? null} seasonName={activeSeason?.name ?? null} claimedMilestones={claimedMilestones} />
 
       {/* 5. Quest tracker */}
       {activeMissions.length > 0 && (
