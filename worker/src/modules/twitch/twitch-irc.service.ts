@@ -308,7 +308,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
           .order('created_at', { ascending: true })
 
         for (const reminder of reminders ?? []) {
-          this.sendChat(reminder.message)
+          this.sendChat(`Recordatorio para el stream: ${reminder.message}`)
           await this.supabase.db
             .from('stream_reminders')
             .update({ is_used: true })
