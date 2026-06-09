@@ -8,7 +8,6 @@ import OnboardingModal from '@/components/dashboard/OnboardingModal'
 import DailyBonusCard from '@/components/dashboard/DailyBonusCard'
 import SeasonPassTrack from '@/components/dashboard/SeasonPassTrack'
 import GlobalXpEventBanner from '@/components/layout/GlobalXpEventBanner'
-import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
 
@@ -90,21 +89,6 @@ export default async function DashboardPage() {
     .limit(1)
     .maybeSingle()
 
-  const todayUTC        = new Date().toISOString().slice(0, 10)
-  const cookieStore     = await cookies()
-  const claimedCookie   = cookieStore.get('daily_bonus_claimed')?.value
-  // Use admin client to avoid join array ambiguity and any fetch caching
-  const { data: repBonus } = await admin
-    .from('user_reputation')
-    .select('last_daily_bonus_at')
-    .eq('user_id', user.id)
-    .single()
-  const lastBonusAt     = (repBonus as any)?.last_daily_bonus_at ?? null
-  const lastBonusDay    = lastBonusAt ? (lastBonusAt as string).slice(0, 10) : null
-  const claimedToday    = lastBonusDay === todayUTC || claimedCookie === todayUTC
-  const nextMidnightUTC = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
-  const msUntilNext     = Math.max(0, nextMidnightUTC - Date.now())
-  const canClaimBonus   = !claimedToday
   const streak          = (profile as any)?.user_reputation?.current_streak ?? 0
 
   const buffs: { icon: JSX.Element; label: string; color: string }[] = []
@@ -185,7 +169,7 @@ export default async function DashboardPage() {
       )}
 
       {/* 3. Mision diaria + calendario de racha */}
-      <DailyBonusCard canClaim={canClaimBonus} streak={streak} nextClaimMs={msUntilNext} />
+      <DailyBonusCard />
 
       {/* 4. Battle Pass */}
       <SeasonPassTrack seasonXp={seasonXp} seasonId={activeSeason?.id ?? null} seasonName={activeSeason?.name ?? null} claimedMilestones={claimedMilestones} />
