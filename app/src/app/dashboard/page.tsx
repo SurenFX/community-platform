@@ -8,6 +8,7 @@ import OnboardingModal from '@/components/dashboard/OnboardingModal'
 import DailyBonusCard from '@/components/dashboard/DailyBonusCard'
 import SeasonPassTrack from '@/components/dashboard/SeasonPassTrack'
 import GlobalXpEventBanner from '@/components/layout/GlobalXpEventBanner'
+import { cookies } from 'next/headers'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,7 +93,9 @@ export default async function DashboardPage() {
   const lastBonusAt     = (profile as any)?.user_reputation?.last_daily_bonus_at ?? null
   const todayUTC        = new Date().toISOString().slice(0, 10)
   const lastBonusDay    = lastBonusAt ? (lastBonusAt as string).slice(0, 10) : null
-  const claimedToday    = lastBonusDay === todayUTC
+  const cookieStore     = await cookies()
+  const claimedCookie   = cookieStore.get('daily_bonus_claimed')?.value
+  const claimedToday    = lastBonusDay === todayUTC || claimedCookie === todayUTC
   const nextMidnightUTC = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
   const msUntilNext     = Math.max(0, nextMidnightUTC - Date.now())
   const canClaimBonus   = !claimedToday

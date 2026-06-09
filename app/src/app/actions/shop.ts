@@ -4,6 +4,7 @@ import { SPIN_COST, PRESTIGE_LEVEL } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 
 function adminDb() {
   return createAdminClient(
@@ -90,6 +91,16 @@ export async function claimDailyBonus(): Promise<{
     title:   `+${sc} SalchiCoins — Bono diario`,
     body:    `Racha de ${newStreak} día${newStreak !== 1 ? 's' : ''}. También ganaste ${xp} XP.`,
     is_read: false,
+  })
+
+  // Cookie expira a la siguiente medianoche UTC — el servidor la leerá en el proximo F5
+  const nextMidnight = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
+  const cookieStore = await cookies()
+  cookieStore.set('daily_bonus_claimed', todayUTC, {
+    expires: new Date(nextMidnight),
+    path: '/',
+    httpOnly: false,
+    sameSite: 'lax',
   })
 
   return { xp, sc }
