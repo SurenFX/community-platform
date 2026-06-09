@@ -218,18 +218,7 @@ export default function DailyBonusCard() {
             {isClaimed && reward ? `+${reward.sc} SC` : `+${previewSc} SC`}
           </span>
         </div>
-        {!isClaimed && (
-          <button
-            onClick={handleClaim}
-            disabled={isPending}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/25 text-orange-400 text-xs font-bold transition-all disabled:opacity-50"
-          >
-            {isPending
-              ? <Loader2 className="w-3 h-3 animate-spin" />
-              : <Flame className="w-3 h-3" />}
-            Reclamar
-          </button>
-        )}
+
       </div>
 
       {error && <p className="text-xs text-destructive mt-2">{error}</p>}
