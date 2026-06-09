@@ -1,6 +1,5 @@
 'use client'
 import StreakFlame from '@/components/ui/StreakFlame'
-
 import { useState, useTransition } from 'react'
 import { Sword, Zap, CircleDollarSign, Flame, Loader2, CheckCircle } from 'lucide-react'
 import { claimDailyBonus } from '@/app/actions/shop'
@@ -26,22 +25,38 @@ function fmtTime(ms: number) {
   return `${m}m`
 }
 
-const DAY_NAMES = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
+// Always Mon -> Sun left to right
+const DAY_NAMES_WEEK = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
 function StreakCalendar({ streak, canClaim }: { streak: number; canClaim: boolean }) {
   const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Find Monday of current week (JS: 0=Sun, 1=Mon ... 6=Sat)
+  const dow      = today.getDay()
+  const toMonday = dow === 0 ? -6 : 1 - dow
+  const monday   = new Date(today)
+  monday.setDate(today.getDate() + toMonday)
+
+  // Last claim date: today if already claimed, yesterday if canClaim (not yet claimed)
+  const lastClaim = new Date(today)
+  if (canClaim) lastClaim.setDate(today.getDate() - 1)
+
+  // Streak window: lastClaim going back (streak-1) days
+  const streakStart = new Date(lastClaim)
+  if (streak > 0) streakStart.setDate(lastClaim.getDate() - (streak - 1))
+
   return (
     <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-border/50">
-      {Array.from({ length: 7 }, (_, i) => {
-        const daysAgo = 6 - i
-        const date    = new Date(today)
-        date.setDate(date.getDate() - daysAgo)
-        const dayName = DAY_NAMES[date.getDay()]
-        const isToday = daysAgo === 0
-        const filled  = canClaim ? daysAgo >= 1 && daysAgo <= streak : daysAgo < streak
+      {DAY_NAMES_WEEK.map((name, i) => {
+        const date    = new Date(monday)
+        date.setDate(monday.getDate() + i) // Mon+0 .. Mon+6 = Sun
+        const isToday  = date.getTime() === today.getTime()
+        const isFuture = date > today
+        const filled   = streak > 0 && !isFuture && date >= streakStart && date <= lastClaim
         return (
           <div key={i} className="flex-1 flex flex-col items-center gap-1">
-            <span className="text-[9px] text-muted-foreground font-medium">{dayName}</span>
+            <span className="text-[9px] text-muted-foreground font-medium">{name}</span>
             <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
               filled
                 ? 'bg-orange-400 text-white shadow-[0_0_6px_rgba(251,146,60,0.6)]'
@@ -49,8 +64,10 @@ function StreakCalendar({ streak, canClaim }: { streak: number; canClaim: boolea
                 ? 'bg-primary/20 border-2 border-primary/60 animate-pulse'
                 : 'bg-secondary border border-border/50'
             }`}>
-              {filled ? <Flame className="w-3 h-3" />
-                : isToday && canClaim ? <Sword className="w-3 h-3 text-primary" />
+              {filled
+                ? <Flame className="w-3 h-3" />
+                : isToday && canClaim
+                ? <Sword className="w-3 h-3 text-primary" />
                 : <span className="w-1.5 h-1.5 rounded-full bg-border" />}
             </div>
           </div>
@@ -60,8 +77,15 @@ function StreakCalendar({ streak, canClaim }: { streak: number; canClaim: boolea
   )
 }
 
+function todayKey() {
+  return 'daily_claimed_' + new Date().toISOString().slice(0, 10)
+}
+
 export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props) {
-  const [claimed,   setClaimed]   = useState(false)
+  const [claimed, setClaimed] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try { return sessionStorage.getItem(todayKey()) === '1' } catch { return false }
+  })
   const [reward,    setReward]    = useState<{ xp: number; sc: number } | null>(null)
   const [error,     setError]     = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -76,6 +100,7 @@ export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props)
       if (result.error) { setError(result.error); return }
       setReward({ xp: result.xp!, sc: result.sc! })
       setClaimed(true)
+      try { sessionStorage.setItem(todayKey(), '1') } catch {}
       burst()
     })
   }
