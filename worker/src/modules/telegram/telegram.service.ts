@@ -45,11 +45,16 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     this.bot?.stop('SIGTERM')
   }
 
-  private isAdmin(telegramUserId: string): boolean {
-    const raw = this.config.get<string>('TELEGRAM_ADMIN_IDS') ?? ''
-    const ids = raw.split(',').map(s => s.trim()).filter(Boolean)
-    if (ids.length === 0) return true // si no hay lista configurada, permitir a todos
-    return ids.includes(telegramUserId)
+  private async isGroupAdmin(telegramUserId: string): Promise<boolean> {
+    const groupId = this.config.get<string>('TELEGRAM_GROUP_ID')
+    if (!this.bot || !groupId) return false
+    try {
+      const member = await this.bot.telegram.getChatMember(groupId, Number(telegramUserId))
+      return member.status === 'administrator' || member.status === 'creator'
+    } catch (err) {
+      this.logger.warn(`Error verificando admin: ${err}`)
+      return false
+    }
   }
 
   private registerListeners() {
@@ -133,7 +138,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
       const senderId = String(msg.from?.id)
 
-      if (!this.isAdmin(senderId)) {
+      if (!await this.isGroupAdmin(senderId)) {
         await ctx.reply('No tenes permiso para usar este comando.')
         return
       }
