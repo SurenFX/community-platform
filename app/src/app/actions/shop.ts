@@ -15,6 +15,35 @@ function adminDb() {
 }
 
 // ── Daily Bonus ────────────────────────────────────────────────────────────────
+export async function getDailyBonusStatus(): Promise<{
+  claimed: boolean
+  streak: number
+  nextMs: number
+}> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { claimed: false, streak: 0, nextMs: 0 }
+
+  const db = adminDb()
+  const { data } = await db
+    .from('user_reputation')
+    .select('last_daily_bonus_at, current_streak')
+    .eq('user_id', user.id)
+    .single()
+
+  const todayUTC  = new Date().toISOString().slice(0, 10)
+  const lastDay   = (data as any)?.last_daily_bonus_at?.slice(0, 10) ?? null
+  const claimed   = lastDay === todayUTC
+  const streak    = (data as any)?.current_streak ?? 0
+  const nextMidnight = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
+
+  return {
+    claimed,
+    streak,
+    nextMs: claimed ? Math.max(0, nextMidnight - Date.now()) : 0,
+  }
+}
+
 export async function claimDailyBonus(): Promise<{
   error?: string
   xp?: number

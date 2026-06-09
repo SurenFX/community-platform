@@ -1,8 +1,7 @@
 'use client'
 import { useState, useEffect, useTransition } from 'react'
 import { Flame, Zap, CircleDollarSign, Loader2, CheckCircle } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
-import { claimDailyBonus } from '@/app/actions/shop'
+import { claimDailyBonus, getDailyBonusStatus } from '@/app/actions/shop'
 import { useConfetti } from '@/hooks/useConfetti'
 
 function fmtTime(ms: number) {
@@ -36,10 +35,11 @@ export default function DailyBonusCard() {
   const [isPending, startTransition] = useTransition()
   const { burst } = useConfetti()
 
+  // Server action uses admin client — no RLS issues, always fresh from DB
   useEffect(() => {
     const todayUTC = new Date().toISOString().slice(0, 10)
 
-    // Cookie fast-path: show claimed immediately while DB loads (avoids flash)
+    // Cookie fast-path: instant optimistic state while server action loads
     const cookieClaimed = document.cookie
       .split('; ')
       .find(r => r.startsWith('daily_bonus_claimed='))
@@ -51,33 +51,14 @@ export default function DailyBonusCard() {
       setStatus('claimed')
     }
 
-    // Always verify against DB — overrides cookie if wrong (e.g. after admin reset)
-    const supabase = createClient()
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { if (!cookieClaimed) setStatus('can_claim'); return }
-      supabase
-        .from('user_reputation')
-        .select('last_daily_bonus_at, current_streak')
-        .eq('user_id', user.id)
-        .single()
-        .then(({ data, error }) => {
-          // DB query failed — keep optimistic cookie state
-          if (error || !data) {
-            if (!cookieClaimed) setStatus('can_claim')
-            return
-          }
-          const lastDay = (data as any)?.last_daily_bonus_at?.slice(0, 10) ?? null
-          const dbClaimed = lastDay === todayUTC
-          setStreak((data as any)?.current_streak ?? 0)
-          if (dbClaimed) {
-            const nextMidnight = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
-            setNextMs(Math.max(0, nextMidnight - Date.now()))
-            setStatus('claimed')
-          } else {
-            // DB says not claimed — truth wins over cookie (handles admin reset)
-            setStatus('can_claim')
-          }
-        })
+    getDailyBonusStatus().then(({ claimed, streak, nextMs }) => {
+      setStreak(streak)
+      if (claimed) {
+        setNextMs(nextMs)
+        setStatus('claimed')
+      } else {
+        setStatus('can_claim')
+      }
     })
   }, [])
 
