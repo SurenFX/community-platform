@@ -1,6 +1,6 @@
 'use client'
 import StreakFlame from '@/components/ui/StreakFlame'
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { Sword, Zap, CircleDollarSign, Flame, Loader2, CheckCircle } from 'lucide-react'
 import { claimDailyBonus } from '@/app/actions/shop'
 import { useConfetti } from '@/hooks/useConfetti'
@@ -82,10 +82,11 @@ function todayKey() {
 }
 
 export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props) {
-  const [claimed, setClaimed] = useState(() => {
-    if (typeof window === 'undefined') return false
-    try { return sessionStorage.getItem(todayKey()) === '1' } catch { return false }
-  })
+  const [claimed, setClaimed] = useState(false)
+  // Read sessionStorage after hydration to avoid SSR mismatch
+  useEffect(() => {
+    try { if (sessionStorage.getItem(todayKey()) === '1') setClaimed(true) } catch {}
+  }, [])
   const [reward,    setReward]    = useState<{ xp: number; sc: number } | null>(null)
   const [error,     setError]     = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
