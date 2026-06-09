@@ -96,8 +96,7 @@ export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props)
   const { burst } = useConfetti()
 
   const { xp: previewXp, sc: previewSc, mult } = nextReward(streak)
-  // Before mount: treat as already claimed so the button never flashes during hydration
-  const alreadyClaimed = !mounted || !canClaim || claimed
+  const alreadyClaimed = !canClaim || claimed
 
   function handleClaim() {
     startTransition(async () => {
@@ -108,6 +107,29 @@ export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props)
       try { sessionStorage.setItem(todayKey(), '1') } catch {}
       burst()
     })
+  }
+
+  // Show skeleton until client has initialized — prevents ANY state flash on hydration
+  if (!mounted) {
+    return (
+      <div className="rounded-2xl border border-border bg-card p-5" style={{ minHeight: '112px' }}>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-secondary animate-pulse shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3.5 w-28 rounded bg-secondary animate-pulse" />
+            <div className="h-3 w-20 rounded bg-secondary animate-pulse" />
+          </div>
+        </div>
+        <div className="mt-3 pt-3 border-t border-border/50 flex gap-1.5">
+          {[0,1,2,3,4,5,6].map(i => (
+            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+              <div className="h-2 w-3 rounded bg-secondary animate-pulse" />
+              <div className="w-6 h-6 rounded-full bg-secondary animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   return (
