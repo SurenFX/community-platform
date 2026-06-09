@@ -139,7 +139,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       const senderId = String(msg.from?.id)
 
       if (!await this.isGroupAdmin(senderId)) {
-        await ctx.reply('No tenes permiso para usar este comando.')
+        await ctx.reply('No podes usar este comando.')
         return
       }
 
@@ -164,7 +164,8 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         return
       }
 
-      await ctx.reply(`Recordatorio guardado. Se enviara al chat de Twitch cuando empiece el stream:\n\n"${reminder}"`)
+      const channel = this.config.get<string>('TWITCH_CHANNEL') ?? 'SalchiNFT'
+      await ctx.reply(`Escribiste un recordatorio para el proximo stream de @${channel}:\n\n"${reminder}"\n\nSe enviara automaticamente al chat de Twitch cuando empiece.`)
       this.logger.log(`Recordatorio guardado por telegram_id=${senderId}: "${reminder}"`)
     })
 
