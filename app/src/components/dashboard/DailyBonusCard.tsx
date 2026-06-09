@@ -202,7 +202,9 @@ export default function DailyBonusCard() {
             {isClaimed && reward ? `+${reward.sc} SC` : `+${previewSc} SC`}
           </span>
         </div>
-
+        <span className="text-[10px] text-muted-foreground/60">
+          Reset en {7 - todayIdx}d
+        </span>
       </div>
 
       {error && <p className="text-xs text-destructive mt-2">{error}</p>}
