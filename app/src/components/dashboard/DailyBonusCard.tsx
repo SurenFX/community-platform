@@ -32,20 +32,43 @@ export default function DailyBonusCard() {
   const [isPending, startTransition] = useTransition()
   const { burst } = useConfetti()
 
-  // Fetch bonus state directly from Supabase browser client — no server prop dependency
+  // Fetch bonus state — cookie fast-path first, then DB confirmation
   useEffect(() => {
+    const todayUTC = new Date().toISOString().slice(0, 10)
+
+    // Fast-path: server action sets this cookie synchronously; read it before the DB round-trip
+    const cookieClaimed = document.cookie
+      .split('; ')
+      .find(r => r.startsWith('daily_bonus_claimed='))
+      ?.split('=')[1] === todayUTC
+
+    if (cookieClaimed) {
+      const nextMidnight = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
+      setNextMs(Math.max(0, nextMidnight - Date.now()))
+      setStatus('claimed')
+      // Still fetch streak count in background (no status change)
+      const supabase = createClient()
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user) return
+        supabase.from('user_reputation').select('current_streak').eq('user_id', user.id).single()
+          .then(({ data }) => { setStreak((data as any)?.current_streak ?? 0) })
+      })
+      return
+    }
+
+    // No cookie — check DB for real state
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
+      if (!user) { setStatus('can_claim'); return }
       supabase
         .from('user_reputation')
         .select('last_daily_bonus_at, current_streak')
         .eq('user_id', user.id)
         .single()
-        .then(({ data }) => {
-          const todayUTC = new Date().toISOString().slice(0, 10)
-          const lastDay  = (data as any)?.last_daily_bonus_at?.slice(0, 10) ?? null
-          const claimed  = lastDay === todayUTC
+        .then(({ data, error }) => {
+          if (error || !data) { setStatus('can_claim'); return }
+          const lastDay = (data as any)?.last_daily_bonus_at?.slice(0, 10) ?? null
+          const claimed = lastDay === todayUTC
           setStreak((data as any)?.current_streak ?? 0)
           if (claimed) {
             const nextMidnight = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
