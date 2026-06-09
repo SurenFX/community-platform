@@ -1,11 +1,10 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Lock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import PlayerCard from '@/components/dashboard/PlayerCard'
 import RecentActivity from '@/components/profile/RecentActivity'
-import XpToast from '@/components/dashboard/XpToast'
 import LevelUpModal from '@/components/dashboard/LevelUpModal'
 import BadgeUnlockModal from '@/components/profile/BadgeUnlockModal'
 import type { Profile, UserReputation, XpEvent, UserMission, Mission } from '@/types/database'
@@ -55,12 +54,6 @@ interface DashboardClientProps {
   middleContent?:  React.ReactNode
 }
 
-interface XpToastData {
-  id:        string
-  xp:        number
-  eventType: string
-}
-
 const EVENT_LABELS: Record<string, string> = {
   DISCORD_MESSAGE:           'Mensaje en Discord',
   DISCORD_REACTION_RECEIVED: 'Reaccion recibida',
@@ -107,7 +100,6 @@ export default function DashboardClient({
   const [profile,     setProfile]    = useState(initialProfile)
   const [events,      setEvents]     = useState(initialEvents)
   const [missions,    setMissions]   = useState(initialMissions)
-  const [toasts,      setToasts]     = useState<XpToastData[]>([])
   const [levelUpData, setLevelUpData] = useState<{ oldLevel: number; newLevel: number } | null>(null)
   const [badgeUnlock, setBadgeUnlock] = useState<BadgeItem | null>(null)
 
@@ -117,12 +109,6 @@ export default function DashboardClient({
   const lastLevelUpShownRef = useRef(initialProfile?.user_reputation?.level ?? 1)
 
   const supabase = createClient()
-
-  const addToast = useCallback((xp: number, eventType: string) => {
-    const id = Math.random().toString(36).slice(2)
-    setToasts(prev => [...prev, { id, xp, eventType }])
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000)
-  }, [])
 
   useEffect(() => {
     async function poll() {
@@ -163,7 +149,6 @@ export default function DashboardClient({
           if (latestId !== lastEventRef.current) {
             const previousIdx = newEvents.findIndex(e => e.id === lastEventRef.current)
             const newOnes = previousIdx === -1 ? newEvents.slice(0, 1) : newEvents.slice(0, previousIdx)
-            newOnes.reverse().forEach(event => addToast(event.xp_awarded, event.event_type))
             lastEventRef.current = latestId
             setEvents(newEvents)
           }
@@ -187,7 +172,6 @@ export default function DashboardClient({
             setLevelUpData({ oldLevel: lu.level - 1, newLevel: lu.level })
             lastLevelUpShownRef.current = lu.level
           }
-          if (lu.xp_bonus > 0) addToast(lu.xp_bonus, 'ADMIN_MANUAL_GRANT')
         })
       .subscribe()
     return () => { supabase.removeChannel(channel) }
@@ -286,12 +270,6 @@ export default function DashboardClient({
           </div>
         </div>
       )}
-
-      <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50">
-        {toasts.map(toast => (
-          <XpToast key={toast.id} xp={toast.xp} label={EVENT_LABELS[toast.eventType] ?? toast.eventType} />
-        ))}
-      </div>
 
       {levelUpData && (
         <LevelUpModal
