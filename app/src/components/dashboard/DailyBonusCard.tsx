@@ -82,10 +82,13 @@ function todayKey() {
 }
 
 export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props) {
-  const [claimed, setClaimed] = useState(false)
-  // Read sessionStorage after hydration to avoid SSR mismatch
+  const [mounted,  setMounted]  = useState(false)
+  const [claimed,  setClaimed]  = useState(false)
+  // After mount: read sessionStorage and flip mounted flag
+  // Gating on mounted prevents ANY button flash during hydration
   useEffect(() => {
     try { if (sessionStorage.getItem(todayKey()) === '1') setClaimed(true) } catch {}
+    setMounted(true)
   }, [])
   const [reward,    setReward]    = useState<{ xp: number; sc: number } | null>(null)
   const [error,     setError]     = useState<string | null>(null)
@@ -93,7 +96,8 @@ export default function DailyBonusCard({ canClaim, streak, nextClaimMs }: Props)
   const { burst } = useConfetti()
 
   const { xp: previewXp, sc: previewSc, mult } = nextReward(streak)
-  const alreadyClaimed = !canClaim || claimed
+  // Before mount: treat as already claimed so the button never flashes during hydration
+  const alreadyClaimed = !mounted || !canClaim || claimed
 
   function handleClaim() {
     startTransition(async () => {
