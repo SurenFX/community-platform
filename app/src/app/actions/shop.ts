@@ -88,8 +88,9 @@ export async function claimDailyBonus(): Promise<{
   const newTotalXp = ((rep as any)?.total_xp   ?? 0) + xp
   const newLevel   = Math.min(Math.floor((-9 + Math.sqrt(121 + newTotalXp / 3.125)) / 2), 200)
 
-  // Actualizar todo en un solo UPDATE
-  await db.from('user_reputation').update({
+  // Upsert — funciona tanto si la fila existe como si no
+  const { error: upsertError } = await db.from('user_reputation').upsert({
+    user_id:             user.id,
     total_xp:            newTotalXp,
     weekly_xp:           ((rep as any)?.weekly_xp  ?? 0) + xp,
     monthly_xp:          ((rep as any)?.monthly_xp ?? 0) + xp,
@@ -98,7 +99,8 @@ export async function claimDailyBonus(): Promise<{
     current_streak:      newStreak,
     longest_streak:      Math.max(longestStreak, newStreak),
     last_daily_bonus_at: now,
-  }).eq('user_id', user.id)
+  }, { onConflict: 'user_id' })
+  if (upsertError) return { error: `DB error: ${upsertError.message}` }
 
   // Insertar xp_event para historial de actividad
   await db.from('xp_events').insert({
