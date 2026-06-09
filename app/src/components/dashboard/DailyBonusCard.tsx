@@ -81,13 +81,16 @@ export default function DailyBonusCard() {
   const isClaimed = status === 'claimed'
   const { xp: previewXp, sc: previewSc } = nextReward(streak)
 
+  // Claims this week (Mon-Sun UTC): always fills L→R, resets every Monday automatically
+  // todayIdx = days elapsed this week (0=Mon...6=Sun)
+  const weekClaims = status === 'loading' ? 0
+    : Math.min(streak, isClaimed ? todayIdx + 1 : todayIdx)
+
   function getFlameState(i: number): FlameState {
     if (status === 'loading') return 'dim'
-    if (i > todayIdx) return 'dim'
-    if (i === todayIdx) return isClaimed ? 'lit' : 'blinking'
-    // days before today — lit if within current streak
-    const effectiveStreak = isClaimed ? streak - 1 : streak
-    return (todayIdx - i) <= effectiveStreak ? 'lit' : 'dim'
+    if (i < weekClaims) return 'lit'
+    if (i === weekClaims && status === 'can_claim') return 'blinking'
+    return 'dim'
   }
 
   // ── Loading skeleton ─────────────────────────────────────────────────────────
