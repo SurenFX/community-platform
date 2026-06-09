@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { CheckCircle2, Lock, Gift } from 'lucide-react'
-import { claimSeasonMilestone, SEASON_MILESTONES } from '@/app/actions/seasonPass'
+import { claimSeasonMilestone } from '@/app/actions/seasonPass'
+import { SEASON_MILESTONES } from '@/lib/seasonMilestones'
 
 const TYPE_COLORS: Record<string, string> = {
   xp:       'text-purple-400 bg-purple-400/15 border-purple-400/30',
