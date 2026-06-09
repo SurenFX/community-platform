@@ -120,7 +120,7 @@ export async function claimDailyBonus(): Promise<{
     user_id: user.id,
     type:    'STREAK_BONUS',
     title:   `+${sc} SalchiCoins — Bono diario`,
-    body:    `Racha de ${newStreak} día${newStreak !== 1 ? 's' : ''}. También ganaste ${xp} XP.`,
+    message: `Racha de ${newStreak} día${newStreak !== 1 ? 's' : ''}. También ganaste ${xp} XP.`,
     is_read: false,
   })
 
@@ -374,7 +374,7 @@ export async function prestigeUser(): Promise<{ error?: string; newPrestige?: nu
     user_id: user.id,
     type:    'PRESTIGE',
     title:   `Prestige ${newPrestige} alcanzado!`,
-    body:    `Reseteaste al nivel 1 con Prestige ${newPrestige}. Recibiste ${bonusSc} SC de bonus.`,
+    message: `Reseteaste al nivel 1 con Prestige ${newPrestige}. Recibiste ${bonusSc} SC de bonus.`,
     is_read: false,
   })
 

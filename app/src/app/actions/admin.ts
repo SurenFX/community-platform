@@ -307,7 +307,7 @@ export async function grantSc(
     user_id: targetUserId,
     type:    'SYSTEM',
     title:   `+${amount} SalchiCoins`,
-    body:    reason ? `El equipo te otorgó SC: ${reason}` : 'El equipo te otorgó SalchiCoins.',
+    message: reason ? `El equipo te otorgó SC: ${reason}` : 'El equipo te otorgó SalchiCoins.',
     is_read: false,
   })
 

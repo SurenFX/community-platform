@@ -113,7 +113,7 @@ export async function claimMission(userMissionId: string): Promise<{ error?: str
         user_id: user.id,
         type:    'MISSION_COMPLETED',
         title:   `+${mission.coin_reward} SalchiCoins — ${mission.title}`,
-        body:    `Reclamaste la recompensa de la misión.`,
+        message: `Reclamaste la recompensa de la misión.`,
         is_read: false,
       }),
     ])
