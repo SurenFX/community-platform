@@ -65,6 +65,7 @@ export interface UserReputation {
   current_streak: number
   longest_streak: number
   last_active_date: string | null
+  last_daily_bonus_at: string | null
   raffle_tickets: number
   salchi_coins:   number
   updated_at: string
