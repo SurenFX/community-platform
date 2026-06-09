@@ -90,11 +90,17 @@ export default async function DashboardPage() {
     .limit(1)
     .maybeSingle()
 
-  const lastBonusAt     = (profile as any)?.user_reputation?.last_daily_bonus_at ?? null
   const todayUTC        = new Date().toISOString().slice(0, 10)
-  const lastBonusDay    = lastBonusAt ? (lastBonusAt as string).slice(0, 10) : null
   const cookieStore     = await cookies()
   const claimedCookie   = cookieStore.get('daily_bonus_claimed')?.value
+  // Use admin client to avoid join array ambiguity and any fetch caching
+  const { data: repBonus } = await admin
+    .from('user_reputation')
+    .select('last_daily_bonus_at')
+    .eq('user_id', user.id)
+    .single()
+  const lastBonusAt     = (repBonus as any)?.last_daily_bonus_at ?? null
+  const lastBonusDay    = lastBonusAt ? (lastBonusAt as string).slice(0, 10) : null
   const claimedToday    = lastBonusDay === todayUTC || claimedCookie === todayUTC
   const nextMidnightUTC = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
   const msUntilNext     = Math.max(0, nextMidnightUTC - Date.now())
