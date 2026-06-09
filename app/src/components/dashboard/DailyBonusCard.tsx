@@ -26,7 +26,7 @@ function fmtTime(ms: number) {
 }
 
 // Always Mon -> Sun left to right
-const DAY_NAMES_WEEK = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+const DAY_NAMES_WEEK = ['L', 'M', 'Mi', 'J', 'V', 'S', 'D']
 
 function StreakCalendar({ streak, canClaim }: { streak: number; canClaim: boolean }) {
   const today = new Date()
