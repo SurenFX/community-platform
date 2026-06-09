@@ -322,15 +322,16 @@ export async function resetUserProgress(targetUserId: string): Promise<{ error?:
   await admin
     .from('user_reputation')
     .update({
-      total_xp:       0,
-      weekly_xp:      0,
-      monthly_xp:     0,
-      level:          1,
-      current_streak: 0,
-      longest_streak: 0,
-      raffle_tickets: 0,
-      salchi_coins:   0,
-      last_active_date: null,
+      total_xp:            0,
+      weekly_xp:           0,
+      monthly_xp:          0,
+      level:               1,
+      current_streak:      0,
+      longest_streak:      0,
+      raffle_tickets:      0,
+      salchi_coins:        0,
+      last_active_date:    null,
+      last_daily_bonus_at: null,
     })
     .eq('user_id', targetUserId)
 
@@ -342,6 +343,9 @@ export async function resetUserProgress(targetUserId: string): Promise<{ error?:
 
   // Borrar historial de XP
   await admin.from('xp_events').delete().eq('user_id', targetUserId)
+
+  // Borrar reclamos del pase de temporada
+  await admin.from('season_pass_claims').delete().eq('user_id', targetUserId)
 
   return {}
 }
