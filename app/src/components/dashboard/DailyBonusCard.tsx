@@ -36,28 +36,9 @@ export default function DailyBonusCard() {
   const [isPending, startTransition] = useTransition()
   const { burst } = useConfetti()
 
+  // DB is the single source of truth — no cookie dependency
   useEffect(() => {
     const todayUTC = new Date().toISOString().slice(0, 10)
-
-    // Fast-path: cookie set by server action
-    const cookieClaimed = document.cookie
-      .split('; ')
-      .find(r => r.startsWith('daily_bonus_claimed='))
-      ?.split('=')[1] === todayUTC
-
-    if (cookieClaimed) {
-      const nextMidnight = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
-      setNextMs(Math.max(0, nextMidnight - Date.now()))
-      setStatus('claimed')
-      const supabase = createClient()
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        if (!user) return
-        supabase.from('user_reputation').select('current_streak').eq('user_id', user.id).single()
-          .then(({ data }) => { setStreak((data as any)?.current_streak ?? 0) })
-      })
-      return
-    }
-
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { setStatus('can_claim'); return }
