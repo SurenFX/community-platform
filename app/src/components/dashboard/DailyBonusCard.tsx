@@ -203,9 +203,11 @@ export default function DailyBonusCard() {
           </span>
         </div>
         <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60">
-          {isClaimed && (
-            <span>Diario en {fmtTime(nextMs)}</span>
-          )}
+          {isClaimed
+            ? <span>Diario en {fmtTime(nextMs)}</span>
+            : <span>Diario: disponible</span>
+          }
+          <span>·</span>
           <span>Semanal en {7 - todayIdx}d</span>
         </div>
       </div>
