@@ -28,7 +28,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     const token = this.config.get<string>('TWITCH_BOT_TOKEN')
     if (!token) {
-      this.logger.warn('TWITCH_BOT_TOKEN no configurado — bot IRC desactivado')
+      this.logger.warn('TWITCH_BOT_TOKEN no configurado -- bot IRC desactivado')
       return
     }
     await this.connect()
@@ -55,7 +55,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         this.send('PING :tmi.twitch.tv')
       }, 4 * 60 * 1000)
 
-      this.logger.log(`✓ Twitch IRC bot conectado al canal #${channel}`)
+      this.logger.log(`Twitch IRC bot conectado al canal #${channel}`)
     })
 
     this.client.on('data', (data) => {
@@ -68,7 +68,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     })
 
     this.client.on('close', () => {
-      this.logger.warn('IRC desconectado — reconectando en 30s...')
+      this.logger.warn('IRC desconectado -- reconectando en 30s...')
       if (this.pingTimer) clearInterval(this.pingTimer)
       this.reconnectTimer = setTimeout(() => this.connect(), 30000)
     })
@@ -88,7 +88,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
   sendChat(message: string) {
     const channel = this.config.get<string>('TWITCH_CHANNEL') ?? ''
     this.send(`PRIVMSG #${channel} :${message}`)
-    this.logger.log(`Chat → ${message}`)
+    this.logger.log(`Chat -> ${message}`)
   }
 
   private async handleLine(line: string) {
@@ -97,7 +97,6 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
       return
     }
 
-    // ── Suscripciones (sub, resub, giftsub) ──────────────────────────────────
     if (line.includes('USERNOTICE')) {
       await this.handleUserNotice(line)
       return
@@ -139,7 +138,6 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
       metadata: { twitch_username: twitchUsername, content: messageContent.slice(0, 200) },
     })
 
-    // ── Primero en saludar en el stream ──────────────────────────────────
     const channel = this.config.get<string>('TWITCH_CHANNEL') ?? 'stream'
     const isFirstGreeter = await this.redis.setNX(`twitch:first_greeter:${channel}`, '1', 12 * 60 * 60)
     if (isFirstGreeter) {
@@ -149,8 +147,8 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
           .insert({
             user_id: socialLink.user_id,
             type:    'FIRST_GREETER',
-            title:   '🎉 ¡Primero en saludar!',
-            message: `Fuiste el primero en escribir en el chat del stream. ¡+100 XP y +50 SC!`,
+            title:   'Primero en saludar!',
+            message: `Fuiste el primero en escribir en el chat del stream. +100 XP y +50 SC!`,
           })
 
         await this.supabase.db.rpc('award_xp', {
@@ -176,7 +174,6 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
           .update({ salchi_coins: ((rep as any)?.salchi_coins ?? 0) + 50 })
           .eq('user_id', socialLink.user_id)
 
-        // No spamear el chat — la notificación llega por la plataforma
         this.logger.log(`First greeter: ${twitchUsername}`)
       } catch (err) {
         this.logger.warn(`First greeter error: ${err}`)
@@ -188,7 +185,6 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
 
   private async handleUserNotice(line: string) {
     try {
-      // Extraer tags del mensaje IRC
       const tagsMatch = line.match(/^@([^ ]+)/)
       if (!tagsMatch) return
       const tags: Record<string, string> = {}
@@ -204,7 +200,6 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
 
       if (!isSub || !login) return
 
-      // Para giftsub, recompensar al que regala (login = quien regala)
       const twitchUsername = login.toLowerCase()
 
       const { data: socialLink } = await this.supabase.db
@@ -218,8 +213,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
       const discordId = (socialLink as any).profiles?.discord_id
       if (!discordId) return
 
-      // Evitar duplicar para el mismo mes
-      const monthKey = new Date().toISOString().slice(0, 7) // YYYY-MM
+      const monthKey = new Date().toISOString().slice(0, 7)
       const dedupKey = `twitch:sub:${twitchUsername}:${monthKey}`
       const isFirst  = await this.redis.setNX(dedupKey, '1', 31 * 24 * 60 * 60)
       if (!isFirst) return
@@ -233,13 +227,12 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
       })
 
       const subType = msgId === 'resub' ? 'resub' : isGift ? 'gift sub' : 'sub'
-      this.logger.log(`🎉 ${subType}: ${twitchUsername}`)
+      this.logger.log(`${subType}: ${twitchUsername}`)
 
-      // Anunciar en el chat
       const displayName = tags['display-name'] || twitchUsername
-      if (msgId === 'sub')    this.sendChat(`🎉 ¡Bienvenido @${displayName}! Gracias por suscribirte 💜`)
-      if (msgId === 'resub')  this.sendChat(`🔁 ¡Gracias @${displayName} por renovar tu sub! 💜`)
-      if (isGift)             this.sendChat(`🎁 ¡Gracias @${displayName} por regalar subs! 💜`)
+      if (msgId === 'sub')    this.sendChat(`Bienvenido @${displayName}! Gracias por suscribirte`)
+      if (msgId === 'resub')  this.sendChat(`Gracias @${displayName} por renovar tu sub!`)
+      if (isGift)             this.sendChat(`Gracias @${displayName} por regalar subs!`)
 
     } catch (err) {
       this.logger.warn(`handleUserNotice error: ${err}`)
@@ -264,7 +257,6 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         .ilike('username', twitchUsername)
         .single()
 
-      // Cualquier viewer puede participar — user_id es null si no está registrado
       const { error } = await this.supabase.db
         .from('twitch_raffle_entries')
         .insert({
@@ -274,18 +266,17 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         })
 
       if (!error) {
-        this.logger.log(`Raffle entry: ${twitchUsername} → ${raffle.id}`)
+        this.logger.log(`Raffle entry: ${twitchUsername} -> ${raffle.id}`)
       }
     } catch (err) {}
   }
 
-  // ── Llamados desde el frontend via endpoint ────────────
   async announceRaffleStart(keyword: string) {
-    this.sendChat(`🎉 ¡Sorteo! Escribí "${keyword}" en el chat para participar.`)
+    this.sendChat(`Sorteo! Escribi "${keyword}" en el chat para participar.`)
   }
 
   async announceRaffleWinner(winner: string) {
-    this.sendChat(`🏆 ¡@${winner} es el ganador del sorteo! ¡Felicitaciones! 🎉`)
+    this.sendChat(`@${winner} es el ganador del sorteo! Felicitaciones!`)
   }
 
   @Cron('*/2 * * * *')
@@ -297,17 +288,33 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`Stream iniciado: ${info.title}`)
         this.isLive = true
         this.activeViewers.clear()
-        // Limpiar el flag de primer saludador para este nuevo stream
+
         const ch = this.config.get<string>('TWITCH_CHANNEL') ?? 'stream'
         await this.redis.del(`twitch:first_greeter:${ch}`)
 
         await this.supabase.db.from('stream_sessions').insert({ title: info.title, game: info.game })
         await this.supabase.db.from('platform_config').upsert([
-          { key: 'stream_is_live',    value: 'true'           },
-          { key: 'stream_title',      value: info.title        },
-          { key: 'stream_game',       value: info.game         },
+          { key: 'stream_is_live',    value: 'true'            },
+          { key: 'stream_title',      value: info.title         },
+          { key: 'stream_game',       value: info.game          },
           { key: 'stream_started_at', value: info.startedAt ?? '' },
         ])
+
+        // Enviar recordatorios pendientes al chat de Twitch (un solo uso)
+        const { data: reminders } = await this.supabase.db
+          .from('stream_reminders')
+          .select('id, message')
+          .eq('is_used', false)
+          .order('created_at', { ascending: true })
+
+        for (const reminder of reminders ?? []) {
+          this.sendChat(reminder.message)
+          await this.supabase.db
+            .from('stream_reminders')
+            .update({ is_used: true })
+            .eq('id', reminder.id)
+          this.logger.log(`Recordatorio enviado al chat: "${reminder.message}"`)
+        }
 
       } else if (!info.isLive && this.isLive) {
         this.logger.log('Stream terminado')

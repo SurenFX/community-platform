@@ -18,7 +18,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     const token = this.config.get<string>('TELEGRAM_BOT_TOKEN')
     if (!token) {
-      this.logger.warn('TELEGRAM_BOT_TOKEN no configurado — bot desactivado')
+      this.logger.warn('TELEGRAM_BOT_TOKEN no configurado -- bot desactivado')
       return
     }
 
@@ -38,17 +38,24 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`Error lanzando bot de Telegram: ${err}`)
     })
 
-    this.logger.log('✓ Telegram bot conectado')
+    this.logger.log('Telegram bot conectado')
   }
 
   async onModuleDestroy() {
     this.bot?.stop('SIGTERM')
   }
 
+  private isAdmin(telegramUserId: string): boolean {
+    const raw = this.config.get<string>('TELEGRAM_ADMIN_IDS') ?? ''
+    const ids = raw.split(',').map(s => s.trim()).filter(Boolean)
+    if (ids.length === 0) return true // si no hay lista configurada, permitir a todos
+    return ids.includes(telegramUserId)
+  }
+
   private registerListeners() {
     if (!this.bot) return
 
-    // Comando /start — maneja deep links de vinculación (/start TOKEN)
+    // /start -- maneja deep links de vinculacion (/start TOKEN)
     this.bot.command('start', async (ctx: Context) => {
       const msg = ctx.message as any
       if (!msg) return
@@ -62,13 +69,12 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
       if (!token) {
         await ctx.reply(
-          `Hola @${username}! Usá el botón "Conectar Telegram" en la plataforma para vincular tu cuenta automáticamente.`
+          `Hola @${username}! Usa el boton "Conectar Telegram" en la plataforma para vincular tu cuenta automaticamente.`
         )
         return
       }
 
       try {
-        // Buscar el token en la DB
         const { data: linkToken, error } = await this.supabase.db
           .from('telegram_link_tokens')
           .select('user_id, expires_at, used_at')
@@ -76,21 +82,20 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           .single()
 
         if (error || !linkToken) {
-          await ctx.reply('❌ El enlace es inválido o ya fue usado. Generá uno nuevo desde la plataforma.')
+          await ctx.reply('El enlace es invalido o ya fue usado. Genera uno nuevo desde la plataforma.')
           return
         }
 
         if (linkToken.used_at) {
-          await ctx.reply('❌ Este enlace ya fue usado. Generá uno nuevo desde la plataforma.')
+          await ctx.reply('Este enlace ya fue usado. Genera uno nuevo desde la plataforma.')
           return
         }
 
         if (new Date(linkToken.expires_at) < new Date()) {
-          await ctx.reply('❌ El enlace expiró. Generá uno nuevo desde la plataforma.')
+          await ctx.reply('El enlace expiro. Genera uno nuevo desde la plataforma.')
           return
         }
 
-        // Vincular la cuenta
         const { error: upsertError } = await this.supabase.db
           .from('user_social_links')
           .upsert({
@@ -103,23 +108,59 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
         if (upsertError) throw upsertError
 
-        // Marcar token como usado
         await this.supabase.db
           .from('telegram_link_tokens')
           .update({ used_at: new Date().toISOString() })
           .eq('token', token)
 
         await ctx.reply(
-          `✅ ¡Tu cuenta de Telegram fue vinculada exitosamente!\n\n` +
-          `A partir de ahora ganás XP por cada mensaje que mandes en el grupo. 🎉`
+          `Tu cuenta de Telegram fue vinculada exitosamente!\n\n` +
+          `A partir de ahora ganas XP por cada mensaje que mandes en el grupo.`
         )
 
         this.logger.log(`Telegram vinculado: user_id=${linkToken.user_id} telegram_id=${telegramUserId} @${username}`)
 
       } catch (err) {
-        this.logger.error(`Error en /start vinculación: ${err}`)
-        await ctx.reply('❌ Ocurrió un error al vincular. Intentá de nuevo desde la plataforma.')
+        this.logger.error(`Error en /start vinculacion: ${err}`)
+        await ctx.reply('Ocurrio un error al vincular. Intenta de nuevo desde la plataforma.')
       }
+    })
+
+    // /recordatorio <mensaje> -- guarda un recordatorio para enviar al chat de Twitch cuando empieze el stream
+    this.bot.command('recordatorio', async (ctx: Context) => {
+      const msg = ctx.message as any
+      if (!msg) return
+
+      const senderId = String(msg.from?.id)
+
+      if (!this.isAdmin(senderId)) {
+        await ctx.reply('No tenes permiso para usar este comando.')
+        return
+      }
+
+      const text     = msg.text ?? ''
+      const reminder = text.replace(/^\/recordatorio\s*/i, '').trim()
+
+      if (!reminder) {
+        await ctx.reply('Uso: /recordatorio <mensaje>\nEjemplo: /recordatorio Hablar del torneo de esta noche!')
+        return
+      }
+
+      const { error } = await this.supabase.db
+        .from('stream_reminders')
+        .insert({
+          message:                reminder,
+          created_by_telegram_id: senderId,
+        })
+
+      if (error) {
+        this.logger.error(`Error guardando recordatorio: ${error.message}`)
+        await ctx.reply('Error al guardar el recordatorio. Intenta de nuevo.')
+        return
+      }
+
+      await ctx.reply(`Recordatorio guardado. Se enviara al chat de Twitch cuando empiece el stream:\n\n"${reminder}"`)
+      this.logger.log(`Recordatorio guardado por telegram_id=${senderId}: "${reminder}"`)
     })
 
     // Escuchar mensajes de texto en grupos para dar XP
@@ -128,7 +169,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         const msg = ctx.message as any
         if (!msg) return
 
-        // Solo procesar mensajes de grupos/supergrupos
         const chatType = msg.chat?.type
         if (chatType !== 'group' && chatType !== 'supergroup') return
 
@@ -137,15 +177,13 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         const messageId      = String(msg.message_id)
         const text           = msg.text ?? ''
 
-        // Verificar que sea el grupo correcto
         const configuredChatId = this.config.get<string>('TELEGRAM_GROUP_ID')
         if (configuredChatId && chatId !== configuredChatId) return
 
         if (!configuredChatId) {
-          this.logger.log(`Mensaje en grupo ${chatId} de @${msg.from?.username} — configurá TELEGRAM_GROUP_ID=${chatId}`)
+          this.logger.log(`Mensaje en grupo ${chatId} de @${msg.from?.username} -- configura TELEGRAM_GROUP_ID=${chatId}`)
         }
 
-        // Buscar el usuario por su Telegram ID vinculado
         const { data: socialLink } = await this.supabase.db
           .from('user_social_links')
           .select('user_id, profiles!inner(discord_id)')
@@ -175,7 +213,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       }
     })
 
-    // ── Nuevo miembro se une al grupo ─────────────────────────────────────────
+    // Nuevo miembro se une al grupo
     this.bot.on('chat_member', async (ctx: Context) => {
       try {
         const update = (ctx as any).chatMember
@@ -184,7 +222,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         const newStatus = update.new_chat_member?.status
         const oldStatus = update.old_chat_member?.status
 
-        // Solo cuando realmente se une (no cuando ya era miembro)
         if (newStatus !== 'member' && newStatus !== 'administrator') return
         if (oldStatus === 'member' || oldStatus === 'administrator') return
 
@@ -215,14 +252,14 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           metadata:    { telegram_user_id: telegramUserId, chat_id: chatId },
         })
 
-        this.logger.log(`👋 Nuevo miembro Telegram: @${from.username ?? from.first_name}`)
+        this.logger.log(`Nuevo miembro Telegram: @${from.username ?? from.first_name}`)
 
       } catch (err) {
         this.logger.warn(`Error procesando chat_member: ${err}`)
       }
     })
 
-    // ── Reacción a un mensaje ─────────────────────────────────────────────────
+    // Reaccion a un mensaje
     this.bot.on('message_reaction', async (ctx: Context) => {
       try {
         const update = (ctx as any).messageReaction
@@ -231,10 +268,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         const from = update.user
         if (!from || from.is_bot) return
 
-        // Solo reacciones nuevas (new_reaction tiene items, old_reaction puede estar vacío)
         const newReactions = update.new_reaction ?? []
         const oldReactions = update.old_reaction ?? []
-        if (newReactions.length <= oldReactions.length) return  // removió reacción, no agregó
+        if (newReactions.length <= oldReactions.length) return
 
         const telegramUserId   = String(from.id)
         const configuredChatId = this.config.get<string>('TELEGRAM_GROUP_ID')
@@ -270,7 +306,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     })
   }
 
-  // ── Enviar mensaje al grupo de Telegram (con soporte de subtema) ─
+  // Enviar mensaje al grupo de Telegram (con soporte de subtema)
   async announce(text: string, threadEnvKey?: string): Promise<void> {
     const groupId  = this.config.get<string>('TELEGRAM_GROUP_ID')
     const threadId = threadEnvKey ? this.config.get<string>(threadEnvKey) : undefined
@@ -280,7 +316,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         parse_mode: 'HTML',
         ...(threadId ? { message_thread_id: Number(threadId) } : {}),
       })
-      this.logger.log(`📢 Telegram anuncio enviado${threadId ? ` al tema #${threadId}` : ''}`)
+      this.logger.log(`Telegram anuncio enviado${threadId ? ` al tema #${threadId}` : ''}`)
     } catch (err) {
       this.logger.warn(`Error enviando anuncio Telegram: ${err}`)
     }
