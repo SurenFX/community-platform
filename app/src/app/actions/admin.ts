@@ -3,6 +3,7 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import type { Mission, MissionType, XpEventType } from '@/types/database'
 
 // ── Helper ─────────────────────────────────────────────────────────────────
@@ -346,6 +347,10 @@ export async function resetUserProgress(targetUserId: string): Promise<{ error?:
 
   // Borrar reclamos del pase de temporada
   await admin.from('season_pass_claims').delete().eq('user_id', targetUserId)
+
+  // Borrar cookie de bonus diario del browser actual (por si el admin se resetea a si mismo)
+  const cookieStore = await cookies()
+  cookieStore.delete('daily_bonus_claimed')
 
   return {}
 }

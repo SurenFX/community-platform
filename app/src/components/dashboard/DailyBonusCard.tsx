@@ -36,27 +36,45 @@ export default function DailyBonusCard() {
   const [isPending, startTransition] = useTransition()
   const { burst } = useConfetti()
 
-  // DB is the single source of truth — no cookie dependency
   useEffect(() => {
     const todayUTC = new Date().toISOString().slice(0, 10)
+
+    // Cookie fast-path: show claimed immediately while DB loads (avoids flash)
+    const cookieClaimed = document.cookie
+      .split('; ')
+      .find(r => r.startsWith('daily_bonus_claimed='))
+      ?.split('=')[1] === todayUTC
+
+    if (cookieClaimed) {
+      const nextMidnight = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
+      setNextMs(Math.max(0, nextMidnight - Date.now()))
+      setStatus('claimed')
+    }
+
+    // Always verify against DB — overrides cookie if wrong (e.g. after admin reset)
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { setStatus('can_claim'); return }
+      if (!user) { if (!cookieClaimed) setStatus('can_claim'); return }
       supabase
         .from('user_reputation')
         .select('last_daily_bonus_at, current_streak')
         .eq('user_id', user.id)
         .single()
         .then(({ data, error }) => {
-          if (error || !data) { setStatus('can_claim'); return }
+          // DB query failed — keep optimistic cookie state
+          if (error || !data) {
+            if (!cookieClaimed) setStatus('can_claim')
+            return
+          }
           const lastDay = (data as any)?.last_daily_bonus_at?.slice(0, 10) ?? null
-          const claimed = lastDay === todayUTC
+          const dbClaimed = lastDay === todayUTC
           setStreak((data as any)?.current_streak ?? 0)
-          if (claimed) {
+          if (dbClaimed) {
             const nextMidnight = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
             setNextMs(Math.max(0, nextMidnight - Date.now()))
             setStatus('claimed')
           } else {
+            // DB says not claimed — truth wins over cookie (handles admin reset)
             setStatus('can_claim')
           }
         })
