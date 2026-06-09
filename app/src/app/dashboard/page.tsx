@@ -9,6 +9,8 @@ import DailyBonusCard from '@/components/dashboard/DailyBonusCard'
 import SeasonPassTrack from '@/components/dashboard/SeasonPassTrack'
 import GlobalXpEventBanner from '@/components/layout/GlobalXpEventBanner'
 
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -92,7 +94,7 @@ export default async function DashboardPage() {
   const lastBonusDay    = lastBonusAt ? (lastBonusAt as string).slice(0, 10) : null
   const claimedToday    = lastBonusDay === todayUTC
   const nextMidnightUTC = new Date(todayUTC + 'T00:00:00Z').getTime() + 86_400_000
-  const msUntilNext     = claimedToday ? Math.max(0, nextMidnightUTC - Date.now()) : 0
+  const msUntilNext     = Math.max(0, nextMidnightUTC - Date.now())
   const canClaimBonus   = !claimedToday
   const streak          = (profile as any)?.user_reputation?.current_streak ?? 0
 
