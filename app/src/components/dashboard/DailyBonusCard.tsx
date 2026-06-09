@@ -142,9 +142,9 @@ export default function DailyBonusCard() {
           )}
         </div>
         {isClaimed && (
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <CheckCircle className="w-3.5 h-3.5 text-green-400" />
-            Proximo en {fmtTime(nextMs)}
+          <span className="flex items-center gap-1.5 text-xs text-green-400/80">
+            <CheckCircle className="w-3 h-3" />
+            Reclamado
           </span>
         )}
       </div>
@@ -202,9 +202,12 @@ export default function DailyBonusCard() {
             {isClaimed && reward ? `+${reward.sc} SC` : `+${previewSc} SC`}
           </span>
         </div>
-        <span className="text-[10px] text-muted-foreground/60">
-          Reset en {7 - todayIdx}d
-        </span>
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60">
+          {isClaimed && (
+            <span>Diario en {fmtTime(nextMs)}</span>
+          )}
+          <span>Semanal en {7 - todayIdx}d</span>
+        </div>
       </div>
 
       {error && <p className="text-xs text-destructive mt-2">{error}</p>}
