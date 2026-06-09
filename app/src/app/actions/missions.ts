@@ -68,16 +68,15 @@ export async function claimMission(userMissionId: string): Promise<{ error?: str
   const mission = (um as any).missions
 
   // UPDATE atómico: solo actualiza si is_claimed sigue siendo false
-  // Esto previene el double-claim por race condition (dos tabs simultáneos)
-  const { count } = await admin
+  const { data: updated } = await admin
     .from('user_missions')
     .update({ is_claimed: true })
     .eq('id', userMissionId)
     .eq('user_id', user.id)
     .eq('is_claimed', false)
-    .select('id', { count: 'exact', head: true })
+    .select('id')
 
-  if (!count || count === 0) return { error: 'Ya reclamaste esta recompensa' }
+  if (!updated || updated.length === 0) return { error: 'Ya reclamaste esta recompensa' }
 
   // Otorgar XP
   if (mission.xp_reward > 0) {
