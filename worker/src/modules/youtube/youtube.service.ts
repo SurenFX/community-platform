@@ -119,8 +119,15 @@ export class YoutubeService {
         `${this.apiBase}/search?part=id,snippet&channelId=${this.channelId}&type=video&publishedAfter=${publishedAfter}&maxResults=10&key=${this.apiKey}`
       )
       const videosData = await videosRes.json()
+
+      if (videosData.error) {
+        this.logger.error(`YouTube search.list error: ${JSON.stringify(videosData.error)}`)
+      }
+
       const videoItems: any[] = videosData.items ?? []
       const videoIds: string[] = videoItems.map((v: any) => v.id.videoId)
+
+      this.logger.log(`YouTube: ${videoIds.length} video(s) encontrados en los ultimos 7 dias`)
 
       if (!videoIds.length) return
 
@@ -129,36 +136,48 @@ export class YoutubeService {
         `${this.apiBase}/videos?part=contentDetails&id=${videoIds.join(',')}&key=${this.apiKey}`
       )
       const detailsData = await detailsRes.json()
+
+      if (detailsData.error) {
+        this.logger.error(`YouTube videos.list error: ${JSON.stringify(detailsData.error)}`)
+      }
+
       const durationMap = new Map<string, number>()
       for (const item of detailsData.items ?? []) {
         durationMap.set(item.id, this.parseDurationSeconds(item.contentDetails?.duration ?? ''))
       }
 
-      // 2c. Anunciar videos nuevos en Discord — excluir VODs (>60 min)
+      // 2c. Anunciar videos nuevos en Discord y Telegram — excluir VODs (>60 min)
       const discordChannelId = this.config.get<string>('DISCORD_YOUTUBE_CHANNEL_ID')
-      if (discordChannelId) {
-        for (const item of videoItems) {
-          const videoId     = item.id.videoId
-          const title       = item.snippet?.title ?? 'Nuevo video'
-          const publishedAt = item.snippet?.publishedAt ?? ''
-          const thumbnail   = item.snippet?.thumbnails?.high?.url ?? ''
-          const duration    = durationMap.get(videoId) ?? 0
 
-          // Saltar VODs (más de 60 minutos)
-          if (duration > 60 * 60) {
-            this.logger.log(`YouTube: saltando VOD ${videoId} (${Math.round(duration/60)} min) - ${title}`)
-            // Marcar igual para no procesarlo de nuevo
-            await this.redis.setNX(`yt:announced:${videoId}`, 'vod', 30 * 24 * 60 * 60)
-            continue
-          }
+      if (!discordChannelId) {
+        this.logger.warn('DISCORD_YOUTUBE_CHANNEL_ID no configurado — se omitira el anuncio en Discord')
+      }
 
-          const isNew = await this.redis.setNX(
-            `yt:announced:${videoId}`,
-            '1',
-            30 * 24 * 60 * 60
-          )
+      for (const item of videoItems) {
+        const videoId     = item.id.videoId
+        const title       = item.snippet?.title ?? 'Nuevo video'
+        const publishedAt = item.snippet?.publishedAt ?? ''
+        const thumbnail   = item.snippet?.thumbnails?.high?.url ?? ''
+        const duration    = durationMap.get(videoId) ?? 0
 
-          if (isNew) {
+        // Saltar VODs (más de 60 minutos)
+        if (duration > 60 * 60) {
+          this.logger.log(`YouTube: saltando VOD ${videoId} (${Math.round(duration/60)} min) - ${title}`)
+          // Marcar igual para no procesarlo de nuevo
+          await this.redis.setNX(`yt:announced:${videoId}`, 'vod', 30 * 24 * 60 * 60)
+          continue
+        }
+
+        const isNew = await this.redis.setNX(
+          `yt:announced:${videoId}`,
+          '1',
+          30 * 24 * 60 * 60
+        )
+
+        this.logger.log(`YouTube: video ${videoId} (${title}) - nuevo=${isNew}`)
+
+        if (isNew) {
+          if (discordChannelId) {
             const embed = new EmbedBuilder()
               .setColor(0xFF0000)
               .setTitle(`🎬 ¡Nuevo video! ${title}`)
@@ -168,13 +187,15 @@ export class YoutubeService {
             if (thumbnail) embed.setImage(thumbnail)
 
             await this.discordBot.announce(discordChannelId, embed, '@everyone')
-            await this.telegram.announce(
-              `🎬 <b>¡Nuevo video!</b> ${title}\n\n` +
-              `<a href="https://youtube.com/watch?v=${videoId}">Ver en YouTube</a>`,
-              'TELEGRAM_YOUTUBE_THREAD_ID'
-            )
-            this.logger.log(`YouTube: anunciado video nuevo ${videoId} - ${title}`)
           }
+
+          await this.telegram.announce(
+            `🎬 <b>¡Nuevo video!</b> ${title}\n\n` +
+            `<a href="https://youtube.com/watch?v=${videoId}">Ver en YouTube</a>`,
+            'TELEGRAM_YOUTUBE_THREAD_ID'
+          )
+
+          this.logger.log(`YouTube: anunciado video nuevo ${videoId} - ${title}`)
         }
       }
 

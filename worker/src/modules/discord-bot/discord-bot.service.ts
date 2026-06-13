@@ -65,6 +65,9 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       const configuredGuildId = this.config.get<string>('DISCORD_GUILD_ID')
       if (configuredGuildId && message.guild.id !== configuredGuildId) return
 
+      // ── "Ábrete Sésamo" — mover al usuario a un canal de voz privado ──────
+      if (await this.checkSesameTrigger(message)) return
+
       const ignoredChannels = this.config.get<string>('IGNORED_CHANNELS')?.split(',') ?? []
       if (ignoredChannels.includes(message.channelId)) return
 
@@ -241,6 +244,40 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     } catch (err) {
       this.logger.warn(`checkSeniorityBadge error: ${err}`)
     }
+  }
+
+  // ── "Ábrete Sésamo" — mover al usuario a un canal de voz privado ──────────
+  // Si alguien escribe "ábrete sésamo" en el chat de texto del canal de voz
+  // configurado, y está conectado a ese canal de voz, lo movemos a un canal
+  // privado. Devuelve true si el mensaje era el trigger (manejado).
+  private async checkSesameTrigger(message: Message): Promise<boolean> {
+    const triggerChannelId = this.config.get<string>('DISCORD_SESAME_TRIGGER_CHANNEL_ID')
+    const targetChannelId  = this.config.get<string>('DISCORD_SESAME_TARGET_CHANNEL_ID')
+    if (!triggerChannelId || !targetChannelId) return false
+    if (message.channelId !== triggerChannelId) return false
+
+    const normalized = message.content
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '') // quitar acentos
+
+    if (!normalized.includes('abrete sesamo')) return false
+
+    try {
+      const member = message.member ?? await message.guild?.members.fetch(message.author.id)
+
+      if (!member?.voice?.channelId) {
+        await message.reply('Tenés que estar conectado al canal de voz para usar "Ábrete Sésamo".')
+        return true
+      }
+
+      await member.voice.setChannel(targetChannelId)
+      this.logger.log(`🔓 Abrete Sesamo: ${member.user.tag} movido al canal privado`)
+    } catch (err) {
+      this.logger.warn(`Error en Abrete Sesamo: ${err}`)
+    }
+
+    return true
   }
 
   // ── Anuncios públicos ─────────────────────────────────────
