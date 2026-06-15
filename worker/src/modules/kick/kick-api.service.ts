@@ -231,7 +231,6 @@ export class KickApiService implements OnModuleInit {
         body: JSON.stringify({
           broadcaster_user_id: Number(broadcasterId),
           content: message.slice(0, 500),
-          type:    'bot',
         }),
       })
 
@@ -292,3 +291,4 @@ export class KickApiService implements OnModuleInit {
     }
   }
 }
+                          
