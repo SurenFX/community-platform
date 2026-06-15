@@ -17,11 +17,8 @@ const KICK_API_BASE  = 'https://api.kick.com/public/v1'
 export class KickApiService implements OnModuleInit {
   private readonly logger = new Logger(KickApiService.name)
 
-  // App access token (client_credentials) -- endpoints publicos (canales, livestreams)
   private appToken: string | null = null
   private appTokenExpiry = 0
-
-  // Cache del broadcaster_user_id resuelto a partir del slug del canal
   private broadcasterId: string | null = null
 
   constructor(
@@ -31,10 +28,9 @@ export class KickApiService implements OnModuleInit {
 
   async onModuleInit() {
     if (!this.clientId || !this.channelSlug) {
-      this.logger.warn('KICK_CLIENT_ID / KICK_CHANNEL_SLUG no configurados -- integración de Kick desactivada')
+      this.logger.warn('KICK_CLIENT_ID / KICK_CHANNEL_SLUG no configurados -- integracion de Kick desactivada')
       return
     }
-    // Best-effort: si el bot ya tiene token, asegura la suscripción al webhook de chat.
     await this.ensureChatSubscription()
   }
 
@@ -50,7 +46,6 @@ export class KickApiService implements OnModuleInit {
     return this.config.get<string>('KICK_CHANNEL_SLUG') ?? ''
   }
 
-  // ── App access token (client_credentials) ─────────────────────────────────
   private async getAppToken(): Promise<string | null> {
     if (this.appToken && Date.now() < this.appTokenExpiry) return this.appToken
     if (!this.clientId || !this.clientSecret) return null
@@ -81,9 +76,6 @@ export class KickApiService implements OnModuleInit {
     }
   }
 
-  // ── Bot user access token (authorization_code + refresh, persistido en Supabase) ──
-  // Usado para enviar mensajes al chat y administrar la suscripcion al webhook.
-  // La fila inicial (id=1) se carga a mano luego del flujo OAuth manual (ver guía de setup).
   async getBotToken(): Promise<string | null> {
     try {
       const { data } = await this.supabase.db
@@ -93,14 +85,13 @@ export class KickApiService implements OnModuleInit {
         .single()
 
       if (!data) {
-        this.logger.warn('getBotToken: no hay fila en kick_bot_tokens -- completar el setup de OAuth del bot')
+        this.logger.warn('getBotToken: no hay fila en kick_bot_tokens')
         return null
       }
 
       const row = data as any
       const expiresAt = new Date(row.expires_at).getTime()
 
-      // Margen de 5 minutos antes de refrescar
       if (Date.now() < expiresAt - 5 * 60 * 1000) {
         return row.access_token
       }
@@ -147,7 +138,6 @@ export class KickApiService implements OnModuleInit {
     }
   }
 
-  // ── Resolver broadcaster_user_id a partir del slug del canal ──────────────
   async getBroadcasterId(): Promise<string | null> {
     if (this.broadcasterId) return this.broadcasterId
     if (!this.channelSlug) return null
@@ -175,7 +165,6 @@ export class KickApiService implements OnModuleInit {
     }
   }
 
-  // ── Estado del stream (live/offline) ───────────────────────────────────────
   async getStreamInfo(): Promise<StreamInfo> {
     const empty: StreamInfo = { isLive: false, title: '', game: '', viewers: 0, startedAt: null }
 
@@ -207,30 +196,30 @@ export class KickApiService implements OnModuleInit {
     }
   }
 
-  // ── Enviar mensaje al chat como bot ────────────────────────────────────────
   async sendChat(message: string): Promise<void> {
     try {
       const token = await this.getBotToken()
       if (!token) {
-        this.logger.warn('sendChat: sin bot token -- mensaje no enviado (configurá el bot de Kick)')
+        this.logger.warn('sendChat: sin bot token')
         return
       }
 
       const broadcasterId = await this.getBroadcasterId()
       if (!broadcasterId) {
-        this.logger.warn('sendChat: no se pudo resolver broadcaster_user_id (KICK_CHANNEL_SLUG)')
+        this.logger.warn('sendChat: no se pudo resolver broadcaster_user_id')
         return
       }
 
       const res = await fetch(`${KICK_API_BASE}/chat`, {
         method:  'POST',
         headers: {
-          'Content-Type':  'application/json',
-          Authorization:   `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Authorization:  `Bearer ${token}`,
         },
         body: JSON.stringify({
           broadcaster_user_id: Number(broadcasterId),
           content: message.slice(0, 500),
+          type: 'bot',
         }),
       })
 
@@ -244,12 +233,6 @@ export class KickApiService implements OnModuleInit {
     }
   }
 
-  // ── Suscripcion al evento chat.message.sent (idempotente) ──────────────────
-  // Se llama al iniciar el worker. Usa el App Access Token (no el del bot):
-  // con un user access token, Kick ignora "broadcaster_user_id" y suscribe al
-  // canal del propio token. Con un app access token, broadcaster_user_id es
-  // obligatorio y permite suscribirse al canal de KICK_CHANNEL_SLUG sin
-  // importar qué cuenta sea el bot.
   async ensureChatSubscription(): Promise<void> {
     try {
       const token = await this.getAppToken()
@@ -282,7 +265,7 @@ export class KickApiService implements OnModuleInit {
       })
 
       if (res.ok) {
-        this.logger.log('Suscripción a chat.message.sent (Kick) creada')
+        this.logger.log('Suscripcion a chat.message.sent (Kick) creada')
       } else {
         this.logger.warn(`ensureChatSubscription failed: ${res.status} ${await res.text()}`)
       }
@@ -291,4 +274,3 @@ export class KickApiService implements OnModuleInit {
     }
   }
 }
-                          
