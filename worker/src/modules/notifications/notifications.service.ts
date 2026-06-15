@@ -20,12 +20,17 @@ export class NotificationsService {
 
   @OnEvent('user.level_up')
   async onLevelUp(payload: { userId: string; oldLevel: number; newLevel: number }) {
-    await this.create(
-      payload.userId,
-      'LEVEL_UP',
-      `⬆️ ¡Subiste al nivel ${payload.newLevel}!`,
-      `Pasaste del nivel ${payload.oldLevel} al ${payload.newLevel}. ¡Seguí así!`,
-    )
+    await Promise.all([
+      this.create(
+        payload.userId,
+        'LEVEL_UP',
+        `Subiste al nivel ${payload.newLevel}!`,
+        `Pasaste del nivel ${payload.oldLevel} al ${payload.newLevel}. Segui asi!`,
+      ),
+      this.supabase.db
+        .from('level_history')
+        .insert({ user_id: payload.userId, new_level: payload.newLevel }),
+    ])
   }
 
   @OnEvent('badge.earned')

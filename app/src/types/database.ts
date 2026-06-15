@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 // ─── ENUMS ────────────────────────────────────────────────────────────────────
-export type SocialPlatform = 'DISCORD' | 'TWITCH' | 'YOUTUBE' | 'TWITTER' | 'TELEGRAM'
+export type SocialPlatform = 'DISCORD' | 'TWITCH' | 'YOUTUBE' | 'TWITTER' | 'TELEGRAM' | 'KICK'
 
 export type XpEventType =
   | 'DISCORD_MESSAGE'
@@ -326,6 +326,24 @@ export type Database = {
         Row: { id: string; raffle_id: string; twitch_username: string; user_id: string | null; entered_at: string }
         Insert: { raffle_id: string; twitch_username: string; user_id?: string | null }
         Update: Partial<{ user_id: string | null }>
+        Relationships: []
+      }
+      kick_raffles: {
+        Row: { id: string; keyword: string; status: string; winner_kick_username: string | null; winner_id: string | null; drawn_at: string | null; created_at: string }
+        Insert: { keyword: string; status?: string }
+        Update: Partial<{ status: string; keyword: string; winner_kick_username: string | null; winner_id: string | null; drawn_at: string | null }>
+        Relationships: []
+      }
+      kick_raffle_entries: {
+        Row: { id: string; raffle_id: string; kick_username: string; user_id: string | null; entered_at: string }
+        Insert: { raffle_id: string; kick_username: string; user_id?: string | null }
+        Update: Partial<{ user_id: string | null }>
+        Relationships: []
+      }
+      kick_bot_tokens: {
+        Row: { id: number; access_token: string; refresh_token: string; expires_at: string; updated_at: string }
+        Insert: { id?: number; access_token: string; refresh_token: string; expires_at: string }
+        Update: Partial<{ access_token: string; refresh_token: string; expires_at: string; updated_at: string }>
         Relationships: []
       }
       notifications: {

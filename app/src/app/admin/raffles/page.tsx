@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Youtube, Tv, History } from 'lucide-react'
+import { Youtube, Tv, Radio, History } from 'lucide-react'
 import AdminRafflesClient from '@/components/admin/AdminRaffles'
 
 export default async function AdminRafflesPage() {
@@ -39,10 +39,10 @@ export default async function AdminRafflesPage() {
         </Link>
       </div>
 
-      {/* Sorteos en vivo — YouTube y Twitch */}
+      {/* Sorteos en vivo — YouTube, Twitch y Kick */}
       <div>
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Sorteos en vivo</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link href="/admin/raffles/youtube"
             className="bg-card border border-red-400/20 hover:border-red-400/50 rounded-2xl p-6 transition-all space-y-4 block">
             <div className="w-12 h-12 rounded-xl bg-red-400/10 flex items-center justify-center">
@@ -61,6 +61,17 @@ export default async function AdminRafflesPage() {
             </div>
             <div>
               <h3 className="text-base font-bold text-foreground mb-1">Sorteo en Twitch</h3>
+              <p className="text-sm text-muted-foreground">Los viewers escriben una keyword en el chat para participar</p>
+            </div>
+          </Link>
+
+          <Link href="/admin/raffles/kick"
+            className="bg-card border border-[#53FC18]/20 hover:border-[#53FC18]/50 rounded-2xl p-6 transition-all space-y-4 block">
+            <div className="w-12 h-12 rounded-xl bg-[#53FC18]/10 flex items-center justify-center">
+              <Radio className="w-6 h-6 text-[#53FC18]" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-foreground mb-1">Sorteo en Kick</h3>
               <p className="text-sm text-muted-foreground">Los viewers escriben una keyword en el chat para participar</p>
             </div>
           </Link>

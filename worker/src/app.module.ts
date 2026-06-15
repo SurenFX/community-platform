@@ -12,6 +12,7 @@ import { YoutubeModule } from './modules/youtube/youtube.module'
 import { TwitchModule } from './modules/twitch/twitch.module'
 import { NotificationsModule } from './modules/notifications/notifications.module'
 import { TelegramModule } from './modules/telegram/telegram.module'
+import { KickModule } from './modules/kick/kick.module'
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { TelegramModule } from './modules/telegram/telegram.module'
     TwitchModule,
     NotificationsModule,
     TelegramModule,
+    KickModule,
   ],
 })
 export class AppModule {}
