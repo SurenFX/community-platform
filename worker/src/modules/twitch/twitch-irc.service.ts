@@ -116,6 +116,11 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
 
     await this.checkRaffleKeyword(twitchUsername, messageContent)
 
+    // Saludo especial para Akandamos
+    if (this.isLive && twitchUsername === 'akandamos' && this.isGreeting(messageContent)) {
+      this.sendChat('Hola Pochito, como va?')
+    }
+
     if (!this.isLive) return
 
     const { data: socialLink } = await this.supabase.db
@@ -269,6 +274,17 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`Raffle entry: ${twitchUsername} -> ${raffle.id}`)
       }
     } catch (err) {}
+  }
+
+  // ── Saludo especial de Akandamos ("Pochito") ──────────────────────────────
+  private isGreeting(message: string): boolean {
+    const normalized = message
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .trim()
+
+    return /\b(hola+|holis|que tal|buenas?|buenos? dias?|buenas tardes|buenas noches|saludos|hey+)\b/.test(normalized)
   }
 
   async announceRaffleStart(keyword: string) {
