@@ -85,17 +85,17 @@ export class YoutubeService {
       this.logger.log('Escaneando comentarios de YouTube...')
 
       // 1. Obtener usuarios con YouTube conectado
+      // (no cortamos acá si está vacío -- el aviso de videos nuevos a Discord/Telegram
+      //  no depende de que haya usuarios vinculados, solo el escaneo de comentarios sí)
       const { data: socialLinks } = await this.supabase.db
         .from('user_social_links')
         .select('user_id, external_id, username, created_at')
         .eq('platform', 'YOUTUBE')
 
-      if (!socialLinks?.length) return
-
       // Mapa de youtube_channel_id → {userId, discordId, connectedAt}
       const ytUserMap = new Map<string, { userId: string; discordId: string; connectedAt: string }>()
 
-      for (const link of socialLinks) {
+      for (const link of socialLinks ?? []) {
         // Obtener discord_id del perfil
         const { data: profile } = await this.supabase.db
           .from('profiles')
@@ -200,8 +200,11 @@ export class YoutubeService {
       }
 
       // 3. Para cada video, buscar comentarios de usuarios registrados
-      for (const videoId of videoIds) {
-        await this.scanVideoComments(videoId, ytUserMap)
+      // (solo si hay al menos un usuario con YouTube vinculado)
+      if (ytUserMap.size > 0) {
+        for (const videoId of videoIds) {
+          await this.scanVideoComments(videoId, ytUserMap)
+        }
       }
 
     } catch (err) {
