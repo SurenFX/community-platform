@@ -13,6 +13,7 @@ import { TwitchModule } from './modules/twitch/twitch.module'
 import { NotificationsModule } from './modules/notifications/notifications.module'
 import { TelegramModule } from './modules/telegram/telegram.module'
 import { KickModule } from './modules/kick/kick.module'
+import { RecruitmentModule } from './modules/recruitment/recruitment.module'
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { KickModule } from './modules/kick/kick.module'
     NotificationsModule,
     TelegramModule,
     KickModule,
+    RecruitmentModule,
   ],
 })
 export class AppModule {}
