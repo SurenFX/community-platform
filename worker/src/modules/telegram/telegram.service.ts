@@ -60,7 +60,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   private registerListeners() {
     if (!this.bot) return
 
-    // /start -- maneja deep links de vinculacion (/start TOKEN)
     this.bot.command('start', async (ctx: Context) => {
       const msg = ctx.message as any
       if (!msg) return
@@ -131,7 +130,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       }
     })
 
-    // /recordatorio <mensaje> -- guarda un recordatorio para enviar al chat de Twitch cuando empieze el stream
     this.bot.command('recordatorio', async (ctx: Context) => {
       const msg = ctx.message as any
       if (!msg) return
@@ -169,7 +167,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Recordatorio guardado por telegram_id=${senderId}: "${reminder}"`)
     })
 
-    // Escuchar mensajes de texto en grupos para dar XP
     this.bot.on('text', async (ctx: Context) => {
       try {
         const msg = ctx.message as any
@@ -219,7 +216,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       }
     })
 
-    // Nuevo miembro se une al grupo
     this.bot.on('chat_member', async (ctx: Context) => {
       try {
         const update = (ctx as any).chatMember
@@ -265,7 +261,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       }
     })
 
-    // Reaccion a un mensaje
     this.bot.on('message_reaction', async (ctx: Context) => {
       try {
         const update = (ctx as any).messageReaction
@@ -312,7 +307,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     })
   }
 
-  // Enviar mensaje al grupo de Telegram (con soporte de subtema)
   async announce(text: string, threadEnvKey?: string): Promise<void> {
     const groupId  = this.config.get<string>('TELEGRAM_GROUP_ID')
     const threadId = threadEnvKey ? this.config.get<string>(threadEnvKey) : undefined
@@ -325,6 +319,35 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Telegram anuncio enviado${threadId ? ` al tema #${threadId}` : ''}`)
     } catch (err) {
       this.logger.warn(`Error enviando anuncio Telegram: ${err}`)
+    }
+  }
+
+  async sendReplaceable(
+    chatId: string,
+    text: string,
+    threadId?: string | null,
+    previousMessageId?: string | null,
+  ): Promise<string | null> {
+    if (!this.bot || !chatId) return null
+
+    if (previousMessageId) {
+      try {
+        await this.bot.telegram.deleteMessage(chatId, Number(previousMessageId))
+      } catch {
+        // el mensaje ya no existe o no se pudo borrar
+      }
+    }
+
+    try {
+      const sent = await this.bot.telegram.sendMessage(chatId, text, {
+        parse_mode: 'HTML',
+        ...(threadId ? { message_thread_id: Number(threadId) } : {}),
+      })
+      this.logger.log(`Telegram anuncio (replaceable) enviado${threadId ? ` al tema #${threadId}` : ''}`)
+      return String(sent.message_id)
+    } catch (err) {
+      this.logger.warn(`Error en sendReplaceable Telegram: ${err}`)
+      return null
     }
   }
 

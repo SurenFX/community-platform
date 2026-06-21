@@ -16,7 +16,6 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DiscordBotService.name)
   private client: Client
 
-  // voiceJoinedAt: discordId → timestamp de cuando entró al canal de voz
   private readonly voiceJoinedAt = new Map<string, number>()
 
   constructor(
@@ -30,7 +29,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     const token = this.config.get<string>('DISCORD_BOT_TOKEN')
     if (!token) {
-      this.logger.warn('DISCORD_BOT_TOKEN no configurado — bot desactivado')
+      this.logger.warn('DISCORD_BOT_TOKEN no configurado -- bot desactivado')
       return
     }
     this.client = new Client({
@@ -46,7 +45,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     } as any)
     this.registerListeners()
     await this.client.login(token)
-    this.logger.log('✓ Discord bot conectado')
+    this.logger.log('Discord bot conectado')
   }
 
   async onModuleDestroy() {
@@ -65,7 +64,6 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       const configuredGuildId = this.config.get<string>('DISCORD_GUILD_ID')
       if (configuredGuildId && message.guild.id !== configuredGuildId) return
 
-      // ── "Ábrete Sésamo" — mover al usuario a un canal de voz privado ──────
       if (await this.checkSesameTrigger(message)) return
 
       const ignoredChannels = this.config.get<string>('IGNORED_CHANNELS')?.split(',') ?? []
@@ -83,7 +81,6 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         },
       })
 
-      // Verificar badge de antigüedad (solo si el miembro tiene joinedAt)
       this.checkSeniorityBadge(message.author.id, message.member?.joinedAt ?? null)
     })
 
@@ -101,7 +98,6 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         if (!author || author.bot)  return
         if (author.id === user.id)  return
 
-        // XP para el autor del mensaje (reacción recibida)
         await this.reputation.processXpEvent({
           discordId:   author.id,
           eventType:   'DISCORD_REACTION_RECEIVED',
@@ -114,7 +110,6 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
           },
         })
 
-        // XP para quien reaccionó (reacción dada)
         await this.reputation.processXpEvent({
           discordId:   user.id,
           eventType:   'DISCORD_REACTION_GIVEN',
@@ -128,14 +123,12 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       }
     )
 
-    // ── Nuevo miembro se une al servidor ─────────────────────────────────────
     this.client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
       if (member.user.bot) return
 
       const configuredGuildId = this.config.get<string>('DISCORD_GUILD_ID')
       if (configuredGuildId && member.guild.id !== configuredGuildId) return
 
-      // Verificar que no hayamos recompensado este join antes (lifetime)
       const dedupKey = `discord:join:${member.user.id}`
       const isFirst  = await this.redis.setNX(dedupKey, '1', 365 * 24 * 60 * 60)
       if (!isFirst) return
@@ -148,30 +141,27 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         metadata:    { guild_id: member.guild.id },
       })
 
-      this.logger.log(`👋 Nuevo miembro: ${member.user.tag}`)
+      this.logger.log(`Nuevo miembro: ${member.user.tag}`)
     })
 
-    // ── Tiempo en canal de voz ────────────────────────────────────────────────
     this.client.on(Events.VoiceStateUpdate, async (oldState, newState) => {
       const member = newState.member ?? oldState.member
       if (!member || member.user.bot) return
 
       const discordId = member.user.id
 
-      // Entró a un canal de voz
       if (!oldState.channelId && newState.channelId) {
         this.voiceJoinedAt.set(discordId, Date.now())
         return
       }
 
-      // Salió de un canal de voz (o fue movido fuera)
       if (oldState.channelId && !newState.channelId) {
         const joinedAt = this.voiceJoinedAt.get(discordId)
         this.voiceJoinedAt.delete(discordId)
         if (!joinedAt) return
 
         const minutes = Math.floor((Date.now() - joinedAt) / 60000)
-        const blocks  = Math.floor(minutes / 10)   // 1 evento cada 10 minutos
+        const blocks  = Math.floor(minutes / 10)
         if (blocks < 1) return
 
         for (let i = 0; i < blocks; i++) {
@@ -184,12 +174,11 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
           })
         }
 
-        this.logger.log(`🎙️ Voice time: ${member.user.tag} — ${minutes} min → ${blocks} bloques XP`)
+        this.logger.log(`Voice time: ${member.user.tag} -- ${minutes} min -> ${blocks} bloques XP`)
       }
     })
   }
 
-  // ── Badge de antigüedad en el servidor ────────────────────────────────────
   private readonly SENIORITY_BADGES = [
     { slug: 'seniority_founder',     months: 24 },
     { slug: 'seniority_veteran',     months: 12 },
@@ -200,7 +189,6 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   private async checkSeniorityBadge(discordId: string, joinedAt: Date | null): Promise<void> {
     if (!joinedAt) return
     try {
-      // Buscar el perfil
       const { data: profile } = await this.supabase.db
         .from('profiles')
         .select('id')
@@ -208,7 +196,6 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         .single()
       if (!profile) return
 
-      // Verificar si ya tiene algún badge de antigüedad
       const { data: existing } = await this.supabase.db
         .from('user_badges')
         .select('badges!inner(slug)')
@@ -217,14 +204,11 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
 
       if (existing && existing.length > 0) return
 
-      // Calcular meses en el servidor
       const monthsInServer = Math.floor((Date.now() - joinedAt.getTime()) / (30 * 24 * 60 * 60 * 1000))
 
-      // Encontrar el badge correspondiente
       const targetBadge = this.SENIORITY_BADGES.find(b => monthsInServer >= b.months)
       if (!targetBadge) return
 
-      // Obtener ID del badge
       const { data: badge } = await this.supabase.db
         .from('badges')
         .select('id')
@@ -232,24 +216,19 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         .single()
       if (!badge) return
 
-      // Otorgar badge
       const { error } = await this.supabase.db
         .from('user_badges')
         .insert({ user_id: profile.id, badge_id: badge.id })
 
       if (!error) {
         this.eventEmitter.emit('badge.earned', { userId: profile.id, badges: [targetBadge.slug] })
-        this.logger.log(`🏛️ Seniority badge "${targetBadge.slug}" → user=${profile.id} (${monthsInServer} meses)`)
+        this.logger.log(`Seniority badge "${targetBadge.slug}" -> user=${profile.id} (${monthsInServer} meses)`)
       }
     } catch (err) {
       this.logger.warn(`checkSeniorityBadge error: ${err}`)
     }
   }
 
-  // ── "Ábrete Sésamo" — mover al usuario a un canal de voz privado ──────────
-  // Si alguien escribe "ábrete sésamo" en el chat de texto del canal de voz
-  // configurado, y está conectado a ese canal de voz, lo movemos a un canal
-  // privado. Devuelve true si el mensaje era el trigger (manejado).
   private async checkSesameTrigger(message: Message): Promise<boolean> {
     const triggerChannelId = this.config.get<string>('DISCORD_SESAME_TRIGGER_CHANNEL_ID')
     const targetChannelId  = this.config.get<string>('DISCORD_SESAME_TARGET_CHANNEL_ID')
@@ -259,7 +238,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     const normalized = message.content
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '') // quitar acentos
+      .replace(/[̀-ͯ]/g, '')
 
     if (!normalized.includes('abrete sesamo')) return false
 
@@ -267,20 +246,18 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       const member = message.member ?? await message.guild?.members.fetch(message.author.id)
 
       if (!member?.voice?.channelId) {
-        await message.reply('Tenés que estar conectado al canal de voz para usar "Ábrete Sésamo".')
+        await message.reply('Tenes que estar conectado al canal de voz para usar "Abrete Sesamo".')
         return true
       }
 
       await member.voice.setChannel(targetChannelId)
-      this.logger.log(`🔓 Abrete Sesamo: ${member.user.tag} movido al canal privado`)
+      this.logger.log(`Abrete Sesamo: ${member.user.tag} movido al canal privado`)
     } catch (err) {
       this.logger.warn(`Error en Abrete Sesamo: ${err}`)
     }
 
     return true
   }
-
-  // ── Anuncios públicos ─────────────────────────────────────
 
   async announce(channelId: string, embed: EmbedBuilder, content?: string): Promise<void> {
     if (!this.client?.isReady()) return
@@ -296,11 +273,41 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async sendReplaceable(
+    channelId: string,
+    embed: EmbedBuilder,
+    previousMessageId?: string | null,
+  ): Promise<string | null> {
+    if (!this.client?.isReady()) return null
+    try {
+      const channel = await this.client.channels.fetch(channelId)
+      if (!channel || !(channel instanceof TextChannel)) {
+        this.logger.warn(`Canal ${channelId} no encontrado o no es de texto`)
+        return null
+      }
+
+      if (previousMessageId) {
+        try {
+          const prevMsg = await channel.messages.fetch(previousMessageId)
+          await prevMsg.delete()
+        } catch {
+          // el mensaje ya no existe o no se pudo borrar
+        }
+      }
+
+      const sent = await channel.send({ embeds: [embed] })
+      return sent.id
+    } catch (err) {
+      this.logger.warn(`Error en sendReplaceable a ${channelId}: ${err}`)
+      return null
+    }
+  }
+
   @OnEvent('user.level_up')
   async handleLevelUp(payload: {
     userId: string; discordId: string; oldLevel: number; newLevel: number
   }) {
-    this.logger.log(`Level up: ${payload.discordId} ${payload.oldLevel}→${payload.newLevel}`)
+    this.logger.log(`Level up: ${payload.discordId} ${payload.oldLevel}->${payload.newLevel}`)
     const configuredGuildId = this.config.get<string>('DISCORD_GUILD_ID')
     if (!configuredGuildId || !this.client) return
     try {

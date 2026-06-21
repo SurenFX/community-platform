@@ -4,13 +4,17 @@ import { Cron } from '@nestjs/schedule'
 import { EmbedBuilder } from 'discord.js'
 import { DiscordBotService } from '../discord-bot/discord-bot.service'
 import { TelegramService } from '../telegram/telegram.service'
+import { RedisService } from '../../infrastructure/redis/redis.service'
 
 const MESSAGE =
-  'Si estás buscando pertenecer al mejor clan de todos, lamento informarte que ' +
+  'Si estas buscando pertenecer al mejor clan de todos, lamento informarte que ' +
   'estamos cortos de cupos. Pero no desesperes, te recomiendo que te sumes a la ' +
-  'comunidad, aquí y/o Discord para estar al tanto de cuando se liberen espacios! ' +
-  '(apoyar la creación de contenido en los stream o dejando like y comentando ' +
-  'videos sumarás puntos para darte prioridad ;) )'
+  'comunidad, aqui y/o Discord para estar al tanto de cuando se liberen espacios! ' +
+  '(apoyar la creacion de contenido en los stream o dejando like y comentando ' +
+  'videos sumaras puntos para darte prioridad ;) )'
+
+const REDIS_KEY_DISCORD  = 'recruitment:discord:last_msg_id'
+const REDIS_KEY_TELEGRAM = 'recruitment:telegram:last_msg_id'
 
 @Injectable()
 export class RecruitmentService {
@@ -20,29 +24,59 @@ export class RecruitmentService {
     private config:     ConfigService,
     private discordBot: DiscordBotService,
     private telegram:   TelegramService,
+    private redis:      RedisService,
   ) {}
 
-  // Recordatorio de reclutamiento cada 2 horas
-  @Cron('0 */2 * * *')
+  @Cron('0 */4 * * *')
   async sendReminder() {
+    await this.sendToDiscord()
+    await this.sendToTelegram()
+  }
+
+  private async sendToDiscord() {
     try {
-      const discordChannelId = this.config.get<string>('DISCORD_RECRUITMENT_CHANNEL_ID')
-
-      if (discordChannelId) {
-        const embed = new EmbedBuilder()
-          .setColor(0x53FC18)
-          .setDescription(MESSAGE)
-
-        await this.discordBot.announce(discordChannelId, embed)
-        this.logger.log('Recordatorio de reclutamiento enviado a Discord')
-      } else {
+      const channelId = this.config.get<string>('DISCORD_RECRUITMENT_CHANNEL_ID')
+      if (!channelId) {
         this.logger.warn('DISCORD_RECRUITMENT_CHANNEL_ID no configurado -- se omite el aviso en Discord')
+        return
       }
 
-      await this.telegram.announce(MESSAGE, 'TELEGRAM_RECRUITMENT_THREAD_ID')
-      this.logger.log('Recordatorio de reclutamiento enviado a Telegram')
+      const embed = new EmbedBuilder()
+        .setColor(0x53FC18)
+        .setDescription(MESSAGE)
+
+      const prevId = await this.redis.get(REDIS_KEY_DISCORD)
+      const newId  = await this.discordBot.sendReplaceable(channelId, embed, prevId)
+
+      if (newId) {
+        await this.redis.set(REDIS_KEY_DISCORD, newId)
+        this.logger.log('Recordatorio de reclutamiento enviado a Discord')
+      }
     } catch (err) {
-      this.logger.warn(`sendReminder error: ${err}`)
+      this.logger.warn(`sendToDiscord error: ${err}`)
+    }
+  }
+
+  private async sendToTelegram() {
+    try {
+      const chatId = this.config.get<string>('TELEGRAM_RECRUITMENT_CHAT_ID')
+        ?? this.config.get<string>('TELEGRAM_GROUP_ID')
+      const threadId = this.config.get<string>('TELEGRAM_RECRUITMENT_THREAD_ID')
+
+      if (!chatId) {
+        this.logger.warn('TELEGRAM_RECRUITMENT_CHAT_ID / TELEGRAM_GROUP_ID no configurado -- se omite el aviso en Telegram')
+        return
+      }
+
+      const prevId = await this.redis.get(REDIS_KEY_TELEGRAM)
+      const newId  = await this.telegram.sendReplaceable(chatId, MESSAGE, threadId, prevId)
+
+      if (newId) {
+        await this.redis.set(REDIS_KEY_TELEGRAM, newId)
+        this.logger.log('Recordatorio de reclutamiento enviado a Telegram')
+      }
+    } catch (err) {
+      this.logger.warn(`sendToTelegram error: ${err}`)
     }
   }
 }
