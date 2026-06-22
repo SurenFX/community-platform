@@ -43,7 +43,7 @@ export default async function ConfiguracionPage({
         socialLinks={socialLinksRes.data ?? []}
         identities={identities}
         successMessage={params.connected
-          ? `¡${params.connected === 'youtube' ? 'YouTube' : params.connected} conectado correctamente!`
+          ? `¡${{ youtube: 'YouTube', kick: 'Kick' }[params.connected] ?? params.connected} conectado correctamente!`
           : null
         }
         errorMessage={params.error

@@ -19,6 +19,9 @@ const EVENT_LABELS: Record<string, string> = {
   TWITCH_SUBSCRIBE:          'Sub al canal',
   TWITCH_GIFT_SUB:           'Gift sub',
   TWITCH_RAID_PARTICIPATE:   'Participó en raid',
+  KICK_CHAT_MESSAGE:         'Chat en Kick',
+  KICK_FOLLOW:               'Siguió el canal en Kick',
+  KICK_SUBSCRIBE:            'Sub en Kick',
   YOUTUBE_COMMENT:           'Comentó en YouTube',
   YOUTUBE_SUBSCRIBE:         'Se suscribió en YouTube',
   YOUTUBE_SHARE:             'Compartió un video',
@@ -34,6 +37,7 @@ const EVENT_LABELS: Record<string, string> = {
 const PLATFORM_COLOR: Record<string, { dot: string; bg: string }> = {
   DISCORD:  { dot: 'bg-indigo-400',  bg: 'bg-indigo-400/10'  },
   TWITCH:   { dot: 'bg-purple-400',  bg: 'bg-purple-400/10'  },
+  KICK:     { dot: 'bg-[#53FC18]',   bg: 'bg-[#53FC18]/10'   },
   YOUTUBE:  { dot: 'bg-red-400',     bg: 'bg-red-400/10'     },
   TELEGRAM: { dot: 'bg-sky-400',     bg: 'bg-sky-400/10'     },
   SYSTEM:   { dot: 'bg-primary',     bg: 'bg-primary/10'     },
@@ -47,7 +51,7 @@ const TIER_COLORS: Record<string, string> = {
 }
 
 const PLATFORM_ICONS: Record<string, string> = {
-  DISCORD: '🎮', TWITCH: '🟣', YOUTUBE: '🔴', TELEGRAM: '✈️',
+  DISCORD: '🎮', TWITCH: '🟣', KICK: '🟢', YOUTUBE: '🔴', TELEGRAM: '✈️',
 }
 
 export default async function AdminUserDetailPage({

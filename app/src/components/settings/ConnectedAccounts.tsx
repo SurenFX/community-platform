@@ -103,6 +103,19 @@ const PLATFORMS: Platform[] = [
       </svg>
     ),
   },
+  {
+    id: 'kick', name: 'Kick', provider: 'kick', dbPlatform: 'KICK',
+    color: 'text-[#53FC18]', bgColor: 'bg-[#53FC18]/10', borderColor: 'border-[#53FC18]/30',
+    description: 'Ganá XP por chatear, seguir y suscribirte en el stream de Kick',
+    xpItems: ['Chat en stream: +8 XP', 'Follow: +100 XP', 'Sub: +500 XP'],
+    connectFn: 'direct',
+    directUrl: () => '/auth/kick/start',
+    icon: (
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M2 2h6v6h2V6h2V4h2V2h6v6h-2v2h-2v2h-2v4h2v2h2v2h-2v-2h-2v-2h-2v-2H8v2H6v2H4v2H2v-6h2v-2h2v-2h2V8H6V6H4V4H2V2z"/>
+      </svg>
+    ),
+  },
 ]
 
 export default function ConnectedAccounts({

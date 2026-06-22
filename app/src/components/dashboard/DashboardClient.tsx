@@ -34,6 +34,7 @@ const TIER_COLORS: Record<string, string> = {
 const FAMILY_LABELS: Record<string, string> = {
   discord:   '💬 Discord',
   stream:    '🟣 Stream',
+  kick:      '🟢 Kick',
   streak:    '🔥 Racha',
   level:     '⭐ Nivel',
   missions:  '🎯 Quests',
@@ -67,6 +68,9 @@ const EVENT_LABELS: Record<string, string> = {
   TWITCH_SUBSCRIBE:          'Sub al canal',
   TWITCH_GIFT_SUB:           'Gift sub',
   TWITCH_RAID_PARTICIPATE:   'Participaste en raid',
+  KICK_CHAT_MESSAGE:         'Chat en Kick',
+  KICK_FOLLOW:               'Seguiste el canal en Kick',
+  KICK_SUBSCRIBE:            'Sub en Kick',
   YOUTUBE_COMMENT:           'Comentario en YouTube',
   YOUTUBE_SUBSCRIBE:         'Sub en YouTube',
   YOUTUBE_SHARE:             'Compartiste video',

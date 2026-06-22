@@ -13,6 +13,9 @@ export type XpEventType =
   | 'TWITCH_FOLLOW'
   | 'TWITCH_SUBSCRIBE'
   | 'TWITCH_GIFT_SUB'
+  | 'KICK_CHAT_MESSAGE'
+  | 'KICK_FOLLOW'
+  | 'KICK_SUBSCRIBE'
   | 'YOUTUBE_COMMENT'
   | 'YOUTUBE_SHARE'
   | 'YOUTUBE_SUBSCRIBE'
@@ -25,7 +28,7 @@ export type XpEventType =
   | 'TELEGRAM_JOIN'
   | 'TELEGRAM_REACTION'
 
-export type SocialPlatform = 'DISCORD' | 'TWITCH' | 'YOUTUBE' | 'TWITTER' | 'TELEGRAM'
+export type SocialPlatform = 'DISCORD' | 'TWITCH' | 'YOUTUBE' | 'TWITTER' | 'TELEGRAM' | 'KICK'
 
 export interface XpConfig {
   event_type:   XpEventType
@@ -72,6 +75,7 @@ export class XpCalculatorService {
       YOUTUBE:  1.1,
       TWITTER:  1.15,
       TELEGRAM: 0.9,
+      KICK:     1.2,
     }
     return map[platform] ?? 1.0
   }

@@ -14,6 +14,7 @@ const TIER_COLORS: Record<string, string> = {
 const FAMILY_LABELS: Record<string, string> = {
   discord:   '💬 Discord',
   stream:    '🟣 Stream',
+  kick:      '🟢 Kick',
   streak:    '🔥 Racha',
   level:     '⭐ Nivel',
   missions:  '🎯 Misiones',

@@ -233,6 +233,14 @@ export class KickApiService implements OnModuleInit {
     }
   }
 
+  // Eventos que el worker necesita para chat de sorteos + XP por chat/follow/sub.
+  private readonly REQUIRED_EVENTS = [
+    'chat.message.sent',
+    'channel.followed',
+    'channel.subscription.new',
+    'channel.subscription.renewal',
+  ]
+
   async ensureChatSubscription(): Promise<void> {
     try {
       const token = await this.getAppToken()
@@ -245,11 +253,14 @@ export class KickApiService implements OnModuleInit {
         headers: { Authorization: `Bearer ${token}` },
       })
 
+      let already: string[] = []
       if (existingRes.ok) {
         const existing = await existingRes.json()
-        const already = existing?.data?.some((s: any) => s.event === 'chat.message.sent')
-        if (already) return
+        already = (existing?.data ?? []).map((s: any) => s.event)
       }
+
+      const missing = this.REQUIRED_EVENTS.filter(e => !already.includes(e))
+      if (missing.length === 0) return
 
       const res = await fetch(`${KICK_API_BASE}/events/subscriptions`, {
         method:  'POST',
@@ -259,13 +270,13 @@ export class KickApiService implements OnModuleInit {
         },
         body: JSON.stringify({
           broadcaster_user_id: Number(broadcasterId),
-          events:  [{ name: 'chat.message.sent', version: 1 }],
+          events:  missing.map(name => ({ name, version: 1 })),
           method:  'webhook',
         }),
       })
 
       if (res.ok) {
-        this.logger.log('Suscripcion a chat.message.sent (Kick) creada')
+        this.logger.log(`Suscripcion a eventos de Kick creada: ${missing.join(', ')}`)
       } else {
         this.logger.warn(`ensureChatSubscription failed: ${res.status} ${await res.text()}`)
       }

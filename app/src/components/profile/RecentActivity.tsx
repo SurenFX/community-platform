@@ -19,6 +19,10 @@ const EVENT_LABELS: Record<string, { label: string; color: string }> = {
   TWITCH_SUBSCRIBE:          { label: 'Sub al canal',           color: 'text-purple-500' },
   TWITCH_GIFT_SUB:           { label: 'Gift sub',               color: 'text-pink-300' },
   TWITCH_RAID_PARTICIPATE:   { label: 'Participaste en raid',   color: 'text-pink-400' },
+  // Kick
+  KICK_CHAT_MESSAGE:         { label: 'Chat en Kick',           color: 'text-[#53FC18]' },
+  KICK_FOLLOW:               { label: 'Seguiste el canal en Kick', color: 'text-[#53FC18]' },
+  KICK_SUBSCRIBE:            { label: 'Sub en Kick',            color: 'text-[#53FC18]' },
   // YouTube
   YOUTUBE_SUBSCRIBE:         { label: 'Sub en YouTube',         color: 'text-red-400' },
   YOUTUBE_COMMENT:           { label: 'Comentaste en YouTube',  color: 'text-red-400' },

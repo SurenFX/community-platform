@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config'
 import * as crypto from 'crypto'
 import { KickApiService } from './kick-api.service'
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
+import { ReputationService } from '../reputation/reputation.service'
 
 const KICK_PUBLIC_KEY_URL = 'https://api.kick.com/public/v1/public-key'
 
@@ -17,9 +18,10 @@ export class KickController {
   private publicKeyCache: string | null = null
 
   constructor(
-    private kickApi:  KickApiService,
-    private config:   ConfigService,
-    private supabase: SupabaseService,
+    private kickApi:    KickApiService,
+    private config:     ConfigService,
+    private supabase:   SupabaseService,
+    private reputation: ReputationService,
   ) {}
 
   private verifyWorkerSecret(secret: string) {
@@ -27,8 +29,6 @@ export class KickController {
       throw new UnauthorizedException()
     }
   }
-
-  // ── Endpoints internos (llamados desde la app con x-worker-secret) ─────────
 
   @Post('raffle/start')
   async raffleStart(
@@ -50,8 +50,6 @@ export class KickController {
     return { ok: true }
   }
 
-  // ── Webhook publico de Kick (eventos suscritos, p.ej. chat.message.sent) ───
-  // Kick reintenta si no respondemos 200, asi que nunca relanzamos errores aca.
   @Post('webhook')
   @HttpCode(200)
   async webhook(@Req() req: RawBodyRequest<Request>, @Headers() headers: Record<string, string>) {
@@ -69,14 +67,24 @@ export class KickController {
 
       const valid = await this.verifySignature(messageId, timestamp, raw, signature)
       if (!valid) {
-        this.logger.warn('webhook: firma inválida -- ignorado')
+        this.logger.warn('webhook: firma invalida -- ignorado')
         return { ok: true }
       }
 
       const payload = raw ? JSON.parse(raw) : {}
 
-      if (eventType === 'chat.message.sent') {
-        await this.checkRaffleKeyword(payload)
+      switch (eventType) {
+        case 'chat.message.sent':
+          await this.checkRaffleKeyword(payload)
+          await this.awardChatXp(payload, messageId)
+          break
+        case 'channel.followed':
+          await this.awardFollowXp(payload, messageId)
+          break
+        case 'channel.subscription.new':
+        case 'channel.subscription.renewal':
+          await this.awardSubscribeXp(payload, messageId)
+          break
       }
     } catch (err) {
       this.logger.warn(`webhook error: ${err}`)
@@ -84,7 +92,6 @@ export class KickController {
     return { ok: true }
   }
 
-  // ── Verificación RSA-SHA256 de la firma del webhook ────────────────────────
   private async getPublicKey(): Promise<string | null> {
     if (this.publicKeyCache) return this.publicKeyCache
     try {
@@ -117,7 +124,6 @@ export class KickController {
     }
   }
 
-  // ── Logica de sorteo: misma que checkRaffleKeyword en twitch-irc.service.ts ─
   private async checkRaffleKeyword(payload: any) {
     try {
       const kickUsername = payload?.sender?.username
@@ -156,6 +162,79 @@ export class KickController {
       }
     } catch (err) {
       this.logger.warn(`checkRaffleKeyword error: ${err}`)
+    }
+  }
+
+  private async resolveDiscordId(kickUserId: string | number | undefined): Promise<string | null> {
+    if (kickUserId == null) return null
+    try {
+      const { data: socialLink } = await this.supabase.db
+        .from('user_social_links')
+        .select('user_id, profiles!inner(discord_id)')
+        .eq('platform', 'KICK')
+        .eq('external_id', String(kickUserId))
+        .single()
+
+      if (!socialLink) return null
+      return (socialLink as any).profiles?.discord_id ?? null
+    } catch (err) {
+      this.logger.warn(`resolveDiscordId error: ${err}`)
+      return null
+    }
+  }
+
+  private async awardChatXp(payload: any, messageId: string) {
+    try {
+      const kickUserId = payload?.sender?.user_id
+      const content    = payload?.content ?? ''
+      const discordId  = await this.resolveDiscordId(kickUserId)
+      if (!discordId) return
+
+      await this.reputation.processXpEvent({
+        discordId,
+        eventType:   'KICK_CHAT_MESSAGE',
+        platform:    'KICK',
+        externalRef: `kick_chat_${messageId}`,
+        metadata:    { content: String(content).slice(0, 200) },
+      })
+    } catch (err) {
+      this.logger.warn(`awardChatXp error: ${err}`)
+    }
+  }
+
+  private async awardFollowXp(payload: any, messageId: string) {
+    try {
+      const kickUserId = payload?.follower?.user_id
+      const discordId  = await this.resolveDiscordId(kickUserId)
+      if (!discordId) return
+
+      await this.reputation.processXpEvent({
+        discordId,
+        eventType:   'KICK_FOLLOW',
+        platform:    'KICK',
+        externalRef: `kick_follow_${messageId}`,
+      })
+      this.logger.log(`Kick follow XP: discord=${discordId}`)
+    } catch (err) {
+      this.logger.warn(`awardFollowXp error: ${err}`)
+    }
+  }
+
+  private async awardSubscribeXp(payload: any, messageId: string) {
+    try {
+      const kickUserId = payload?.subscriber?.user_id
+      const discordId  = await this.resolveDiscordId(kickUserId)
+      if (!discordId) return
+
+      await this.reputation.processXpEvent({
+        discordId,
+        eventType:   'KICK_SUBSCRIBE',
+        platform:    'KICK',
+        externalRef: `kick_sub_${messageId}`,
+      })
+      this.logger.log(`Kick subscribe XP: discord=${discordId}`)
+    } catch (err) {
+      this.logger.warn(`awardSubscribeXp error: ${err}`)
     }
   }
 }

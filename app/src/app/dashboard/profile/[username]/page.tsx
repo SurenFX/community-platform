@@ -36,6 +36,7 @@ const EVENT_LABELS: Record<string, string> = {
   TWITCH_WATCH_TIME: 'Vio el stream', TWITCH_CHAT_MESSAGE: 'Chat en el stream',
   TWITCH_FOLLOW: 'Siguio el canal', TWITCH_SUBSCRIBE: 'Sub al canal',
   TWITCH_GIFT_SUB: 'Gift sub', TWITCH_RAID_PARTICIPATE: 'Participo en raid',
+  KICK_CHAT_MESSAGE: 'Chat en Kick', KICK_FOLLOW: 'Siguio el canal en Kick', KICK_SUBSCRIBE: 'Sub en Kick',
   YOUTUBE_COMMENT: 'Comento en YouTube', YOUTUBE_SUBSCRIBE: 'Se suscribio en YouTube',
   TELEGRAM_MESSAGE: 'Mensaje en Telegram', TELEGRAM_JOIN: 'Se unio al grupo',
   TELEGRAM_REACTION: 'Reaccion en Telegram', MISSION_COMPLETED: 'Completo una mision',
@@ -46,6 +47,7 @@ const EVENT_LABELS: Record<string, string> = {
 const PLATFORM_META: Record<string, { label: string; color: string; bar: string; text: string }> = {
   DISCORD:  { label: 'Discord',  color: 'bg-indigo-500/20',  bar: 'bg-indigo-400',  text: 'text-indigo-300'  },
   TWITCH:   { label: 'Twitch',   color: 'bg-purple-500/20',  bar: 'bg-purple-400',  text: 'text-purple-300'  },
+  KICK:     { label: 'Kick',     color: 'bg-[#53FC18]/20',   bar: 'bg-[#53FC18]',   text: 'text-[#53FC18]'   },
   YOUTUBE:  { label: 'YouTube',  color: 'bg-red-500/20',     bar: 'bg-red-400',     text: 'text-red-300'     },
   TELEGRAM: { label: 'Telegram', color: 'bg-sky-500/20',     bar: 'bg-sky-400',     text: 'text-sky-300'     },
   SYSTEM:   { label: 'Sistema',  color: 'bg-primary/20',     bar: 'bg-primary',     text: 'text-primary'     },
@@ -60,7 +62,7 @@ const RARITY_GLOW: Record<string, string> = {
 }
 
 const FAMILY_LABELS: Record<string, string> = {
-  discord: 'Discord', stream: 'Stream', streak: 'Racha', level: 'Nivel',
+  discord: 'Discord', stream: 'Stream', kick: 'Kick', streak: 'Racha', level: 'Nivel',
   missions: 'Misiones', youtube: 'YouTube', telegram: 'Telegram',
   seniority: 'Antiguedad', special: 'Especiales',
 }
@@ -76,6 +78,7 @@ const EVENT_PLATFORM: Record<string, string> = {
   DISCORD_HELPED_USER: 'DISCORD', DISCORD_VOICE_TIME: 'DISCORD', DISCORD_JOIN: 'DISCORD',
   TWITCH_WATCH_TIME: 'TWITCH', TWITCH_CHAT_MESSAGE: 'TWITCH', TWITCH_FOLLOW: 'TWITCH',
   TWITCH_SUBSCRIBE: 'TWITCH', TWITCH_GIFT_SUB: 'TWITCH', TWITCH_RAID_PARTICIPATE: 'TWITCH',
+  KICK_CHAT_MESSAGE: 'KICK', KICK_FOLLOW: 'KICK', KICK_SUBSCRIBE: 'KICK',
   YOUTUBE_COMMENT: 'YOUTUBE', YOUTUBE_SUBSCRIBE: 'YOUTUBE', YOUTUBE_SHARE: 'YOUTUBE',
   TELEGRAM_MESSAGE: 'TELEGRAM', TELEGRAM_JOIN: 'TELEGRAM', TELEGRAM_REACTION: 'TELEGRAM',
   MISSION_COMPLETED: 'SYSTEM', STREAK_BONUS: 'SYSTEM', BADGE_EARNED: 'SYSTEM', ADMIN_MANUAL_GRANT: 'SYSTEM',

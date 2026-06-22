@@ -15,6 +15,9 @@ const EVENT_LABELS: Record<string, string> = {
   TWITCH_FOLLOW:              'Follow Twitch',
   TWITCH_SUBSCRIBE:           'Sub Twitch',
   TWITCH_GIFT_SUB:            'Gift sub Twitch',
+  KICK_CHAT_MESSAGE:          'Chat Kick durante stream',
+  KICK_FOLLOW:                'Follow Kick',
+  KICK_SUBSCRIBE:             'Sub Kick',
   YOUTUBE_COMMENT:            'Comentario YouTube',
   YOUTUBE_SHARE:              'Compartir YouTube',
   YOUTUBE_SUBSCRIBE:          'Suscribirse YouTube',
@@ -28,6 +31,7 @@ const EVENT_LABELS: Record<string, string> = {
 const PLATFORM_COLOR: Record<string, string> = {
   DISCORD:  'text-indigo-400',
   TWITCH:   'text-purple-400',
+  KICK:     'text-[#53FC18]',
   YOUTUBE:  'text-red-400',
   TELEGRAM: 'text-[#26A5E4]',
   MISSION:  'text-amber-400',
