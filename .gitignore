@@ -19,3 +19,7 @@ npm-debug.log*
 .vscode/
 .idea/
 *.swp
+
+.vercel
+.env*
+CLAUDE.local.md
