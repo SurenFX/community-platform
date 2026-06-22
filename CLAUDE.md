@@ -123,6 +123,37 @@ mensaje del canal en general). En Telegram usa un `chat_id` explícito
 `-100<id>`) en vez de depender de `TELEGRAM_GROUP_ID`, para poder apuntar a un grupo/tema
 distinto sin afectar el resto de los anuncios.
 
+**Misiones, badges y XP de Kick (chat/follow/sub)**: extendido el mismo sistema de
+gamificación que ya existía para Twitch, ahora también para Kick.
+- Migración `011_kick_xp_enum.sql`: agrega `KICK_CHAT_MESSAGE`, `KICK_FOLLOW`,
+  `KICK_SUBSCRIBE` al enum `xp_event_type`. **Va en archivo separado** de
+  `012_kick_missions_badges_seed.sql` (que sí usa esos valores) porque Postgres no
+  permite usar un valor de enum recién agregado dentro de la misma transacción en la
+  que se agregó — hay que correr 011 y esperar que termine antes de correr 012.
+- Migración `012`: `xp_config` (base_xp 8/100/500, mismos montos que Twitch
+  chat/follow/sub) + 7 misiones (4 tiers de chat, follow, 2 tiers de sub) + 5 badges
+  con `family='kick'`.
+- Worker: `KickApiService.ensureChatSubscription` ahora suscribe también
+  `channel.followed` y `channel.subscription.new/renewal` (antes solo
+  `chat.message.sent`). `KickController` otorga XP en cada mensaje de chat (no solo
+  el de la keyword del sorteo), cada follow y cada sub, resolviendo el `discord_id`
+  vía `user_social_links` (`platform='KICK'`, `external_id` = user_id numérico de
+  Kick — no el username, para evitar problemas de mayúsculas/cambios de nombre).
+- `xp-calculator.service.ts`: agregado `'KICK'` a `SocialPlatform` y los 3 event
+  types nuevos a `XpEventType`, multiplier 1.2 (igual que Twitch).
+- **Nuevo**: flujo OAuth 2.1+PKCE para que cualquier USUARIO (no el bot) vincule su
+  propia cuenta de Kick desde `/dashboard/configuracion` — `/auth/kick/start` genera
+  el par PKCE + `state`, los guarda en cookies httpOnly de 10 min, y redirige a Kick;
+  `/auth/kick` es el callback que intercambia el `code`, llama `GET /public/v1/users`
+  (con el token del usuario) para obtener su `user_id`/`name`, y hace upsert en
+  `user_social_links`. Requiere agregar `KICK_CLIENT_ID`/`KICK_CLIENT_SECRET` también
+  como env vars del proyecto de **Vercel** (no solo del worker), y registrar
+  `https://<dominio>/auth/kick` como redirect URI adicional en el Developer App de Kick.
+- Se actualizaron los 8 archivos del frontend que tienen diccionarios `EVENT_LABELS`
+  duplicados (deuda técnica preexistente, no centralizados) más `FAMILY_LABELS` en
+  `BadgesClient.tsx` — mismo patrón repetitivo que ya se había dado con Telegram
+  (ver tarea #13 del historial de tareas).
+
 ## Estado actual
 
 Plataforma funcionalmente muy completa (ver Historial). `tsc --noEmit` limpio en
@@ -137,6 +168,15 @@ con todos los módulos activos (Discord, Telegram, YouTube, Twitch, Kick, Recrui
   notificaciones in-app + Realtime, no push del navegador/móvil.
 - Antes de un onboarding masivo: probar a mano los flujos críticos end-to-end (login,
   conectar redes, reclamar misión, subir de nivel, entrar a un sorteo, perfil en mobile).
+- **Setup manual pendiente para que funcione el OAuth de Kick de usuarios** (código ya
+  pusheado, falta configuración externa):
+  1. Correr `011_kick_xp_enum.sql` en el SQL Editor de Supabase, esperar que termine,
+     y RECIÉN AHÍ correr `012_kick_missions_badges_seed.sql` (en otra ejecución separada).
+  2. Agregar `https://<dominio de Vercel>/auth/kick` como redirect URI en el Developer
+     App de Kick (el mismo Client ID/Secret que ya usa el bot).
+  3. Agregar `KICK_CLIENT_ID` y `KICK_CLIENT_SECRET` como env vars del proyecto de
+     **Vercel** (Settings → Environment Variables del proyecto `community-platform-app`) —
+     hoy solo están seteadas como Fly secrets del worker, el frontend necesita su copia.
 
 ## Gotchas operativos (importante para no perder tiempo)
 
@@ -148,8 +188,8 @@ con todos los módulos activos (Discord, Telegram, YouTube, Twitch, Kick, Recrui
   `cat > archivo <<'EOF' ... EOF` con el contenido correcto confirmado por `Read`/`Edit`,
   y recién ahí volver a correr `tsc`. Pasó repetidamente con `main.ts`, `app.module.ts`,
   `kick-api.service.ts`, `discord-bot.service.ts`, `telegram.service.ts`,
-  `recruitment.service.ts`. Nunca usar `sed -i` sobre estos archivos — corrompió uno a
-  binario.
+  `recruitment.service.ts`, y con varios archivos de `app/` en la sesión de misiones de
+  Kick. Nunca usar `sed -i` sobre estos archivos — corrompió uno a binario.
 - **Vercel deploy bloqueado**: si el dashboard dice "Deployment Blocked — commit author
   did not have access" y el repo es privado, pasarlo a público resuelve el problema de
   raíz (alternativa: que el usuario pushee siempre desde su propia cuenta/CLI).
