@@ -22,17 +22,17 @@ function GameCard({ link }: { link: ReferralLink }) {
 
   return (
     <div
-      className="group relative rounded-2xl overflow-hidden cursor-pointer bg-secondary border border-border"
+      className="group relative rounded-2xl overflow-hidden cursor-pointer bg-[#0d0d0f] border border-border"
       style={{ aspectRatio: '3/4' }}
       onClick={handleClick}
     >
-      {/* Imagen del juego */}
+      {/* Imagen del juego — contain para mostrarla completa sin recortar */}
       {link.game_image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={link.game_image_url}
           alt={link.game_name}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover:scale-105"
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center bg-secondary">
@@ -42,11 +42,6 @@ function GameCard({ link }: { link: ReferralLink }) {
 
       {/* Gradiente y overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-
-      {/* Glow en hover */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        style={{ boxShadow: 'inset 0 0 0 2px rgba(var(--primary-rgb, 139,92,246), 0.8)' }}
-      />
 
       {/* Border glow ring */}
       <div className="absolute inset-0 rounded-2xl ring-0 group-hover:ring-2 group-hover:ring-primary/70 transition-all duration-300" />
@@ -62,7 +57,7 @@ function GameCard({ link }: { link: ReferralLink }) {
           </p>
         )}
 
-        {/* Botón */}
+        {/* Boton */}
         <button
           className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-semibold opacity-0 group-hover:opacity-100 -translate-y-1 group-hover:translate-y-0 transition-all duration-300 hover:bg-primary/90 active:scale-95"
           onClick={e => { e.stopPropagation(); handleClick() }}
@@ -80,8 +75,8 @@ export default function ReferidosClient({ links }: { links: ReferralLink[] }) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
         <Gamepad2 className="w-14 h-14 mb-4 opacity-25" />
-        <p className="text-base font-medium">No hay juegos cargados todavía</p>
-        <p className="text-sm mt-1 opacity-70">Volvé pronto, el streamer va a agregar sus juegos favoritos</p>
+        <p className="text-base font-medium">No hay juegos cargados todavia</p>
+        <p className="text-sm mt-1 opacity-70">Volve pronto, el streamer va a agregar sus juegos favoritos</p>
       </div>
     )
   }
