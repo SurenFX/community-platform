@@ -7,6 +7,8 @@ import { ReputationService } from '../reputation/reputation.service'
 import { DiscordBotService } from '../discord-bot/discord-bot.service'
 import { TelegramService } from '../telegram/telegram.service'
 import { RedisService } from '../../infrastructure/redis/redis.service'
+import { TwitchIrcService } from '../twitch/twitch-irc.service'
+import { KickApiService } from '../kick/kick-api.service'
 
 @Injectable()
 export class YoutubeService {
@@ -21,13 +23,15 @@ export class YoutubeService {
     private discordBot:  DiscordBotService,
     private telegram:    TelegramService,
     private redis:       RedisService,
+    private twitchIrc:   TwitchIrcService,
+    private kickApi:     KickApiService,
   ) {}
 
   private get apiKey(): string {
     return this.config.get<string>('YOUTUBE_API_KEY') ?? ''
   }
 
-  // ── Verificar suscripción de un usuario ───────────────────
+  // ── Verificar suscripcion de un usuario ───────────────────
   async checkSubscription(userId: string, accessToken: string): Promise<boolean> {
     try {
       const res = await fetch(
@@ -42,10 +46,9 @@ export class YoutubeService {
     }
   }
 
-  // ── Verificar y recompensar suscripción ───────────────────
+  // ── Verificar y recompensar suscripcion ───────────────────
   async rewardSubscription(userId: string, discordId: string, accessToken: string) {
     try {
-      // Verificar si ya fue recompensado por suscribirse
       const { data: existing } = await this.supabase.db
         .from('xp_events')
         .select('id')
@@ -53,7 +56,7 @@ export class YoutubeService {
         .eq('event_type', 'YOUTUBE_SUBSCRIBE')
         .single()
 
-      if (existing) return // ya fue recompensado
+      if (existing) return
 
       const isSubscribed = await this.checkSubscription(userId, accessToken)
       if (!isSubscribed) return
@@ -77,7 +80,7 @@ export class YoutubeService {
   @Cron('*/30 * * * *')
   async scanNewComments() {
     if (!this.apiKey) {
-      this.logger.warn('YOUTUBE_API_KEY no configurada — scanning desactivado')
+      this.logger.warn('YOUTUBE_API_KEY no configurada -- scanning desactivado')
       return
     }
 
@@ -85,18 +88,14 @@ export class YoutubeService {
       this.logger.log('Escaneando comentarios de YouTube...')
 
       // 1. Obtener usuarios con YouTube conectado
-      // (no cortamos acá si está vacío -- el aviso de videos nuevos a Discord/Telegram
-      //  no depende de que haya usuarios vinculados, solo el escaneo de comentarios sí)
       const { data: socialLinks } = await this.supabase.db
         .from('user_social_links')
         .select('user_id, external_id, username, created_at')
         .eq('platform', 'YOUTUBE')
 
-      // Mapa de youtube_channel_id → {userId, discordId, connectedAt}
       const ytUserMap = new Map<string, { userId: string; discordId: string; connectedAt: string }>()
 
       for (const link of socialLinks ?? []) {
-        // Obtener discord_id del perfil
         const { data: profile } = await this.supabase.db
           .from('profiles')
           .select('discord_id')
@@ -112,7 +111,7 @@ export class YoutubeService {
         }
       }
 
-      // 2. Obtener videos de los últimos 7 días
+      // 2. Obtener videos de los ultimos 7 dias
       const publishedAfter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
       const videosRes = await fetch(
@@ -131,7 +130,7 @@ export class YoutubeService {
 
       if (!videoIds.length) return
 
-      // 2b. Obtener duración de los videos para filtrar VODs (>1 hora)
+      // 2b. Obtener duracion de los videos para filtrar VODs (>1 hora)
       const detailsRes = await fetch(
         `${this.apiBase}/videos?part=contentDetails&id=${videoIds.join(',')}&key=${this.apiKey}`
       )
@@ -146,11 +145,11 @@ export class YoutubeService {
         durationMap.set(item.id, this.parseDurationSeconds(item.contentDetails?.duration ?? ''))
       }
 
-      // 2c. Anunciar videos nuevos en Discord y Telegram — excluir VODs (>60 min)
+      // 2c. Anunciar videos nuevos en Discord y Telegram -- excluir VODs (>60 min)
       const discordChannelId = this.config.get<string>('DISCORD_YOUTUBE_CHANNEL_ID')
 
       if (!discordChannelId) {
-        this.logger.warn('DISCORD_YOUTUBE_CHANNEL_ID no configurado — se omitira el anuncio en Discord')
+        this.logger.warn('DISCORD_YOUTUBE_CHANNEL_ID no configurado -- se omitira el anuncio en Discord')
       }
 
       for (const item of videoItems) {
@@ -160,10 +159,9 @@ export class YoutubeService {
         const thumbnail   = item.snippet?.thumbnails?.high?.url ?? ''
         const duration    = durationMap.get(videoId) ?? 0
 
-        // Saltar VODs (más de 60 minutos)
+        // Saltar VODs (mas de 60 minutos)
         if (duration > 60 * 60) {
           this.logger.log(`YouTube: saltando VOD ${videoId} (${Math.round(duration/60)} min) - ${title}`)
-          // Marcar igual para no procesarlo de nuevo
           await this.redis.setNX(`yt:announced:${videoId}`, 'vod', 30 * 24 * 60 * 60)
           continue
         }
@@ -180,7 +178,7 @@ export class YoutubeService {
           if (discordChannelId) {
             const embed = new EmbedBuilder()
               .setColor(0xFF0000)
-              .setTitle(`🎬 ¡Nuevo video! ${title}`)
+              .setTitle(`Nuevo video! ${title}`)
               .setURL(`https://youtube.com/watch?v=${videoId}`)
               .setTimestamp(new Date(publishedAt))
 
@@ -190,17 +188,33 @@ export class YoutubeService {
           }
 
           await this.telegram.announce(
-            `🎬 <b>¡Nuevo video!</b> ${title}\n\n` +
-            `<a href="https://youtube.com/watch?v=${videoId}">Ver en YouTube</a>`,
+            `Nuevo video! ${title}\n\n` +
+            `Ver en YouTube: https://youtube.com/watch?v=${videoId}`,
             'TELEGRAM_YOUTUBE_THREAD_ID'
           )
 
           this.logger.log(`YouTube: anunciado video nuevo ${videoId} - ${title}`)
         }
+
+        // Comentar en Twitch y Kick chat -- solo videos de hoy en adelante
+        const todayUtc = new Date()
+        todayUtc.setUTCHours(0, 0, 0, 0)
+        if (publishedAt && new Date(publishedAt) >= todayUtc) {
+          const isChatNew = await this.redis.setNX(
+            `yt:chat:${videoId}`,
+            '1',
+            30 * 24 * 60 * 60,
+          )
+          if (isChatNew) {
+            const chatMsg = `Nuevo video! "${title}" -> https://youtube.com/watch?v=${videoId}`
+            this.twitchIrc.sendChat(chatMsg)
+            await this.kickApi.sendChat(chatMsg)
+            this.logger.log(`YouTube: video anunciado en chat de Twitch y Kick: ${videoId}`)
+          }
+        }
       }
 
       // 3. Para cada video, buscar comentarios de usuarios registrados
-      // (solo si hay al menos un usuario con YouTube vinculado)
       if (ytUserMap.size > 0) {
         for (const videoId of videoIds) {
           await this.scanVideoComments(videoId, ytUserMap)
@@ -233,10 +247,8 @@ export class YoutubeService {
 
         const { userId, discordId, connectedAt } = ytUserMap.get(authorId)!
 
-        // Ignorar comentarios publicados antes de que el usuario conectara YouTube
         if (commentedAt && commentedAt < connectedAt) continue
 
-        // Verificar que no hayamos recompensado este comentario antes
         const { data: existing } = await this.supabase.db
           .from('xp_events')
           .select('id')
@@ -245,7 +257,7 @@ export class YoutubeService {
           .eq('external_ref', commentId)
           .single()
 
-        if (existing) continue // ya recompensado
+        if (existing) continue
 
         await this.reputation.processXpEvent({
           discordId,
@@ -259,7 +271,6 @@ export class YoutubeService {
           },
         })
 
-        // ── Primero en comentar en un video nuevo ─────────────────────────
         const isFirstComment = await this.redis.setNX(`yt:first_comment:${videoId}`, '1', 30 * 24 * 60 * 60)
         if (isFirstComment) {
           try {
@@ -268,8 +279,8 @@ export class YoutubeService {
               .insert({
                 user_id: userId,
                 type:    'FIRST_COMMENTER',
-                title:   '🎬 ¡Primero en comentar!',
-                message: `Fuiste el primero en comentar en un video nuevo del canal. ¡+100 XP y +50 SC!`,
+                title:   'Primero en comentar!',
+                message: `Fuiste el primero en comentar en un video nuevo del canal. +100 XP y +50 SC!`,
               })
 
             await this.supabase.db.rpc('award_xp', {
@@ -308,7 +319,7 @@ export class YoutubeService {
     }
   }
 
-  // ── Parsear duración ISO 8601 a segundos ─────────────────
+  // ── Parsear duracion ISO 8601 a segundos ─────────────────
   private parseDurationSeconds(duration: string): number {
     const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
     if (!match) return 0
@@ -321,7 +332,6 @@ export class YoutubeService {
   // ── Llamado cuando un usuario conecta YouTube ─────────────
   async onUserConnected(userId: string, discordId: string, accessToken: string, ytChannelId: string) {
     try {
-      // Guardar el link de YouTube
       await this.supabase.db
         .from('user_social_links')
         .upsert({
@@ -332,7 +342,6 @@ export class YoutubeService {
           is_verified: true,
         }, { onConflict: 'user_id,platform' })
 
-      // Verificar suscripción inmediatamente
       await this.rewardSubscription(userId, discordId, accessToken)
 
     } catch (err) {
