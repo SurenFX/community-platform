@@ -1,6 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { Cron } from '@nestjs/schedule'
+import { EmbedBuilder } from 'discord.js'
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
+import { DiscordBotService } from '../discord-bot/discord-bot.service'
+import { TelegramService } from '../telegram/telegram.service'
+import { RedisService } from '../../infrastructure/redis/redis.service'
 
 interface StreamInfo {
   isLive:    boolean
@@ -21,9 +26,15 @@ export class KickApiService implements OnModuleInit {
   private appTokenExpiry = 0
   private broadcasterId: string | null = null
 
+  // Estado en memoria para detectar transicion offline -> online
+  private wasLive = false
+
   constructor(
-    private config:   ConfigService,
-    private supabase: SupabaseService,
+    private config:     ConfigService,
+    private supabase:   SupabaseService,
+    private discordBot: DiscordBotService,
+    private telegram:   TelegramService,
+    private redis:      RedisService,
   ) {}
 
   async onModuleInit() {
@@ -283,5 +294,57 @@ export class KickApiService implements OnModuleInit {
     } catch (err) {
       this.logger.warn(`ensureChatSubscription error: ${err}`)
     }
+  }
+
+  // -- Deteccion de Kick en vivo -- cada 3 minutos --
+  @Cron('*/3 * * * *')
+  async checkStreamLive() {
+    const discordChannelId = this.config.get<string>('DISCORD_TWITCH_CHANNEL_ID')
+    if (!discordChannelId || !this.channelSlug || !this.clientId) return
+
+    const stream = await this.getStreamInfo()
+
+    // Transicion: offline -> online
+    if (stream.isLive && !this.wasLive) {
+      this.logger.log(`Kick en vivo detectado: ${stream.title}`)
+
+      // Anti-duplicado: solo UN pod anuncia
+      const isFirst = await this.redis.setNX(
+        `kick:live:${this.channelSlug}`,
+        '1',
+        2 * 60 * 60,
+      )
+
+      if (isFirst) {
+        const embed = new EmbedBuilder()
+          .setColor(0x53FC18)
+          .setTitle(`LIVE en Kick: ${this.channelSlug} esta en vivo!`)
+          .setDescription(stream.title || 'Stream en vivo')
+          .addFields(
+            { name: 'Categoria', value: stream.game || 'Sin categoria', inline: true },
+            { name: 'Viewers',   value: String(stream.viewers),          inline: true },
+          )
+          .setURL(`https://kick.com/${this.channelSlug}`)
+          .setTimestamp()
+
+        await this.discordBot.announce(discordChannelId, embed, '@everyone')
+        await this.telegram.announce(
+          `LIVE en Kick: <b>${this.channelSlug} esta en vivo!</b>\n\n` +
+          `${stream.game || 'Sin categoria'} - ${stream.viewers} viewers\n` +
+          `${stream.title}\n\n` +
+          `<a href="https://kick.com/${this.channelSlug}">Unite al stream!</a>`,
+          'TELEGRAM_TWITCH_THREAD_ID',
+        )
+        this.logger.log('Anuncio de Kick enviado a Discord y Telegram')
+      }
+    }
+
+    // Transicion: online -> offline
+    if (!stream.isLive && this.wasLive) {
+      this.logger.log('Stream de Kick termino')
+      await this.redis.del(`kick:live:${this.channelSlug}`)
+    }
+
+    this.wasLive = stream.isLive
   }
 }
