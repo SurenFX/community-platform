@@ -39,7 +39,7 @@ export async function updateXpConfig(
 
   if (error) {
     console.error('updateXpConfig error:', error.message)
-    return { error: 'No se pudo guardar la configuración' }
+    return { error: 'No se pudo guardar la configuracion' }
   }
   return {}
 }
@@ -70,7 +70,7 @@ export async function createMission(data: MissionInput): Promise<{ data?: Missio
 
   if (error) {
     console.error('createMission error:', error.message)
-    return { error: 'No se pudo crear la misión' }
+    return { error: 'No se pudo crear la mision' }
   }
   return { data: created as Mission }
 }
@@ -88,7 +88,7 @@ export async function updateMission(id: string, data: MissionInput): Promise<{ d
 
   if (error) {
     console.error('updateMission error:', error.message)
-    return { error: 'No se pudo actualizar la misión' }
+    return { error: 'No se pudo actualizar la mision' }
   }
   return { data: updated as Mission }
 }
@@ -115,12 +115,11 @@ export async function grantXp(
   amount: number,
   reason?: string,
 ): Promise<{ error?: string }> {
-  if (amount <= 0 || amount > 10000) return { error: 'Cantidad inválida (1-10000)' }
+  if (amount <= 0 || amount > 10000) return { error: 'Cantidad invalida (1-10000)' }
 
   const { error: authError, admin } = await getAdminClient()
   if (authError || !admin) return { error: authError ?? 'Error' }
 
-  // Obtener discord_id del usuario para el worker
   const { data: profile } = await admin
     .from('profiles')
     .select('discord_id, discord_tag')
@@ -129,7 +128,6 @@ export async function grantXp(
 
   if (!profile) return { error: 'Usuario no encontrado' }
 
-  // Llamar al RPC award_xp directamente (mismo que usa el worker)
   const { error: rpcError } = await admin.rpc('award_xp', {
     p_user_id:    targetUserId,
     p_event_type: 'ADMIN_MANUAL_GRANT',
@@ -181,7 +179,6 @@ export async function drawRaffle(raffleId: string): Promise<{ winner?: string; e
   const { error: authError, admin } = await getAdminClient()
   if (authError || !admin) return { error: authError ?? 'Error' }
 
-  // Obtener todos los participantes con sus tickets
   const { data: pool } = await admin
     .from('raffle_pools')
     .select('user_id, tickets')
@@ -189,7 +186,6 @@ export async function drawRaffle(raffleId: string): Promise<{ winner?: string; e
 
   if (!pool?.length) return { error: 'No hay participantes' }
 
-  // Obtener configuración del sorteo
   const { data: raffle } = await admin
     .from('raffles')
     .select('use_weighted')
@@ -199,14 +195,12 @@ export async function drawRaffle(raffleId: string): Promise<{ winner?: string; e
   let winnerId: string
 
   if ((raffle as any)?.use_weighted) {
-    // Sorteo ponderado: cada ticket es una entrada
     const entries: string[] = []
     for (const p of pool as any[]) {
       for (let i = 0; i < (p.tickets || 1); i++) entries.push(p.user_id)
     }
     winnerId = entries[Math.floor(Math.random() * entries.length)]
   } else {
-    // Sorteo igual: un voto por participante
     const p = (pool as any[])[Math.floor(Math.random() * pool.length)]
     winnerId = p.user_id
   }
@@ -217,7 +211,6 @@ export async function drawRaffle(raffleId: string): Promise<{ winner?: string; e
     drawn_at:  new Date().toISOString(),
   }).eq('id', raffleId)
 
-  // Obtener username del ganador
   const { data: winner } = await admin
     .from('profiles').select('username').eq('id', winnerId).single()
 
@@ -239,7 +232,6 @@ export async function deleteRaffle(raffleId: string): Promise<{ error?: string }
   const { error: authError, admin } = await getAdminClient()
   if (authError || !admin) return { error: authError ?? 'Error' }
 
-  // Borrar pool primero (FK constraint)
   await admin.from('raffle_pools').delete().eq('raffle_id', raffleId)
   const { error } = await admin.from('raffles').delete().eq('id', raffleId)
 
@@ -283,7 +275,7 @@ export async function grantSc(
   amount: number,
   reason?: string,
 ): Promise<{ error?: string }> {
-  if (amount <= 0 || amount > 100000) return { error: 'Cantidad inválida (1-100000)' }
+  if (amount <= 0 || amount > 100000) return { error: 'Cantidad invalida (1-100000)' }
 
   const { error: authError, admin } = await getAdminClient()
   if (authError || !admin) return { error: authError ?? 'Error' }
@@ -307,7 +299,7 @@ export async function grantSc(
     user_id: targetUserId,
     type:    'SYSTEM',
     title:   `+${amount} SalchiCoins`,
-    message: reason ? `El equipo te otorgó SC: ${reason}` : 'El equipo te otorgó SalchiCoins.',
+    message: reason ? `El equipo te otorgo SC: ${reason}` : 'El equipo te otorgo SalchiCoins.',
     is_read: false,
   })
 
@@ -319,7 +311,6 @@ export async function resetUserProgress(targetUserId: string): Promise<{ error?:
   const { error: authError, admin } = await getAdminClient()
   if (authError || !admin) return { error: authError ?? 'Error' }
 
-  // Resetear reputación (XP, nivel, racha, tickets)
   await admin
     .from('user_reputation')
     .update({
@@ -336,19 +327,11 @@ export async function resetUserProgress(targetUserId: string): Promise<{ error?:
     })
     .eq('user_id', targetUserId)
 
-  // Borrar badges
   await admin.from('user_badges').delete().eq('user_id', targetUserId)
-
-  // Borrar progreso de misiones
   await admin.from('user_missions').delete().eq('user_id', targetUserId)
-
-  // Borrar historial de XP
   await admin.from('xp_events').delete().eq('user_id', targetUserId)
-
-  // Borrar reclamos del pase de temporada
   await admin.from('season_pass_claims').delete().eq('user_id', targetUserId)
 
-  // Borrar cookie de bonus diario del browser actual (por si el admin se resetea a si mismo)
   const cookieStore = await cookies()
   cookieStore.delete('daily_bonus_claimed')
 
@@ -476,4 +459,106 @@ export async function deleteWheelPrize(id: string): Promise<{ error?: string }> 
   revalidatePath('/admin/rueda')
   revalidatePath('/dashboard/rueda')
   return {}
+}
+
+// ── Referral links ────────────────────────────────────────────────────────────
+
+export async function createReferralLink(data: {
+  game_name: string
+  game_image_url: string
+  referral_url: string
+  description: string
+  sort_order: number
+  is_active: boolean
+}): Promise<{ error?: string }> {
+  'use server'
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const adminDb = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+  const { data: profile } = await adminDb.from('profiles').select('is_admin').eq('id', user.id).single()
+  if (!(profile as any)?.is_admin) return { error: 'Sin permisos' }
+
+  const { error } = await adminDb.from('referral_links').insert({ ...data, updated_at: new Date().toISOString() })
+  if (error) return { error: error.message }
+  revalidatePath('/admin/referidos')
+  revalidatePath('/dashboard/referidos')
+  return {}
+}
+
+export async function updateReferralLink(id: string, data: {
+  game_name?: string
+  game_image_url?: string
+  referral_url?: string
+  description?: string
+  sort_order?: number
+  is_active?: boolean
+}): Promise<{ error?: string }> {
+  'use server'
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const adminDb = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+  const { data: profile } = await adminDb.from('profiles').select('is_admin').eq('id', user.id).single()
+  if (!(profile as any)?.is_admin) return { error: 'Sin permisos' }
+
+  const { error } = await adminDb
+    .from('referral_links')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/referidos')
+  revalidatePath('/dashboard/referidos')
+  return {}
+}
+
+export async function deleteReferralLink(id: string): Promise<{ error?: string }> {
+  'use server'
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const adminDb = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+  const { data: profile } = await adminDb.from('profiles').select('is_admin').eq('id', user.id).single()
+  if (!(profile as any)?.is_admin) return { error: 'Sin permisos' }
+
+  const { error } = await adminDb.from('referral_links').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/referidos')
+  revalidatePath('/dashboard/referidos')
+  return {}
+}
+
+export async function trackReferralClick(id: string): Promise<void> {
+  'use server'
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  const adminDb = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+  const { data } = await adminDb.from('referral_links').select('click_count').eq('id', id).single()
+  if (data) {
+    await adminDb
+      .from('referral_links')
+      .update({ click_count: (data as any).click_count + 1 })
+      .eq('id', id)
+  }
 }

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, Target, Zap,
-  BarChart3, ArrowLeft, Shield, Ticket, Award, CalendarDays, Swords, Flame, Skull, Dices,
+  BarChart3, ArrowLeft, Shield, Ticket, Award, CalendarDays, Swords, Flame, Skull, Dices, Gamepad2,
 } from 'lucide-react'
 
 const navItems = [
@@ -17,8 +17,9 @@ const navItems = [
   { href: '/admin/raffles',      label: 'Sorteos',     icon: Ticket           },
   { href: '/admin/seasons',      label: 'Temporadas',  icon: CalendarDays     },
   { href: '/admin/challenges',   label: 'Desafios',    icon: Swords           },
-  { href: '/admin/boss-raids',    label: 'Boss Raids',  icon: Skull            },
-  { href: '/admin/rueda',          label: 'Rueda',       icon: Dices            },
+  { href: '/admin/boss-raids',   label: 'Boss Raids',  icon: Skull            },
+  { href: '/admin/rueda',        label: 'Rueda',       icon: Dices            },
+  { href: '/admin/referidos',    label: 'Referidos',   icon: Gamepad2         },
   { href: '/admin/daily-bonus',  label: 'Bono diario', icon: Flame            },
   { href: '/admin/xp-events',    label: 'Eventos XP',  icon: Zap              },
   { href: '/admin/analytics',    label: 'Analytics',   icon: BarChart3        },
@@ -37,8 +38,8 @@ export default function AdminSidebar({ profile }: { profile: any }) {
         <p className="text-xs text-muted-foreground">{profile?.username}</p>
       </div>
 
-      <nav className="flex-1 p-3 space-y-0.5">
-        {navItems.map(({ href, label, icon: Icon, exact }) => {
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        {navItems.map(({ href, label, icon: Icon, exact }: any) => {
           const isActive = exact ? pathname === href : pathname.startsWith(href)
           return (
             <Link key={href} href={href}

@@ -7,7 +7,7 @@ import { signOut } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
 import {
   Home, Trophy, Sword, Settings, LogOut, Shield, Ticket,
-  CircleDollarSign, ShoppingBag, Swords, Menu, X, Dices,
+  CircleDollarSign, ShoppingBag, Swords, Menu, X, Dices, Gamepad2,
 } from 'lucide-react'
 
 import SidebarXpBar from './SidebarXpBar'
@@ -35,15 +35,16 @@ const BORDER_COLOR_HEX: Record<string, string> = {
 }
 
 const navItems = [
-  { href: '/dashboard',               label: 'Dashboard',         icon: Home,              exact: true },
-  { href: '/dashboard/comunidad',     label: 'Ranking',        icon: Trophy                         },
-  { href: '/dashboard/missions',      label: 'Quests',         icon: Sword                          },
-  { href: '/dashboard/challenges',    label: 'Raids',          icon: Swords                         },
-  { href: '/dashboard/raffles',       label: 'Sorteos',        icon: Ticket                         },
-  { href: '/dashboard/shop',          label: 'Tienda',         icon: ShoppingBag                    },
-  { href: '/dashboard/rueda',         label: 'Rueda',          icon: Dices                          },
-  { href: '/dashboard/coins',          label: 'SalchiCoins',  icon: CircleDollarSign },
-  { href: '/dashboard/configuracion', label: 'Configuración', icon: Settings         },
+  { href: '/dashboard',               label: 'Dashboard',    icon: Home,              exact: true },
+  { href: '/dashboard/comunidad',     label: 'Ranking',      icon: Trophy                         },
+  { href: '/dashboard/missions',      label: 'Quests',       icon: Sword                          },
+  { href: '/dashboard/challenges',    label: 'Raids',        icon: Swords                         },
+  { href: '/dashboard/raffles',       label: 'Sorteos',      icon: Ticket                         },
+  { href: '/dashboard/shop',          label: 'Tienda',       icon: ShoppingBag                    },
+  { href: '/dashboard/rueda',         label: 'Rueda',        icon: Dices                          },
+  { href: '/dashboard/coins',         label: 'SalchiCoins',  icon: CircleDollarSign               },
+  { href: '/dashboard/referidos',     label: 'Referidos',    icon: Gamepad2                       },
+  { href: '/dashboard/configuracion', label: 'Configuracion', icon: Settings                      },
 ]
 
 export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
@@ -89,9 +90,7 @@ export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
         </div>
       </div>
 
-
-
-      {/* Navegación */}
+      {/* Navegacion */}
       <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {navItems.map(({ href, label, icon: Icon, exact }) => {
           const isActive = exact ? pathname === href : pathname.startsWith(href)
@@ -131,7 +130,7 @@ export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-all duration-150"
           >
             <LogOut className="w-4 h-4 shrink-0" />
-            Cerrar sesión
+            Cerrar sesion
           </button>
         </form>
       </div>
@@ -146,7 +145,7 @@ export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
         <button
           onClick={() => setMobileOpen(true)}
           className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
-          aria-label="Abrir menú"
+          aria-label="Abrir menu"
         >
           <Menu className="w-5 h-5 text-foreground" />
         </button>
