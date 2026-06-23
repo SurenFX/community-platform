@@ -28,7 +28,7 @@ export default async function ReferidosPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Juegos recomendados</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Registrate en estos juegos usando el link de Salchi y apoyá al stream
+          Regístrate en estos juegos usando el link de Salchi y apoyá al stream
         </p>
       </div>
       <ReferidosClient links={(links ?? []) as any} />
