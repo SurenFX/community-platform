@@ -244,7 +244,6 @@ export class KickApiService implements OnModuleInit {
     }
   }
 
-  // Eventos que el worker necesita para chat de sorteos + XP por chat/follow/sub.
   private readonly REQUIRED_EVENTS = [
     'chat.message.sent',
     'channel.followed',
@@ -308,7 +307,6 @@ export class KickApiService implements OnModuleInit {
     if (stream.isLive && !this.wasLive) {
       this.logger.log(`Kick en vivo detectado: ${stream.title}`)
 
-      // Anti-duplicado: solo UN pod anuncia
       const isFirst = await this.redis.setNX(
         `kick:live:${this.channelSlug}`,
         '1',
@@ -345,6 +343,31 @@ export class KickApiService implements OnModuleInit {
       await this.redis.del(`kick:live:${this.channelSlug}`)
     }
 
+    // Mantener clave de presencia en Redis para cross-platform awareness
+    // TTL 5 min, se refresca cada tick de 3 min mientras el stream este vivo
+    if (stream.isLive) {
+      await this.redis.set('kick:stream_active', '1', 5 * 60)
+    }
+
     this.wasLive = stream.isLive
+  }
+
+  // ── Cross-promo: avisar en Kick chat que tambien estamos en Twitch ────────
+  // Solo se ejecuta cuando AMBAS plataformas estan en vivo, cada 30 minutos
+  @Cron('*/30 * * * *')
+  async remindTwitchInChat() {
+    if (!this.wasLive) return
+
+    const twitchChannel = this.config.get<string>('TWITCH_CHANNEL') ?? ''
+    if (!twitchChannel) return
+
+    const twitchActive = await this.redis.get('twitch:stream_active')
+    if (!twitchActive) return
+
+    const isFirst = await this.redis.setNX('cross:twitch_reminder_in_kick', '1', 30 * 60)
+    if (!isFirst) return
+
+    await this.sendChat(`Tambien estamos en vivo en Twitch! Pasa a visitarnos: https://twitch.tv/${twitchChannel}`)
+    this.logger.log('Cross-promo: Twitch mencionado en chat de Kick')
   }
 }

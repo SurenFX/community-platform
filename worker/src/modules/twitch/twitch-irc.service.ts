@@ -276,7 +276,6 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     } catch (err) {}
   }
 
-  // ── Saludo especial de Akandamos ("Pochito") ──────────────────────────────
   private isGreeting(message: string): boolean {
     const normalized = message
       .toLowerCase()
@@ -310,13 +309,12 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
 
         await this.supabase.db.from('stream_sessions').insert({ title: info.title, game: info.game })
         await this.supabase.db.from('platform_config').upsert([
-          { key: 'stream_is_live',    value: 'true'            },
-          { key: 'stream_title',      value: info.title         },
-          { key: 'stream_game',       value: info.game          },
+          { key: 'stream_is_live',    value: 'true'             },
+          { key: 'stream_title',      value: info.title          },
+          { key: 'stream_game',       value: info.game           },
           { key: 'stream_started_at', value: info.startedAt ?? '' },
         ])
 
-        // Enviar recordatorios pendientes al chat de Twitch (un solo uso)
         const { data: reminders } = await this.supabase.db
           .from('stream_reminders')
           .select('id, message')
@@ -342,9 +340,34 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
           { key: 'stream_title',   value: ''       },
         ])
       }
+
+      // Mantener clave de presencia en Redis para cross-platform awareness
+      // TTL 5 min, se refresca cada tick de 2 min mientras el stream este vivo
+      if (info.isLive) {
+        await this.redis.set('twitch:stream_active', '1', 5 * 60)
+      }
     } catch (err) {
       this.logger.warn(`checkStreamStatus error: ${err}`)
     }
+  }
+
+  // ── Cross-promo: avisar en Twitch chat que tambien estamos en Kick ────────
+  // Solo se ejecuta cuando AMBAS plataformas estan en vivo, cada 30 minutos
+  @Cron('*/30 * * * *')
+  async remindKickInChat() {
+    if (!this.isLive) return
+
+    const kickSlug = this.config.get<string>('KICK_CHANNEL_SLUG') ?? ''
+    if (!kickSlug) return
+
+    const kickActive = await this.redis.get('kick:stream_active')
+    if (!kickActive) return
+
+    const isFirst = await this.redis.setNX('cross:kick_reminder_in_twitch', '1', 30 * 60)
+    if (!isFirst) return
+
+    this.sendChat(`Tambien estamos en vivo en Kick! Pasa a visitarnos: https://kick.com/${kickSlug}`)
+    this.logger.log('Cross-promo: Kick mencionado en chat de Twitch')
   }
 
   @Cron('*/10 * * * *')
