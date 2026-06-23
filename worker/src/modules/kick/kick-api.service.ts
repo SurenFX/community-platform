@@ -343,31 +343,12 @@ export class KickApiService implements OnModuleInit {
       await this.redis.del(`kick:live:${this.channelSlug}`)
     }
 
-    // Mantener clave de presencia en Redis para cross-platform awareness
-    // TTL 5 min, se refresca cada tick de 3 min mientras el stream este vivo
+    // Mantener clave de presencia en Redis para que TwitchIrcService
+    // pueda detectar si Kick esta en vivo (TTL 5 min, tick cada 3 min)
     if (stream.isLive) {
       await this.redis.set('kick:stream_active', '1', 5 * 60)
     }
 
     this.wasLive = stream.isLive
-  }
-
-  // ── Cross-promo: avisar en Kick chat que tambien estamos en Twitch ────────
-  // Solo se ejecuta cuando AMBAS plataformas estan en vivo, cada 30 minutos
-  @Cron('*/30 * * * *')
-  async remindTwitchInChat() {
-    if (!this.wasLive) return
-
-    const twitchChannel = this.config.get<string>('TWITCH_CHANNEL') ?? ''
-    if (!twitchChannel) return
-
-    const twitchActive = await this.redis.get('twitch:stream_active')
-    if (!twitchActive) return
-
-    const isFirst = await this.redis.setNX('cross:twitch_reminder_in_kick', '1', 30 * 60)
-    if (!isFirst) return
-
-    await this.sendChat(`Tambien estamos en vivo en Twitch! Pasa a visitarnos: https://twitch.tv/${twitchChannel}`)
-    this.logger.log('Cross-promo: Twitch mencionado en chat de Kick')
   }
 }
