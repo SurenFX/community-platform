@@ -152,6 +152,18 @@ export class YoutubeService {
         this.logger.warn('DISCORD_YOUTUBE_CHANNEL_ID no configurado -- se omitira el anuncio en Discord')
       }
 
+      // Deteccion de live activo (para anuncios en chat de Twitch/Kick)
+      // twitch:live:{channel} y kick:live:{slug} se setean cuando hay stream en vivo
+      const twitchChannel = this.config.get<string>('TWITCH_CHANNEL') ?? ''
+      const kickSlug      = this.config.get<string>('KICK_CHANNEL_SLUG') ?? ''
+      const twitchLive    = twitchChannel ? await this.redis.get(`twitch:live:${twitchChannel}`) : null
+      const kickLive      = kickSlug      ? await this.redis.get(`kick:live:${kickSlug}`)        : null
+      const isAnyLive     = !!(twitchLive || kickLive)
+
+      // Inicio del dia UTC -- solo anunciamos en chat videos de hoy en adelante
+      const todayUtc = new Date()
+      todayUtc.setUTCHours(0, 0, 0, 0)
+
       for (const item of videoItems) {
         const videoId     = item.id.videoId
         const title       = item.snippet?.title ?? 'Nuevo video'
@@ -166,6 +178,7 @@ export class YoutubeService {
           continue
         }
 
+        // ── Discord / Telegram -- una sola vez por video nuevo ──
         const isNew = await this.redis.setNX(
           `yt:announced:${videoId}`,
           '1',
@@ -196,20 +209,40 @@ export class YoutubeService {
           this.logger.log(`YouTube: anunciado video nuevo ${videoId} - ${title}`)
         }
 
-        // Comentar en Twitch y Kick chat -- solo videos de hoy en adelante
-        const todayUtc = new Date()
-        todayUtc.setUTCHours(0, 0, 0, 0)
-        if (publishedAt && new Date(publishedAt) >= todayUtc) {
-          const isChatNew = await this.redis.setNX(
-            `yt:chat:${videoId}`,
-            '1',
-            30 * 24 * 60 * 60,
-          )
-          if (isChatNew) {
+        // ── Chat de Twitch y Kick -- solo videos de hoy en adelante ──
+        //
+        // Ciclo de vida de un video en chat:
+        //   yt:chat_last:{id}  -- timestamp del ultimo post (TTL 48h)
+        //                         se setea durante el live, se borra al cerrar sesion
+        //   yt:chat_done:{id}  -- flag permanente (30 dias)
+        //                         se setea cuando el live termina y el video ya fue anunciado
+        //                         con esto el proximo live NO lo vuelve a mencionar
+        if (!publishedAt || new Date(publishedAt) < todayUtc) continue
+
+        const isDone = await this.redis.get(`yt:chat_done:${videoId}`)
+        if (isDone) continue  // ya fue recordado en un live anterior
+
+        if (isAnyLive) {
+          // Durante el live: recordar cada ~1 hora
+          const lastStr = await this.redis.get(`yt:chat_last:${videoId}`)
+          const lastTs  = lastStr ? parseInt(lastStr, 10) : 0
+          const ONE_HOUR = 60 * 60 * 1000
+
+          if (Date.now() - lastTs >= ONE_HOUR) {
             const chatMsg = `Nuevo video! "${title}" -> https://youtube.com/watch?v=${videoId}`
             this.twitchIrc.sendChat(chatMsg)
             await this.kickApi.sendChat(chatMsg)
-            this.logger.log(`YouTube: video anunciado en chat de Twitch y Kick: ${videoId}`)
+            await this.redis.set(`yt:chat_last:${videoId}`, String(Date.now()), 48 * 60 * 60)
+            this.logger.log(`YouTube: video recordado en chat (live): ${videoId}`)
+          }
+        } else {
+          // Stream offline: si ya fue anunciado en un live previo, marcarlo como listo
+          // para que el proximo live no lo vuelva a mencionar
+          const wasAnnounced = await this.redis.get(`yt:chat_last:${videoId}`)
+          if (wasAnnounced) {
+            await this.redis.set(`yt:chat_done:${videoId}`, '1', 30 * 24 * 60 * 60)
+            await this.redis.del(`yt:chat_last:${videoId}`)
+            this.logger.log(`YouTube: video ${videoId} marcado como listo (live terminado)`)
           }
         }
       }
