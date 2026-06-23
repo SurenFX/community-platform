@@ -10,6 +10,7 @@ interface ReferralLink {
   game_image_url: string
   referral_url:   string
   description:    string
+  hide_name:      boolean
 }
 
 function GameCard({ link }: { link: ReferralLink }) {
@@ -26,7 +27,7 @@ function GameCard({ link }: { link: ReferralLink }) {
       style={{ aspectRatio: '3/4' }}
       onClick={handleClick}
     >
-      {/* Imagen del juego — contain para mostrarla completa sin recortar */}
+      {/* Imagen del juego */}
       {link.game_image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -40,17 +41,23 @@ function GameCard({ link }: { link: ReferralLink }) {
         </div>
       )}
 
-      {/* Gradiente y overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+      {/* Gradiente inferior — solo si se muestra contenido abajo */}
+      {(!link.hide_name || link.description) && (
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+      )}
+      {/* Gradiente hover siempre (para el boton) */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
       {/* Border glow ring */}
       <div className="absolute inset-0 rounded-2xl ring-0 group-hover:ring-2 group-hover:ring-primary/70 transition-all duration-300" />
 
       {/* Contenido inferior */}
       <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-1 group-hover:translate-y-0 transition-transform duration-300">
-        <p className="text-white font-bold text-lg leading-tight drop-shadow-lg">
-          {link.game_name}
-        </p>
+        {!link.hide_name && (
+          <p className="text-white font-bold text-lg leading-tight drop-shadow-lg">
+            {link.game_name}
+          </p>
+        )}
         {link.description && (
           <p className="text-white/70 text-xs mt-1 line-clamp-2 leading-relaxed opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             {link.description}

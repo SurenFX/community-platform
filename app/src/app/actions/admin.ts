@@ -470,6 +470,7 @@ export async function createReferralLink(data: {
   description: string
   sort_order: number
   is_active: boolean
+  hide_name: boolean
 }): Promise<{ error?: string }> {
   'use server'
   const supabase = await createServerClient()
@@ -498,6 +499,7 @@ export async function updateReferralLink(id: string, data: {
   description?: string
   sort_order?: number
   is_active?: boolean
+  hide_name?: boolean
 }): Promise<{ error?: string }> {
   'use server'
   const supabase = await createServerClient()

@@ -12,6 +12,7 @@ interface ReferralLink {
   description:    string
   click_count:    number
   is_active:      boolean
+  hide_name:      boolean
   sort_order:     number
 }
 
@@ -22,6 +23,7 @@ const EMPTY_FORM = {
   description:    '',
   sort_order:     0,
   is_active:      true,
+  hide_name:      false,
 }
 
 const inputClass = "w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -50,6 +52,7 @@ export default function ReferidosAdminClient({ links: initialLinks }: { links: R
       description:    l.description,
       sort_order:     l.sort_order,
       is_active:      l.is_active,
+      hide_name:      l.hide_name,
     })
     setEditId(l.id)
     setShowForm(true)
@@ -142,7 +145,7 @@ export default function ReferidosAdminClient({ links: initialLinks }: { links: R
                 {form.game_image_url && (
                   <div className="mt-2 rounded-lg overflow-hidden h-28 bg-secondary">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={form.game_image_url} alt="preview" className="w-full h-full object-cover" />
+                    <img src={form.game_image_url} alt="preview" className="w-full h-full object-contain" />
                   </div>
                 )}
               </div>
@@ -161,11 +164,11 @@ export default function ReferidosAdminClient({ links: initialLinks }: { links: R
 
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1">
-                  Descripción corta (opcional)
+                  Descripcion corta (opcional)
                 </label>
                 <input
                   className={inputClass}
-                  placeholder="ej: Registrate y conseguí bonus de bienvenida"
+                  placeholder="ej: Registrate y consegui bonus de bienvenida"
                   value={form.description}
                   onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 />
@@ -183,7 +186,7 @@ export default function ReferidosAdminClient({ links: initialLinks }: { links: R
                     onChange={e => setForm(f => ({ ...f, sort_order: Number(e.target.value) }))}
                   />
                 </div>
-                <div className="flex flex-col justify-end">
+                <div className="flex flex-col gap-2 justify-end pb-0.5">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
@@ -192,6 +195,15 @@ export default function ReferidosAdminClient({ links: initialLinks }: { links: R
                       className="w-4 h-4 accent-primary"
                     />
                     <span className="text-sm text-foreground">Activo (visible)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.hide_name}
+                      onChange={e => setForm(f => ({ ...f, hide_name: e.target.checked }))}
+                      className="w-4 h-4 accent-primary"
+                    />
+                    <span className="text-sm text-foreground">Ocultar nombre</span>
                   </label>
                 </div>
               </div>
@@ -222,8 +234,8 @@ export default function ReferidosAdminClient({ links: initialLinks }: { links: R
       {links.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <MousePointerClick className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">No hay juegos cargados todavía</p>
-          <p className="text-xs mt-1">Hacé clic en "Agregar juego" para empezar</p>
+          <p className="text-sm">No hay juegos cargados todavia</p>
+          <p className="text-xs mt-1">Hace clic en "Agregar juego" para empezar</p>
         </div>
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -249,14 +261,21 @@ export default function ReferidosAdminClient({ links: initialLinks }: { links: R
                         <img
                           src={link.game_image_url}
                           alt={link.game_name}
-                          className="w-10 h-10 rounded-lg object-cover shrink-0"
+                          className="w-10 h-10 rounded-lg object-contain bg-secondary shrink-0"
                         />
                       )}
                       <div>
                         <p className="font-medium text-foreground">{link.game_name}</p>
-                        {link.description && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{link.description}</p>
-                        )}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {link.hide_name && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <EyeOff className="w-3 h-3" /> nombre oculto
+                            </span>
+                          )}
+                          {link.description && !link.hide_name && (
+                            <p className="text-xs text-muted-foreground line-clamp-1">{link.description}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </td>

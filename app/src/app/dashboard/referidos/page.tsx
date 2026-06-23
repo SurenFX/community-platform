@@ -18,7 +18,7 @@ export default async function ReferidosPage() {
 
   const { data: links } = await admin
     .from('referral_links')
-    .select('id, game_name, game_image_url, referral_url, description')
+    .select('id, game_name, game_image_url, referral_url, description, hide_name')
     .eq('is_active', true)
     .order('sort_order')
     .order('created_at')
