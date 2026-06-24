@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Users, Target, Zap,
-  BarChart3, ArrowLeft, Shield, Ticket, Award, CalendarDays, Swords, Flame, Skull, Dices, Gamepad2,
+  BarChart3, ArrowLeft, Shield, Ticket, Award, CalendarDays, Swords, Flame, Skull, Dices, Gamepad2, Cpu,
 } from 'lucide-react'
 
 const navItems = [
@@ -22,7 +22,8 @@ const navItems = [
   { href: '/admin/referidos',    label: 'Referidos',   icon: Gamepad2         },
   { href: '/admin/daily-bonus',  label: 'Bono diario', icon: Flame            },
   { href: '/admin/xp-events',    label: 'Eventos XP',  icon: Zap              },
-  { href: '/admin/analytics',    label: 'Analytics',   icon: BarChart3        },
+  { href: '/admin/analytics',      label: 'Analytics',     icon: BarChart3        },
+  { href: '/admin/infraestructura', label: 'Infraestructura', icon: Cpu              },
 ]
 
 export default function AdminSidebar({ profile }: { profile: any }) {
