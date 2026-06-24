@@ -43,7 +43,7 @@ const navItems = [
   { href: '/dashboard/shop',          label: 'Tienda',       icon: ShoppingBag                    },
   { href: '/dashboard/rueda',         label: 'Rueda',        icon: Dices                          },
   { href: '/dashboard/coins',         label: 'SalchiCoins',  icon: CircleDollarSign               },
-  { href: '/dashboard/referidos',     label: 'Referidos',    icon: Gamepad2                       },
+  { href: '/referidos',     label: 'Referidos',    icon: Gamepad2                       },
   { href: '/dashboard/configuracion', label: 'Configuracion', icon: Settings                      },
 ]
 

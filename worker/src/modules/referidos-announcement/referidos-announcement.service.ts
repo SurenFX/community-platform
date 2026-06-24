@@ -35,7 +35,7 @@ export class ReferidosAnnouncementService {
       }
 
       const hubUrl = this.config.get<string>('HUB_URL') ?? ''
-      const referidosUrl = `${hubUrl}/dashboard/referidos`
+      const referidosUrl = `${hubUrl}/referidos`
 
       const embed = new EmbedBuilder()
         .setColor(0x53FC18)
@@ -67,7 +67,7 @@ export class ReferidosAnnouncementService {
       }
 
       const hubUrl = this.config.get<string>('HUB_URL') ?? ''
-      const referidosUrl = `${hubUrl}/dashboard/referidos`
+      const referidosUrl = `${hubUrl}/referidos`
 
       const message =
         `🎮 *Juegos recomendados por Salchi*\n\n` +
