@@ -41,7 +41,7 @@ export class ReferidosAnnouncementService {
         .setColor(0x53FC18)
         .setTitle('🎮 Juegos recomendados por Salchi')
         .setDescription(
-          `Registrate en estos juegos usando el link de Salchi y apoyalo mientras ganas recompensas en la comunidad!\n\n` +
+          `Registrate en estos juegos usando el link de Salchi y apoyalo!\n\n` +
           `👉 [Ver juegos con referido](${referidosUrl})`
         )
         .setURL(referidosUrl)
@@ -71,7 +71,7 @@ export class ReferidosAnnouncementService {
 
       const message =
         `🎮 *Juegos recomendados por Salchi*\n\n` +
-        `Registrate en estos juegos usando el link de Salchi y apoyalo mientras ganas recompensas en la comunidad\\!\n\n` +
+        `Registrate en estos juegos usando el link de Salchi y apoyalo\\!\n\n` +
         `👉 [Ver juegos con referido](${referidosUrl})`
 
       const prevId = await this.redis.get(REDIS_KEY_TELEGRAM)
