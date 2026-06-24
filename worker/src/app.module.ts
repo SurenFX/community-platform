@@ -14,6 +14,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { TelegramModule } from './modules/telegram/telegram.module'
 import { KickModule } from './modules/kick/kick.module'
 import { RecruitmentModule } from './modules/recruitment/recruitment.module'
+import { ReferidosAnnouncementModule } from './modules/referidos-announcement/referidos-announcement.module'
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { RecruitmentModule } from './modules/recruitment/recruitment.module'
     TelegramModule,
     KickModule,
     RecruitmentModule,
+    ReferidosAnnouncementModule,
   ],
 })
 export class AppModule {}
