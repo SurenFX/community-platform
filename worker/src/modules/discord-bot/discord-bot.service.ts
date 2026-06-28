@@ -6,7 +6,7 @@ import {
   Client, GatewayIntentBits, Events,
   Message, MessageReaction, PartialMessageReaction,
   User, PartialUser, EmbedBuilder, TextChannel,
-  GuildMember,
+  GuildMember, ActionRowBuilder, ButtonBuilder, ButtonStyle,
 } from 'discord.js'
 import { ReputationService } from '../reputation/reputation.service'
 import { RedisService } from '../../infrastructure/redis/redis.service'
@@ -53,8 +53,16 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   private registerListeners() {
-    this.client.once(Events.ClientReady, (c) => {
+    this.client.once(Events.ClientReady, async (c) => {
       this.logger.log(`Bot listo: ${c.user.tag}`)
+      await this.setupOnboarding()
+    })
+
+    this.client.on(Events.InteractionCreate, async (interaction) => {
+      if (!interaction.isButton()) return
+      if (interaction.customId === 'onboarding_verify') {
+        await this.handleVerifyButton(interaction)
+      }
     })
 
     this.client.on(Events.MessageCreate, async (message: Message) => {
@@ -300,6 +308,105 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     } catch (err) {
       this.logger.warn(`Error en sendReplaceable a ${channelId}: ${err}`)
       return null
+    }
+  }
+
+  // ─── Onboarding ────────────────────────────────────────────────────────────
+
+  private async setupOnboarding(): Promise<void> {
+    const channelId = this.config.get<string>('DISCORD_ONBOARDING_CHANNEL_ID')
+    const roleId    = this.config.get<string>('DISCORD_VERIFIED_ROLE_ID')
+    if (!channelId || !roleId) return
+
+    try {
+      const channel = await this.client.channels.fetch(channelId)
+      if (!channel || !(channel instanceof TextChannel)) return
+
+      const { embed, components } = this.buildOnboardingMessage()
+
+      const prevId = await this.redis.get('discord:onboarding:msg_id')
+      if (prevId) {
+        try {
+          const prevMsg = await channel.messages.fetch(prevId)
+          await prevMsg.edit({ embeds: [embed], components })
+          this.logger.log('Onboarding embed actualizado')
+          return
+        } catch {
+          // mensaje ya no existe — se crea uno nuevo
+        }
+      }
+
+      const sent = await channel.send({ embeds: [embed], components })
+      await this.redis.set('discord:onboarding:msg_id', sent.id)
+      this.logger.log('Onboarding embed publicado')
+    } catch (err) {
+      this.logger.warn(`setupOnboarding error: ${err}`)
+    }
+  }
+
+  private buildOnboardingMessage(): {
+    embed: EmbedBuilder
+    components: ActionRowBuilder<ButtonBuilder>[]
+  } {
+    const hubUrl = this.config.get<string>('HUB_URL') ?? ''
+
+    const embed = new EmbedBuilder()
+      .setColor(0x53FC18)
+      .setTitle('🎮 Bienvenido a la comunidad de Salchi NFT')
+      .setDescription(
+        '**¿Qué podés hacer acá?**\n' +
+        '▸ Ganar **XP y SalchiCoins** por participar en Discord, Twitch, Kick, YouTube y Telegram\n' +
+        '▸ Subir de nivel y desbloquear **badges y cosméticos**\n' +
+        '▸ Competir en el **leaderboard** y participar en **sorteos en vivo**\n' +
+        '▸ Completar **misiones y desafíos** comunitarios\n\n' +
+        '**Reglas básicas**\n' +
+        '▸ Respetá a todos los miembros\n' +
+        '▸ No spam ni contenido NSFW\n' +
+        '▸ Seguí las indicaciones del staff\n\n' +
+        'Presioná **✅ Verificarme** para acceder al servidor y empezar a ganar XP.'
+      )
+      .setFooter({ text: 'Salchi NFT Community · Hub de reputación' })
+
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('onboarding_verify')
+        .setLabel('✅ Verificarme')
+        .setStyle(ButtonStyle.Success),
+    )
+
+    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setLabel('🎮 Registrarme en el hub')
+        .setStyle(ButtonStyle.Link)
+        .setURL(`${hubUrl}/login`),
+      new ButtonBuilder()
+        .setLabel('👤 Ya tengo cuenta')
+        .setStyle(ButtonStyle.Link)
+        .setURL(`${hubUrl}/dashboard`),
+    )
+
+    return { embed, components: [row1, row2] }
+  }
+
+  private async handleVerifyButton(interaction: any): Promise<void> {
+    const roleId = this.config.get<string>('DISCORD_VERIFIED_ROLE_ID')
+    if (!roleId) return
+
+    try {
+      const member = interaction.member as GuildMember
+      if (member.roles.cache.has(roleId)) {
+        await interaction.reply({ content: '¡Ya estás verificado! Explorá el servidor. 🎮', ephemeral: true })
+        return
+      }
+      await member.roles.add(roleId)
+      await interaction.reply({
+        content: '¡Bienvenido! Ya tenés acceso completo al servidor. 🎮',
+        ephemeral: true,
+      })
+      this.logger.log(`Onboarding: ${member.user?.tag ?? interaction.user?.tag} verificado`)
+    } catch (err) {
+      this.logger.warn(`handleVerifyButton error: ${err}`)
+      await interaction.reply({ content: 'Hubo un error. Contactá al staff.', ephemeral: true }).catch(() => {})
     }
   }
 
