@@ -367,14 +367,11 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       )
       .setFooter({ text: 'Salchi NFT Community · Hub de reputación' })
 
-    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId('onboarding_verify')
         .setLabel('✅ Verificarme')
         .setStyle(ButtonStyle.Success),
-    )
-
-    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setLabel('🎮 Registrarme en el hub')
         .setStyle(ButtonStyle.Link)
@@ -385,7 +382,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
         .setURL(`${hubUrl}/dashboard`),
     )
 
-    return { embed, components: [row1, row2] }
+    return { embed, components: [row] }
   }
 
   private async handleVerifyButton(interaction: any): Promise<void> {
