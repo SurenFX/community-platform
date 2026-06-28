@@ -354,10 +354,16 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       .setColor(0x53FC18)
       .setTitle('🎮 Bienvenido a la comunidad de Salchi NFT')
       .setDescription(
-        '**¿Qué podés hacer acá?**\n' +
-        '▸ Ganar **XP y SalchiCoins** por participar en Discord, Twitch, Kick, YouTube y Telegram\n' +
-        '▸ Subir de nivel y desbloquear **badges y cosméticos**\n' +
-        '▸ Competir en el **leaderboard** y participar en **sorteos en vivo**\n' +
+        '¡Hola! Este servidor es el punto de encuentro de la comunidad de Salchi en Discord, Twitch, Kick, YouTube y Telegram.\n\n' +
+        '🚧 **HUB EN BETA** — Estamos lanzando nuestro sistema de reputación. Puede haber cambios frecuentes. ¡Tu feedback es bienvenido!\n\n' +
+        '**¿Qué es el Hub?**\n' +
+        'Una plataforma donde ganás **XP** y **SalchiCoins** por participar en la comunidad. Cuanto más activo seas, más recompensas obtenés.\n\n' +
+        '**¿Qué podés hacer?**\n' +
+        '▸ Ganar **XP** chateando en Discord, Twitch, Kick, comentando en YouTube y participando en Telegram\n' +
+        '▸ Acumular **SalchiCoins** para canjear en la tienda de cosméticos\n' +
+        '▸ Subir de **nivel** y desbloquear **badges** exclusivos\n' +
+        '▸ Competir en el **leaderboard** y ver tu posición en el ranking\n' +
+        '▸ Participar en **sorteos en vivo** durante los streams\n' +
         '▸ Completar **misiones y desafíos** comunitarios\n\n' +
         '**Reglas básicas**\n' +
         '▸ Respetá a todos los miembros\n' +
