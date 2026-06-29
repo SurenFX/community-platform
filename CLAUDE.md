@@ -154,10 +154,61 @@ gamificación que ya existía para Twitch, ahora también para Kick.
   `BadgesClient.tsx` — mismo patrón repetitivo que ya se había dado con Telegram
   (ver tarea #13 del historial de tareas).
 
+**Anuncios de Kick en vivo (Discord/Telegram)**: `KickApiService.checkStreamLive()` detecta
+transición offline→online y postea embed en Discord (color 0x53FC18) + mensaje en Telegram
+al mismo canal que Twitch. Dedup con `redis.setNX('kick:live:{slug}', '1', 2h)`. Refresca
+`kick:stream_active` en Redis (TTL 5 min) para cross-platform awareness.
+
+**YouTube → chat de Twitch y Kick (con lógica de lives)**:
+- Videos del día en adelante se anuncian en chat de Twitch y Kick durante el live, una vez
+  por hora (`yt:chat_last:{id}` TTL 48h). Al terminar el live, si ya se anunció, se marca
+  con `yt:chat_done:{id}` (30 días) para que el próximo live no lo vuelva a mencionar.
+- `YoutubeModule` importa `TwitchModule` y `KickModule` para poder llamar
+  `twitchIrc.sendChat()` y `kickApi.sendChat()` sin circular dependency.
+
+**Cross-promo Twitch→Kick**: `TwitchIrcService.remindKickInChat()` cron cada 30 min.
+Solo se activa si `this.isLive` (Twitch) y `kick:stream_active` (Redis key con TTL 5 min)
+ambos están activos. Dedup con `redis.setNX('cross:kick_reminder_in_twitch', '1', 30m)`.
+Solo una dirección: Twitch chat menciona Kick, no viceversa.
+
+**Sistema de referidos (afiliados)**: nuevo feature para mostrar links de referido de juegos.
+- Migración `013_referral_links.sql`: tabla `referral_links` con RLS (solo admins escriben,
+  usuarios autenticados leen los activos).
+- Admin `/admin/referidos`: CRUD completo con formulario modal, preview de imagen del juego,
+  contador de clics, toggle activo/inactivo, orden personalizable.
+- Dashboard `/dashboard/referidos`: grid de cards estilo poster de juego (aspect-ratio 3:4),
+  imagen full con gradiente overlay, hover con scale + glow border + descripción + botón
+  "Jugar con referido". Click trackea en DB (`click_count`) y abre URL en nueva pestaña.
+- Server actions: `createReferralLink`, `updateReferralLink`, `deleteReferralLink`,
+  `trackReferralClick` en `app/actions/admin.ts`.
+- Sidebar + AdminSidebar: entrada "Referidos" con ícono `Gamepad2`.
+
+**Discord bot — onboarding, level-up, comandos**:
+- `discord-bot.service.ts` reescrito (heredoc, por stale mount repetido):
+- `TELEGRAM_GROUP_ID` fijado a `-1002155732770` (derivado de `t.me/c/2155732770/1`).
+- Onboarding embed en `#verificar` (`DISCORD_ONBOARDING_CHANNEL_ID=1267645951376494727`):
+  embed con texto completo (beta warning, descripción del hub, reglas), 3 botones en una
+  sola fila (Verificarme / Ir al Hub / Mis misiones), msg_id persistido en Redis
+  (`discord:onboarding:msg_id`) para editar en lugar de repostear.
+- Botón "Verificarme" asigna el rol `DISCORD_VERIFIED_ROLE_ID` (928400272563269713)
+  via `handleVerifyButton()`, respuesta ephemeral.
+- Level-up: `handleLevelUp()` anuncia en `DISCORD_LEVELUP_CHANNEL_ID` (1521293359845740736)
+  con embed verde + tier del usuario (Viewer/Regular/Core/Élite/Leyenda).
+- Comandos `!rank`, `!xp`, `!misiones` solo en `DISCORD_COMMANDS_CHANNEL_ID` (mismo canal).
+  `!rank` / `!xp`: embed con nivel, tier, XP, rank global, SC y racha.
+  `!misiones`: lista de misiones aceptadas con barras de progreso.
+- YouTube: filtrado de lives/scheduled (`liveBroadcastContent !== 'none'`) ANTES del filtro
+  de VODs, para no anunciar streams en vivo como videos nuevos.
+- `014_streak_badges.sql`: 4 badges de racha (streak_7 BRONZE / streak_30 SILVER /
+  streak_60 GOLD / streak_100 LEGENDARY). Se otorgan en `claimDailyBonus()` exactamente
+  el día que `newStreak` toca el hito, con notificación `BADGE_EARNED`.
+- Nuevas env vars (worker): `DISCORD_LEVELUP_CHANNEL_ID`, `DISCORD_COMMANDS_CHANNEL_ID`,
+  `DISCORD_ONBOARDING_CHANNEL_ID`, `DISCORD_VERIFIED_ROLE_ID`.
+
 ## Estado actual
 
 Plataforma funcionalmente muy completa (ver Historial). `tsc --noEmit` limpio en
-`app/` y `worker/` (hay ~85 errores preexistentes en `app/` no relacionados a Kick/este
+`app/` y `worker/` (hay ~60 errores preexistentes en `app/` no relacionados a este
 trabajo, documentados como deuda técnica fuera de alcance). Worker corriendo en Fly.io
 con todos los módulos activos (Discord, Telegram, YouTube, Twitch, Kick, Recruitment).
 
@@ -168,35 +219,18 @@ con todos los módulos activos (Discord, Telegram, YouTube, Twitch, Kick, Recrui
   notificaciones in-app + Realtime, no push del navegador/móvil.
 - Antes de un onboarding masivo: probar a mano los flujos críticos end-to-end (login,
   conectar redes, reclamar misión, subir de nivel, entrar a un sorteo, perfil en mobile).
+- **Worker deploy pendiente**: correr `fly deploy --app worker-marbled-acorn-591` desde
+  `worker/` para activar: onboarding embed Discord, level-up channel, bot commands,
+  anuncios de Kick en vivo, YouTube→chat, cross-promo Twitch→Kick.
 - **Setup manual pendiente para que funcione el OAuth de Kick de usuarios** (código ya
   pusheado, falta configuración externa):
-  1. Correr `011_kick_xp_enum.sql` en el SQL Editor de Supabase, esperar que termine,
+  1. Correr `013_referral_links.sql` en el SQL Editor de Supabase.
+  2. Correr `011_kick_xp_enum.sql` en el SQL Editor de Supabase, esperar que termine,
      y RECIÉN AHÍ correr `012_kick_missions_badges_seed.sql` (en otra ejecución separada).
-  2. Agregar `https://<dominio de Vercel>/auth/kick` como redirect URI en el Developer
+  3. Agregar `https://<dominio de Vercel>/auth/kick` como redirect URI en el Developer
      App de Kick (el mismo Client ID/Secret que ya usa el bot).
-  3. Agregar `KICK_CLIENT_ID` y `KICK_CLIENT_SECRET` como env vars del proyecto de
+  4. Agregar `KICK_CLIENT_ID` y `KICK_CLIENT_SECRET` como env vars del proyecto de
      **Vercel** (Settings → Environment Variables del proyecto `community-platform-app`) —
      hoy solo están seteadas como Fly secrets del worker, el frontend necesita su copia.
 
-## Gotchas operativos (importante para no perder tiempo)
-
-- **Bash mount stale/torn**: el sandbox de Linux a veces muestra contenido viejo o
-  truncado de archivos que el `Edit`/`Write` tool (lado Windows) acaba de modificar
-  correctamente — esto rompe `tsc`/`git diff`/`grep` con errores que no tienen sentido
-  (ej: `Expression expected` a mitad de un `if`, o "binary file matches" después de un
-  `sed`). La corrección NO es debuggear el código — es reescribir el archivo entero vía
-  `cat > archivo <<'EOF' ... EOF` con el contenido correcto confirmado por `Read`/`Edit`,
-  y recién ahí volver a correr `tsc`. Pasó repetidamente con `main.ts`, `app.module.ts`,
-  `kick-api.service.ts`, `discord-bot.service.ts`, `telegram.service.ts`,
-  `recruitment.service.ts`, y con varios archivos de `app/` en la sesión de misiones de
-  Kick. Nunca usar `sed -i` sobre estos archivos — corrompió uno a binario.
-- **Vercel deploy bloqueado**: si el dashboard dice "Deployment Blocked — commit author
-  did not have access" y el repo es privado, pasarlo a público resuelve el problema de
-  raíz (alternativa: que el usuario pushee siempre desde su propia cuenta/CLI).
-- **La sandbox no tiene salida de red** a `id.kick.com`, Supabase REST, ni casi nada
-  externo (proxy con allowlist) — el intercambio de OAuth code→token de Kick y los
-  INSERT/UPDATE directos a Supabase hay que pedirle al usuario que los corra él
-  (PowerShell `Invoke-RestMethod`, o SQL Editor de Supabase).
-- **`fly` y `vercel` CLI no vienen preinstalados** en la sandbox — el usuario los instala
-  con `npm i -g vercel` / sigue instrucciones de Fly, y corre los comandos en su propia
-  terminal de Windows.
+## Gotchas
