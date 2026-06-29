@@ -171,6 +171,14 @@ export class YoutubeService {
         const thumbnail   = item.snippet?.thumbnails?.high?.url ?? ''
         const duration    = durationMap.get(videoId) ?? 0
 
+        // Saltar lives y streams programados
+        const liveBroadcastContent = item.snippet?.liveBroadcastContent ?? 'none'
+        if (liveBroadcastContent !== 'none') {
+          this.logger.log(`YouTube: saltando broadcast ${videoId} (${liveBroadcastContent}) - ${title}`)
+          await this.redis.setNX(`yt:announced:${videoId}`, 'live', 30 * 24 * 60 * 60)
+          continue
+        }
+
         // Saltar VODs (mas de 60 minutos)
         if (duration > 60 * 60) {
           this.logger.log(`YouTube: saltando VOD ${videoId} (${Math.round(duration/60)} min) - ${title}`)
