@@ -102,6 +102,31 @@ export async function claimDailyBonus(): Promise<{
   }, { onConflict: 'user_id' })
   if (upsertError) return { error: `DB error: ${upsertError.message}` }
 
+  // Badge de racha — se otorga exactamente el día que se alcanza el hito
+  const STREAK_MILESTONES = [
+    { days: 100, slug: 'streak_100' },
+    { days: 60,  slug: 'streak_60'  },
+    { days: 30,  slug: 'streak_30'  },
+    { days: 7,   slug: 'streak_7'   },
+  ]
+  const streakMilestone = STREAK_MILESTONES.find(m => newStreak === m.days)
+  if (streakMilestone) {
+    const { data: badge } = await db.from('badges').select('id').eq('slug', streakMilestone.slug).single()
+    if (badge) {
+      const { error: badgeErr } = await db.from('user_badges')
+        .insert({ user_id: user.id, badge_id: (badge as any).id })
+      if (!badgeErr) {
+        await db.from('notifications').insert({
+          user_id: user.id,
+          type:    'BADGE_EARNED',
+          title:   '¡Badge desbloqueado!',
+          message: `Desbloqueaste el badge "Racha de ${streakMilestone.days} días" 🔥`,
+          is_read: false,
+        })
+      }
+    }
+  }
+
   // Insertar xp_event para historial de actividad
   await db.from('xp_events').insert({
     user_id:       user.id,
@@ -348,7 +373,7 @@ export async function prestigeUser(): Promise<{ error?: string; newPrestige?: nu
 
   const currentPrestige = (rep as any).prestige_level ?? 0
   const newPrestige     = currentPrestige + 1
-  const bonusSc         = 500 * newPrestige  // 500 SC por cada nivel de prestige
+  const bonusSc         = 500 * newPrestige
 
   // Guardar historial
   await db.from('prestige_history').insert({
