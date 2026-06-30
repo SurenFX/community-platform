@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
-import { CircleDollarSign, ShoppingBag, Flame, Swords, CheckCircle, Zap } from 'lucide-react'
+import { CircleDollarSign, ShoppingBag, Flame, Swords, CheckCircle, Zap, Gift } from 'lucide-react'
+import GiftCoinsForm from '@/components/coins/GiftCoinsForm'
 
 function timeAgo(date: string) {
   const d = Math.floor((Date.now() - new Date(date).getTime()) / 86400000)
@@ -29,25 +30,24 @@ export default async function CoinsPage() {
       .from('user_missions')
       .select('completed_at, missions!inner(title, coin_reward)')
       .eq('user_id', user.id)
-      .eq('is_claimed', true)
+      .eq('status', 'CLAIMED')
       .order('completed_at', { ascending: false })
-      .limit(50),
-    // SC gastados en tienda
+      .limit(100),
+    // SC gastados en shop
     admin
-      .from('user_inventory')
+      .from('shop_purchases')
       .select('created_at, shop_items!inner(name, price_sc)')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(50),
-    // Notificaciones de SC (bono diario, challenge rewards, grants manuales)
+      .limit(100),
+    // Grants admin, bonos, recompensas, gifts
     admin
       .from('notifications')
-      .select('created_at, title, type')
+      .select('title, message, type, created_at')
       .eq('user_id', user.id)
-      .in('type', ['SYSTEM', 'CHALLENGE_REWARD', 'STREAK_BONUS', 'MISSION_COMPLETED'])
-      .ilike('title', '%SalchiCoin%')
+      .in('type', ['SYSTEM', 'CHALLENGE_REWARD', 'STREAK_BONUS', 'MISSION_COMPLETED', 'GIFT_SENT', 'GIFT_RECEIVED', 'PRESTIGE'])
       .order('created_at', { ascending: false })
-      .limit(50),
+      .limit(100),
   ])
 
   const balance = (repRes.data as any)?.salchi_coins ?? 0
@@ -68,12 +68,23 @@ export default async function CoinsPage() {
     if (sc > 0) txs.push({ date: p.created_at, label: p.shop_items?.name ?? 'Ítem de tienda', amount: sc, type: 'spend', source: 'shop' })
   }
 
-  // Grants / bonos / rewards por notificación
+  // Grants / bonos / rewards / gifts por notificación
   for (const n of (notifRes.data ?? []) as any[]) {
+    if (n.type === 'GIFT_SENT') {
+      const match = n.title.match(/(\d+) SC/)
+      if (match) txs.push({ date: n.created_at, label: n.message ?? 'Regalo enviado', amount: parseInt(match[1]), type: 'spend', source: 'GIFT_SENT' })
+      continue
+    }
+    if (n.type === 'GIFT_RECEIVED') {
+      const match = n.title.match(/\+(\d+)/)
+      if (match) txs.push({ date: n.created_at, label: n.message ?? 'Regalo recibido', amount: parseInt(match[1]), type: 'earn', source: 'GIFT_RECEIVED' })
+      continue
+    }
     const match = n.title.match(/\+(\d+)/)
     if (match) {
       const label = n.type === 'CHALLENGE_REWARD' ? 'Recompensa de desafío'
         : n.title.includes('diario') || n.title.toLowerCase().includes('bonus') ? 'Bono diario'
+        : n.type === 'PRESTIGE' ? 'Bonus de prestige'
         : 'SC otorgados por admin'
       txs.push({ date: n.created_at, label, amount: parseInt(match[1]), type: 'earn', source: n.type })
     }
@@ -87,6 +98,9 @@ export default async function CoinsPage() {
     CHALLENGE_REWARD:{ icon: Swords,           color: 'text-primary',    bg: 'bg-primary/10'    },
     STREAK_BONUS:    { icon: Flame,            color: 'text-orange-400', bg: 'bg-orange-400/10' },
     SYSTEM:          { icon: Zap,              color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+    PRESTIGE:        { icon: Zap,              color: 'text-purple-400', bg: 'bg-purple-400/10' },
+    GIFT_SENT:       { icon: Gift,             color: 'text-pink-400',   bg: 'bg-pink-400/10'   },
+    GIFT_RECEIVED:   { icon: Gift,             color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
   }
 
   const totalEarned = txs.filter(t => t.type === 'earn').reduce((s, t) => s + t.amount, 0)
@@ -94,9 +108,12 @@ export default async function CoinsPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">SalchiCoins</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Tu historial de monedas</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">SalchiCoins</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Tu historial de monedas</p>
+        </div>
+        <GiftCoinsForm balance={balance} />
       </div>
 
       {/* Balance + stats */}

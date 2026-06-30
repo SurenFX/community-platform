@@ -406,3 +406,87 @@ export async function prestigeUser(): Promise<{ error?: string; newPrestige?: nu
   revalidatePath('/dashboard', 'layout')
   return { newPrestige }
 }
+
+
+// ── Gift SalchiCoins ───────────────────────────────────────────────────────────
+export async function giftCoins(
+  toUsername: string,
+  amount: number,
+  message?: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const amount_ = Math.floor(amount)
+  if (amount_ < 1) return { error: 'Monto inválido' }
+  if (amount_ > 10000) return { error: 'Máximo 10.000 SC por regalo' }
+
+  const db = adminDb()
+
+  const { data: senderRep } = await db
+    .from('user_reputation')
+    .select('salchi_coins')
+    .eq('user_id', user.id)
+    .single()
+
+  const senderCoins = (senderRep as any)?.salchi_coins ?? 0
+  if (senderCoins < amount_) return { error: `No tenés suficientes SC (tenés ${senderCoins})` }
+
+  const { data: recipientProfile } = await db
+    .from('profiles')
+    .select('id, username')
+    .eq('username', toUsername)
+    .maybeSingle()
+
+  if (!recipientProfile) return { error: `Usuario "${toUsername}" no encontrado` }
+  if ((recipientProfile as any).id === user.id) return { error: 'No podés regalarte SC a vos mismo' }
+
+  const recipientId = (recipientProfile as any).id
+
+  const { error: deductErr } = await db
+    .from('user_reputation')
+    .update({ salchi_coins: senderCoins - amount_ })
+    .eq('user_id', user.id)
+
+  if (deductErr) return { error: 'Error al procesar el regalo' }
+
+  const { data: senderProfile } = await db
+    .from('profiles')
+    .select('username')
+    .eq('id', user.id)
+    .single()
+  const senderUsername = (senderProfile as any)?.username ?? 'alguien'
+
+  const { data: recipRep } = await db
+    .from('user_reputation')
+    .select('salchi_coins')
+    .eq('user_id', recipientId)
+    .single()
+
+  await db
+    .from('user_reputation')
+    .update({ salchi_coins: ((recipRep as any)?.salchi_coins ?? 0) + amount_ })
+    .eq('user_id', recipientId)
+
+  const noteMsg = message ? ` Mensaje: "${message}"` : ''
+  await db.from('notifications').insert([
+    {
+      user_id: user.id,
+      type:    'GIFT_SENT',
+      title:   `-${amount_} SC — Regalo enviado`,
+      message: `Le regalaste ${amount_} SC a @${(recipientProfile as any).username}.${noteMsg}`,
+      is_read: false,
+    },
+    {
+      user_id: recipientId,
+      type:    'GIFT_RECEIVED',
+      title:   `+${amount_} SC — ¡Recibiste un regalo!`,
+      message: `@${senderUsername} te regaló ${amount_} SalchiCoins.${noteMsg}`,
+      is_read: false,
+    },
+  ])
+
+  revalidatePath('/dashboard/coins')
+  return {}
+}
