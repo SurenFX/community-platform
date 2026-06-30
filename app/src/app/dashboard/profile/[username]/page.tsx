@@ -9,6 +9,7 @@ import { PrestigeBadge } from '@/components/profile/PrestigeModal'
 import CopyProfileLink from '@/components/profile/CopyProfileLink'
 import ActivityHeatmap from '@/components/profile/ActivityHeatmap'
 import ShareCardButton from '@/components/profile/ShareCardButton'
+import XpChart from '@/components/profile/XpChart'
 
 export async function generateMetadata({
   params,
@@ -150,6 +151,29 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     .sort((a, b) => b[1] - a[1])
     .map(([platform, xp]) => ({ platform, xp, pct: totalXpAll > 0 ? Math.round((xp / totalXpAll) * 100) : 0 }))
 
+  // Grafico XP por dia (ultimos 7 y 30 dias)
+  function buildDayBuckets(days: number) {
+    const now = Date.now()
+    const buckets: { label: string; xp: number }[] = []
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(now - i * 86_400_000)
+      buckets.push({
+        label: d.toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' }),
+        xp:    0,
+      })
+    }
+    for (const e of allEvents) {
+      if (!e.created_at) continue
+      const daysAgo = Math.floor((now - new Date(e.created_at).getTime()) / 86_400_000)
+      if (daysAgo >= days) continue
+      const idx = days - 1 - daysAgo
+      if (idx >= 0 && idx < buckets.length) buckets[idx].xp += e.xp_awarded ?? 0
+    }
+    return buckets
+  }
+  const xpWeekly  = buildDayBuckets(7)
+  const xpMonthly = buildDayBuckets(30)
+
   const badgesByFamily: Record<string, any[]> = {}
   for (const badge of allBadges) {
     const fam = (badge as any).family ?? 'other'
@@ -169,7 +193,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   return (
     <div className="space-y-4">
 
-      {/* ── CARD PRINCIPAL: identidad del personaje ── */}
+      {/* CARD PRINCIPAL */}
       <div className="fade-in-up bg-card border border-border rounded-2xl overflow-hidden">
         {/* Banner */}
         <div className="h-24 relative overflow-hidden">
@@ -178,7 +202,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             backgroundSize: '100% 100%',
           }} />
           <div className="absolute inset-0 xp-bar opacity-10" />
-          {/* Tier label en banner */}
           <div className="absolute top-3 right-4">
             <span className={`text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full border ${tier.color} ${tier.bg} ${tier.border}`}>
               {tier.label}
@@ -188,7 +211,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
 
         <div className="px-5 pb-5">
           <div className="flex items-end gap-4 -mt-10 mb-4">
-            {/* Avatar con level badge */}
             <div className="relative shrink-0">
               {profile.avatar_url ? (
                 <img src={profile.avatar_url} alt={profile.username}
@@ -202,14 +224,12 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                   <span className="text-2xl font-bold text-primary">{profile.username[0].toUpperCase()}</span>
                 </div>
               )}
-              {/* Level badge */}
               <div className={`absolute -bottom-2 -right-2 w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-black border-2 border-card ${tier.bg}`}
                 style={{ boxShadow: `0 0 10px ${tier.color.includes('yellow') ? 'hsl(45 100% 55% / 0.5)' : 'hsl(185 100% 45% / 0.4)'}` }}>
                 <span className={tier.color}>{level}</span>
               </div>
             </div>
 
-            {/* Nombre + título */}
             <div className="flex-1 mb-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-lg font-black text-foreground">
@@ -226,7 +246,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                 <CopyProfileLink username={profile.username} />
                 <ShareCardButton username={profile.username} />
               </div>
-              {/* Título de rango prominente */}
               <p className={`text-sm font-bold mt-0.5 ${getLevelColor(level)}`}>{displayTitle}</p>
               <p className="text-xs text-muted-foreground/70">{profile.discord_tag}</p>
             </div>
@@ -236,7 +255,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             <p className="text-xs text-muted-foreground italic border-l-2 border-primary/30 pl-3 mb-4">"{profile.bio}"</p>
           )}
 
-          {/* Barra XP al nivel siguiente */}
           <div className="mb-3">
             <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1.5">
               <span>{xpCurrent.toLocaleString()} / {xpNeeded.toLocaleString()} XP</span>
@@ -247,7 +265,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
             </div>
           </div>
 
-          {/* Cuentas vinculadas */}
           {links.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
               {links.map((link: any) => {
@@ -264,7 +281,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      {/* ── FICHA DE STATS ── */}
+      {/* STATS */}
       <div className="fade-in-up grid grid-cols-2 sm:grid-cols-4 gap-3" style={{ animationDelay: '40ms' }}>
         {[
           { label: 'XP Total',      value: totalXp.toLocaleString('es-AR'),         icon: Zap,       color: 'text-yellow-400',  bg: 'bg-yellow-400/10',  border: 'border-yellow-400/20' },
@@ -284,7 +301,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         ))}
       </div>
 
-      {/* ── XP POR PLATAFORMA ── */}
+      {/* XP POR PLATAFORMA */}
       {platformBreakdown.length > 0 && (
         <div className="fade-in-up bg-card border border-border rounded-2xl p-5" style={{ animationDelay: '80ms' }}>
           <div className="flex items-center gap-2 mb-4">
@@ -310,7 +327,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      {/* ── HISTORIAL DE NIVEL ── */}
+      {/* HISTORIAL DE NIVEL */}
       {levelHistory.length > 0 && (
         <div className="fade-in-up bg-card border border-border rounded-2xl p-5" style={{ animationDelay: '100ms' }}>
           <div className="flex items-center gap-2 mb-4">
@@ -341,12 +358,15 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      {/* ── HEATMAP DE ACTIVIDAD ── */}
+      {/* GRAFICO XP */}
+      <XpChart weekly={xpWeekly} monthly={xpMonthly} />
+
+      {/* HEATMAP DE ACTIVIDAD */}
       {allEvents.length > 0 && (
         <ActivityHeatmap events={allEvents as any} />
       )}
 
-      {/* ── LOGROS ── */}
+      {/* LOGROS */}
       <div className="fade-in-up bg-card border border-border rounded-2xl p-5" style={{ animationDelay: '120ms' }}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -360,7 +380,6 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         <div className="space-y-4">
           {Object.entries(badgesByFamily).map(([family, fBadges], fi) => {
             const earned = fBadges.filter(b => earnedIds.has(b.id))
-            // show all families
             return (
               <div key={family}>
                 <div className="flex items-center justify-between mb-2">
@@ -402,7 +421,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      {/* ── ACTIVIDAD RECIENTE ── */}
+      {/* ACTIVIDAD RECIENTE */}
       {events.length > 0 && (
         <div className="fade-in-up bg-card border border-border rounded-2xl overflow-hidden" style={{ animationDelay: '160ms' }}>
           <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
@@ -430,7 +449,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      {/* Footer: miembro desde */}
+      {/* Footer */}
       <div className="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground/50">
         <Calendar className="w-3.5 h-3.5" />
         <span>Miembro desde {memberSince}</span>
