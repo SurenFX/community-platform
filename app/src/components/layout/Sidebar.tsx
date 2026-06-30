@@ -124,7 +124,20 @@ export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-border">
+      <div className="p-3 border-t border-border space-y-3">
+        {profile && (
+          <div className="pb-2 border-b border-border/50">
+            <SidebarXpBar
+              userId={profile.id}
+              initialRep={(profile as any).user_reputation ?? null}
+              username={(profile as any).username ?? 'Usuario'}
+              avatarUrl={(profile as any).avatar_url ?? null}
+              avatarStyle={avatarStyle}
+              nameEmoji={nameEmoji}
+              onAvatarClick={() => setMobileOpen(false)}
+            />
+          </div>
+        )}
         <form action={signOut}>
           <button type="submit"
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-all duration-150"

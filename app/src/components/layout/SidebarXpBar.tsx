@@ -15,10 +15,11 @@ interface SidebarXpBarProps {
   avatarUrl:     string | null
   compact?:      boolean
   avatarStyle?:  React.CSSProperties
+  nameEmoji?:    string | null
   onAvatarClick?: () => void
 }
 
-export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, compact, avatarStyle, onAvatarClick }: SidebarXpBarProps) {
+export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, compact, avatarStyle, nameEmoji, onAvatarClick }: SidebarXpBarProps) {
   const [rep,        setRep]        = useState(initialRep)
   const [flashing,   setFlashing]   = useState(false)
   const [levelUp,    setLevelUp]    = useState<number | null>(null)
@@ -129,7 +130,10 @@ export default function SidebarXpBar({ userId, initialRep, username, avatarUrl, 
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{username}</p>
+          <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+            {nameEmoji && <span className="mr-1">{nameEmoji}</span>}
+            {username}
+          </p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <p className={`text-xs font-medium ${getLevelColor(level)}`}>{getLevelTitle(level)}</p>
             <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${tier.color} ${tier.bg} ${tier.border}`}>
