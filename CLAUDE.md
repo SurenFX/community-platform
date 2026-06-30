@@ -205,12 +205,32 @@ Solo una dirección: Twitch chat menciona Kick, no viceversa.
 - Nuevas env vars (worker): `DISCORD_LEVELUP_CHANNEL_ID`, `DISCORD_COMMANDS_CHANNEL_ID`,
   `DISCORD_ONBOARDING_CHANNEL_ID`, `DISCORD_VERIFIED_ROLE_ID`.
 
+**Sesión más reciente — features varios**:
+- **Gráfico XP por semana/mes en perfil**: `XpChart.tsx` (cliente, barras CSS, toggle 7d/30d,
+  tooltip hover). Datos agregados server-side desde `xp_events` sin query extra.
+  Se muestra en `/dashboard/profile/[username]` antes del heatmap.
+- **Cosméticos en avatar del sidebar** (pendiente viejo resuelto): `SidebarXpBar` ahora muestra
+  `nameEmoji` y el border del avatar con el color equipado. Se renderiza en el footer del sidebar.
+- **Digest semanal automático Discord/Telegram**: módulo `worker/src/modules/weekly-digest/`,
+  cron `0 12 * * 1` (lunes 12:00 UTC), top 5 por `weekly_xp`. Env vars:
+  `DISCORD_DIGEST_CHANNEL_ID`, `TELEGRAM_DIGEST_THREAD_ID` (opcional).
+- **Log de XP en tiempo real en admin**: `/admin/xp-log` — tabla con últimos 50 eventos,
+  Supabase Realtime para actualizaciones en vivo, indicador verde pulsa con cada nuevo evento.
+  Entrada "Log XP" en AdminSidebar con ícono Activity.
+- **Leaderboard por plataforma en /ranking**: `PlatformLeaderboards.tsx`, top 5 por
+  Discord/Twitch/Kick/YouTube/Telegram (últimos 90 días). Grid de 2 col, colores por plataforma.
+- **Sistema de gifts (regalar SalchiCoins)**: `giftCoins(toUsername, amount, message?)` en
+  `actions/shop.ts`. Valida saldo, no self-gift, usuario existente. Deduce del sender, acredita
+  al recipient. Notificaciones `GIFT_SENT`/`GIFT_RECEIVED` para ambos. `GiftCoinsForm.tsx`
+  (botón + formulario inline) en `/dashboard/coins`. Historial de coins muestra gifts.
+
 ## Estado actual
 
 Plataforma funcionalmente muy completa (ver Historial). `tsc --noEmit` limpio en
 `app/` y `worker/` (hay ~60 errores preexistentes en `app/` no relacionados a este
 trabajo, documentados como deuda técnica fuera de alcance). Worker corriendo en Fly.io
-con todos los módulos activos (Discord, Telegram, YouTube, Twitch, Kick, Recruitment).
+con todos los módulos activos (Discord, Telegram, YouTube, Twitch, Kick, Recruitment,
+WeeklyDigest).
 
 ## Pendientes (no bloqueantes)
 
@@ -233,4 +253,7 @@ con todos los módulos activos (Discord, Telegram, YouTube, Twitch, Kick, Recrui
      **Vercel** (Settings → Environment Variables del proyecto `community-platform-app`) —
      hoy solo están seteadas como Fly secrets del worker, el frontend necesita su copia.
 
-## Gotchas
+## Gotchas operativos (importante para no perder tiempo)
+
+- **Bash mount stale/torn**: el sandbox de Linux a veces muestra contenido viejo o
+  truncado de archivos 
