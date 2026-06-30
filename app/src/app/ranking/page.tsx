@@ -3,6 +3,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import LeaderboardTable from '@/components/leaderboard/LeaderboardTable'
 import SeasonCountdown from '@/components/layout/SeasonCountdown'
+import PlatformLeaderboards from '@/components/leaderboard/PlatformLeaderboards'
 import { Trophy, Medal, User } from 'lucide-react'
 
 export const metadata: Metadata = {
@@ -12,6 +13,8 @@ export const metadata: Metadata = {
 
 export const revalidate = 60
 
+const PLATFORMS = ['DISCORD', 'TWITCH', 'KICK', 'YOUTUBE', 'TELEGRAM'] as const
+
 export default async function PublicRankingPage() {
   const supabase = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -19,7 +22,9 @@ export default async function PublicRankingPage() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const [{ data: entries }, { data: activeSeason }, { data: closedSeasons }] = await Promise.all([
+  const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000).toISOString()
+
+  const [{ data: entries }, { data: activeSeason }, { data: closedSeasons }, { data: platformEvents }] = await Promise.all([
     supabase
       .from('user_reputation')
       .select('user_id, total_xp, weekly_xp, monthly_xp, level, current_streak, profiles!inner(username, avatar_url, equipped_border_color, equipped_name_emoji, equipped_title_override)')
@@ -36,7 +41,48 @@ export default async function PublicRankingPage() {
       .eq('status', 'CLOSED')
       .order('ends_at', { ascending: false })
       .limit(10),
+    supabase
+      .from('xp_events')
+      .select('user_id, xp_awarded, platform')
+      .in('platform', PLATFORMS as unknown as string[])
+      .gte('created_at', ninetyDaysAgo)
+      .limit(50000),
   ])
+
+  // Aggregate per platform
+  const platformAgg: Record<string, Record<string, number>> = {}
+  for (const e of platformEvents ?? []) {
+    const ev = e as any
+    if (!ev.platform) continue
+    if (!platformAgg[ev.platform]) platformAgg[ev.platform] = {}
+    platformAgg[ev.platform][ev.user_id] = (platformAgg[ev.platform][ev.user_id] ?? 0) + ev.xp_awarded
+  }
+
+  // Collect all user IDs needed for platform boards
+  const platformUserIds = new Set<string>()
+  for (const agg of Object.values(platformAgg)) {
+    for (const uid of Object.keys(agg)) platformUserIds.add(uid)
+  }
+
+  const { data: platformProfiles } = platformUserIds.size
+    ? await supabase.from('profiles').select('id, username, avatar_url').in('id', [...platformUserIds])
+    : { data: [] }
+
+  const profMap: Record<string, any> = {}
+  for (const p of platformProfiles ?? []) profMap[(p as any).id] = p
+
+  const platformData: Record<string, { username: string; avatar_url: string | null; xp: number; rank: number }[]> = {}
+  for (const [platform, agg] of Object.entries(platformAgg)) {
+    platformData[platform] = Object.entries(agg)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([userId, xp], i) => ({
+        username:   profMap[userId]?.username ?? '???',
+        avatar_url: profMap[userId]?.avatar_url ?? null,
+        xp,
+        rank: i + 1,
+      }))
+  }
 
   // Para cada temporada cerrada, obtener top 3 — todo en paralelo
   const seasonHistories = await Promise.all(
@@ -115,6 +161,9 @@ export default async function PublicRankingPage() {
           entries={(entries ?? []) as any}
           seasonName={(activeSeason as any)?.name ?? null}
         />
+
+        {/* Leaderboard por plataforma */}
+        <PlatformLeaderboards platformData={platformData} />
 
         {/* Historial de temporadas */}
         {seasonHistories.length > 0 && (
