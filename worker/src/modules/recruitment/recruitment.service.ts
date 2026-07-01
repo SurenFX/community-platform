@@ -78,4 +78,6 @@ export class RecruitmentService {
       }
     } catch (err) {
       this.logger.warn(`sendToTelegram error: ${err}`)
- 
+     }
+  }
+}
