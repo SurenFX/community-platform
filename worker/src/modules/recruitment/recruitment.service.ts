@@ -7,11 +7,12 @@ import { TelegramService } from '../telegram/telegram.service'
 import { RedisService } from '../../infrastructure/redis/redis.service'
 
 const MESSAGE =
-  'Si estas buscando pertenecer al mejor clan de todos, lamento informarte que ' +
-  'estamos cortos de cupos. Pero no desesperes, te recomiendo que te sumes a la ' +
-  'comunidad, aqui y/o Discord para estar al tanto de cuando se liberen espacios! ' +
-  '(apoyar la creacion de contenido en los stream o dejando like y comentando ' +
-  'videos sumaras puntos para darte prioridad ;) )'
+  'Si estás buscando unirte al mejor clan, los cupos están cerrados por ahora 😔 ' +
+  'Pero como bien dijo @Mr2704, si querés entrar cuando se libere un lugar, estos son los requisitos:\n\n' +
+  '⚔️ 150 bichos diarios y 500 de oro (si no llegás con los bichos, compensás con más oro)\n' +
+  '🛡️ Si no sos super tank ni tenés super ATK, al menos tener maldición nivel 1 para la cueva del clan\n' +
+  '📺 Participar en los directos en Kick y Twitch, y estar activo en Discord\n' +
+  '🏴 Estar en las batallas de clanes y ayudar a conquistar territorios — ¡estamos en guerra fuerte!'
 
 const REDIS_KEY_DISCORD  = 'recruitment:discord:last_msg_id'
 const REDIS_KEY_TELEGRAM = 'recruitment:telegram:last_msg_id'
