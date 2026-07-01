@@ -12,7 +12,8 @@ const MESSAGE =
   '⚔️ 150 bichos diarios y 1.000 de oro (si no llegás con los bichos, compensás con más oro)\n' +
   '🛡️ Si no sos super tank ni tenés super ATK, al menos tener maldición nivel 1 para la cueva del clan\n' +
   '📺 Participar en los directos en Kick y Twitch, y estar activo en Discord\n' +
-  '🏴 Estar en las batallas de clanes y ayudar a conquistar territorios — ¡estamos en guerra fuerte!'
+  '🏴 Estar en las batallas de clanes y ayudar a conquistar territorios — ¡estamos en guerra fuerte!\n\n' +
+  '📋 ¿Te interesa? Dejanos tu nick, level, raza y equipo que llevás en la sección #postulate 👇'
 
 const REDIS_KEY_DISCORD  = 'recruitment:discord:last_msg_id'
 const REDIS_KEY_TELEGRAM = 'recruitment:telegram:last_msg_id'
