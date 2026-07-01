@@ -8,7 +8,7 @@ import { RedisService } from '../../infrastructure/redis/redis.service'
 
 const MESSAGE =
   'Si estás buscando unirte al mejor clan, los cupos están cerrados por ahora 😔 ' +
-  'Pero como bien dijo @Mr2704, si querés entrar cuando se libere un lugar, estos son los requisitos:\n\n' +
+  'Pero como bien dijo el crack de Manuel, si querés entrar cuando se libere un lugar, estos son los requisitos:\n\n' +
   '⚔️ 150 bichos diarios y 500 de oro (si no llegás con los bichos, compensás con más oro)\n' +
   '🛡️ Si no sos super tank ni tenés super ATK, al menos tener maldición nivel 1 para la cueva del clan\n' +
   '📺 Participar en los directos en Kick y Twitch, y estar activo en Discord\n' +
@@ -78,6 +78,4 @@ export class RecruitmentService {
       }
     } catch (err) {
       this.logger.warn(`sendToTelegram error: ${err}`)
-    }
-  }
-}
+ 
