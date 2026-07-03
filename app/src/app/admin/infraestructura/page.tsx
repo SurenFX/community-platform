@@ -155,9 +155,9 @@ export default async function InfraestructuraPage() {
             color="bg-purple-600"
           />
           <ExternalCard
-            name="Fly.io — Worker"
-            url="https://fly.io/apps/worker-marbled-acorn-591/monitoring"
-            description="CPU, RAM, logs en tiempo real del worker (NestJS)"
+            name="Google Cloud — Worker"
+            url="https://console.cloud.google.com/compute/instances?project=salchineta"
+            description="CPU, RAM, logs en tiempo real del worker (NestJS) — VM e2-micro us-central1"
             icon={Server}
             color="bg-blue-600"
           />

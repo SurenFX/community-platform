@@ -11,6 +11,14 @@ import {
 import { ReputationService } from '../reputation/reputation.service'
 import { RedisService } from '../../infrastructure/redis/redis.service'
 
+const TIER_LABELS = [
+  { minLevel: 75, label: 'Leyenda',  emoji: '👑' },
+  { minLevel: 50, label: 'Élite',    emoji: '💎' },
+  { minLevel: 25, label: 'Core',     emoji: '🔥' },
+  { minLevel: 10, label: 'Regular',  emoji: '⭐' },
+  { minLevel: 1,  label: 'Viewer',   emoji: '🎮' },
+]
+
 @Injectable()
 export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DiscordBotService.name)
@@ -73,6 +81,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       if (configuredGuildId && message.guild.id !== configuredGuildId) return
 
       if (await this.checkSesameTrigger(message)) return
+      if (await this.handleCommand(message)) return
 
       const ignoredChannels = this.config.get<string>('IGNORED_CHANNELS')?.split(',') ?? []
       if (ignoredChannels.includes(message.channelId)) return
@@ -186,6 +195,136 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       }
     })
   }
+
+  // ─── Comandos de bot (!rank, !xp, !misiones) ───────────────────────────────
+
+  private async handleCommand(message: Message): Promise<boolean> {
+    const commandsChannelId = this.config.get<string>('DISCORD_COMMANDS_CHANNEL_ID')
+    if (!commandsChannelId || message.channelId !== commandsChannelId) return false
+
+    const content = message.content.trim().toLowerCase()
+    if (!content.startsWith('!')) return false
+
+    const cmd = content.split(/\s+/)[0]
+
+    if (cmd === '!rank' || cmd === '!xp') {
+      await this.handleRankCommand(message)
+      return true
+    }
+
+    if (cmd === '!misiones') {
+      await this.handleMisionesCommand(message)
+      return true
+    }
+
+    return false
+  }
+
+  private async handleRankCommand(message: Message): Promise<void> {
+    try {
+      const { data: profile } = await this.supabase.db
+        .from('profiles')
+        .select('id, username')
+        .eq('discord_id', message.author.id)
+        .single()
+
+      if (!profile) {
+        await message.reply({ embeds: [
+          new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setDescription('❌ No encontré tu perfil. Registrate en el hub primero.'),
+        ]})
+        return
+      }
+
+      const { data: rep } = await this.supabase.db
+        .from('user_reputation')
+        .select('total_xp, salchi_coins, current_streak, level')
+        .eq('user_id', profile.id)
+        .single()
+
+      const { count } = await this.supabase.db
+        .from('user_reputation')
+        .select('*', { count: 'exact', head: true })
+        .gt('total_xp', rep?.total_xp ?? 0)
+
+      const level  = rep?.level ?? 1
+      const tier   = TIER_LABELS.find(t => level >= t.minLevel)
+      const rank   = (count ?? 0) + 1
+
+      const embed = new EmbedBuilder()
+        .setColor(0x53FC18)
+        .setTitle(`📊 ${profile.username}`)
+        .addFields(
+          { name: 'Nivel',        value: `${tier?.emoji ?? ''} ${level} — ${tier?.label ?? ''}`, inline: true },
+          { name: 'XP Total',     value: (rep?.total_xp ?? 0).toLocaleString(),                  inline: true },
+          { name: 'Ranking',      value: `#${rank}`,                                              inline: true },
+          { name: 'SalchiCoins',  value: `🪙 ${(rep?.salchi_coins ?? 0).toLocaleString()}`,       inline: true },
+          { name: 'Racha',        value: `🔥 ${rep?.current_streak ?? 0} días`,                  inline: true },
+        )
+        .setFooter({ text: `community-platform-app.vercel.app/perfil/${profile.username}` })
+
+      await message.reply({ embeds: [embed] })
+    } catch (err) {
+      this.logger.warn(`handleRankCommand error: ${err}`)
+    }
+  }
+
+  private async handleMisionesCommand(message: Message): Promise<void> {
+    try {
+      const { data: profile } = await this.supabase.db
+        .from('profiles')
+        .select('id, username')
+        .eq('discord_id', message.author.id)
+        .single()
+
+      if (!profile) {
+        await message.reply({ embeds: [
+          new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setDescription('❌ No encontré tu perfil. Registrate en el hub primero.'),
+        ]})
+        return
+      }
+
+      const { data: missions } = await this.supabase.db
+        .from('user_missions')
+        .select('progress, missions!inner(title, target_count)')
+        .eq('user_id', profile.id)
+        .eq('status', 'ACCEPTED')
+        .limit(5)
+
+      if (!missions || missions.length === 0) {
+        await message.reply({ embeds: [
+          new EmbedBuilder()
+            .setColor(0x53FC18)
+            .setDescription('No tenés misiones activas. Aceptá misiones en el hub.'),
+        ]})
+        return
+      }
+
+      const lines = missions.map((m: any) => {
+        const title  = m.missions?.title ?? '?'
+        const target = m.missions?.target_count ?? 1
+        const prog   = m.progress ?? 0
+        const pct    = Math.min(100, Math.round((prog / target) * 100))
+        const bar    = '█'.repeat(Math.floor(pct / 10)) + '░'.repeat(10 - Math.floor(pct / 10))
+        return `**${title}**\n${bar} ${prog}/${target} (${pct}%)`
+      })
+
+      const embed = new EmbedBuilder()
+        .setColor(0x53FC18)
+        .setTitle(`🗡️ Misiones activas — ${profile.username}`)
+        .setDescription(lines.join('\n\n'))
+        .setFooter({ text: 'Ver todas en el hub' })
+
+      await message.reply({ embeds: [embed] })
+    } catch (err) {
+      this.logger.warn(`handleMisionesCommand error: ${err}`)
+    }
+  }
+
+  // ─── Seniority badges ──────────────────────────────────────────────────────
 
   private readonly SENIORITY_BADGES = [
     { slug: 'seniority_founder',     months: 24 },
@@ -413,6 +552,8 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // ─── Level-up ──────────────────────────────────────────────────────────────
+
   @OnEvent('user.level_up')
   async handleLevelUp(payload: {
     userId: string; discordId: string; oldLevel: number; newLevel: number
@@ -420,6 +561,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(`Level up: ${payload.discordId} ${payload.oldLevel}->${payload.newLevel}`)
     const configuredGuildId = this.config.get<string>('DISCORD_GUILD_ID')
     if (!configuredGuildId || !this.client) return
+
     try {
       const guild  = await this.client.guilds.fetch(configuredGuildId)
       const member = await guild.members.fetch(payload.discordId)
@@ -443,6 +585,25 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (err) {
       this.logger.warn(`Error sincronizando rol: ${err}`)
+    }
+
+    // Anunciar en canal de nivel
+    const levelUpChannelId = this.config.get<string>('DISCORD_LEVELUP_CHANNEL_ID')
+    if (levelUpChannelId) {
+      try {
+        const tier  = TIER_LABELS.find(t => payload.newLevel >= t.minLevel)
+        const embed = new EmbedBuilder()
+          .setColor(0x53FC18)
+          .setTitle(`${tier?.emoji ?? '🎮'} ¡Subida de nivel!`)
+          .setDescription(
+            `<@${payload.discordId}> acaba de alcanzar el **nivel ${payload.newLevel}**` +
+            (tier ? ` — ${tier.label}` : '') + '! 🎉'
+          )
+          .setFooter({ text: 'Salchi NFT Community · Hub de reputación' })
+        await this.announce(levelUpChannelId, embed)
+      } catch (err) {
+        this.logger.warn(`Level-up announce error: ${err}`)
+      }
     }
   }
 }

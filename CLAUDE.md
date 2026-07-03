@@ -21,8 +21,9 @@ y participan en sorteos en vivo durante los streams.
   Desplegado en **Vercel** (proyecto `community-platform-app`, team
   `community-platform-s-projects`).
 - **`worker/`** — NestJS. Bots de Discord/Telegram, integraciones con Twitch/YouTube/Kick,
-  cron jobs (misiones, temporadas, XP, anuncios), webhooks. Desplegado en **Fly.io**
-  (app `worker-marbled-acorn-591`, región `gru`).
+  cron jobs (misiones, temporadas, XP, anuncios), webhooks. Desplegado en **Google Cloud
+  Free Tier** (VM e2-micro, us-central1, IP pública `34.31.240.153`, proyecto `salchineta`).
+  Manejado con PM2 (autostart con systemd). Fly.io fue destruido en julio 2026 por cobros.
 - **Supabase** — Postgres + Auth (Discord OAuth) + Realtime. Migraciones en
   `supabase/migrations/`, se aplican a mano desde el SQL Editor de Supabase (no hay
   `supabase db push` automatizado en este flujo).
@@ -41,11 +42,17 @@ y participan en sorteos en vivo durante los streams.
   usar `vercel --prod` con la CLI (requiere `vercel login` una vez). Importante: correr
   `vercel` desde la raíz del repo, no desde `app/` (el root directory ya está configurado
   como `app` en el proyecto de Vercel).
-- **Worker (Fly.io)**: `fly deploy --app worker-marbled-acorn-591` desde `worker/`.
-  Las env vars se manejan con `fly secrets set KEY=value --app worker-marbled-acorn-591`
-  (no hace falta `fly deploy` después de un `secrets set`, Fly reinicia solo). El usuario
-  corre estos comandos en su propia terminal porque la sandbox de la IA no tiene `fly` CLI
-  ni acceso de red a `id.kick.com` / Supabase / etc. (proxy con allowlist).
+- **Worker (Google Cloud)**: SSH a la VM via consola de Google Cloud
+  (console.cloud.google.com → Compute Engine → Instancias → SSH). En la VM:
+  ```
+  cd ~/community-platform/worker
+  git pull
+  npm install
+  npm run build
+  pm2 restart worker
+  ```
+  Las env vars están en `~/community-platform/worker/.env` en la VM (editar con `nano .env`).
+  PM2 con systemd asegura que el worker sobreviva reinicios automáticamente.
 
 ## Variables de entorno (worker/.env — gitignored, nunca commitear valores)
 
@@ -256,4 +263,22 @@ WeeklyDigest).
 ## Gotchas operativos (importante para no perder tiempo)
 
 - **Bash mount stale/torn**: el sandbox de Linux a veces muestra contenido viejo o
-  truncado de archivos 
+  truncado de archivos que el `Edit`/`Write` tool (lado Windows) acaba de modificar
+  correctamente — esto rompe `tsc`/`git diff`/`grep` con errores que no tienen sentido
+  (ej: `Expression expected` a mitad de un `if`, o "binary file matches" después de un
+  `sed`). La corrección NO es debuggear el código — es reescribir el archivo entero vía
+  `cat > archivo <<'EOF' ... EOF` con el contenido correcto confirmado por `Read`/`Edit`,
+  y recién ahí volver a correr `tsc`. Pasó repetidamente con `main.ts`, `app.module.ts`,
+  `kick-api.service.ts`, `discord-bot.service.ts`, `telegram.service.ts`,
+  `recruitment.service.ts`, y con varios archivos de `app/` en la sesión de misiones de
+  Kick. Nunca usar `sed -i` sobre estos archivos — corrompió uno a binario.
+- **Vercel deploy bloqueado**: si el dashboard dice "Deployment Blocked — commit author
+  did not have access" y el repo es privado, pasarlo a público resuelve el problema de
+  raíz (alternativa: que el usuario pushee siempre desde su propia cuenta/CLI).
+- **La sandbox no tiene salida de red** a `id.kick.com`, Supabase REST, ni casi nada
+  externo (proxy con allowlist) — el intercambio de OAuth code→token de Kick y los
+  INSERT/UPDATE directos a Supabase hay que pedirle al usuario que los corra él
+  (PowerShell `Invoke-RestMethod`, o SQL Editor de Supabase).
+- **`fly` y `vercel` CLI no vienen preinstalados** en la sandbox — el usuario los instala
+  con `npm i -g vercel` / sigue instrucciones de Fly, y corre los comandos en su propia
+  terminal de Windows.
