@@ -490,11 +490,3 @@ export async function giftCoins(
   revalidatePath('/dashboard/coins')
   return {}
 }
-sage: `@${senderUsername} te regaló ${amount_} SalchiCoins.${noteMsg}`,
-      is_read: false,
-    },
-  ])
-
-  revalidatePath('/dashboard/coins')
-  return {}
-}
