@@ -212,6 +212,23 @@ Solo una dirección: Twitch chat menciona Kick, no viceversa.
 - Nuevas env vars (worker): `DISCORD_LEVELUP_CHANNEL_ID`, `DISCORD_COMMANDS_CHANNEL_ID`,
   `DISCORD_ONBOARDING_CHANNEL_ID`, `DISCORD_VERIFIED_ROLE_ID`.
 
+**Migración Fly.io → Google Cloud + fix crítico Supabase/crons**:
+- Fly.io destruido en julio 2026 por cobros inesperados. Worker migrado a Google Cloud
+  Free Tier (e2-micro, us-central1, IP `34.31.240.153`, proyecto `salchineta`).
+- Setup: Node.js 20, PM2 con systemd autostart, git clone, npm install, .env manual.
+- Fix crítico: `@supabase/realtime-js` en Node.js 20 lanza error sincrónico en
+  `createClient()` cuando no hay WebSocket nativo, lo cual impedía que NestJS terminara
+  de bootstrapear → los crons de `@nestjs/schedule` nunca se registraban (ScheduleModule
+  los registra en `onApplicationBootstrap`, que solo corre si el bootstrap completa).
+  Solución: polyfill `globalThis.WebSocket = require('ws')` al nivel de módulo en
+  `supabase.service.ts`, ANTES de llamar a `createClient`. El `transport` option de
+  realtime no funciona en la versión instalada.
+- `ws` agregado a `package.json` como dependencia explícita.
+- Actualizado `app/admin/infraestructura/page.tsx` con link a Google Cloud Console.
+- Todas las referencias a Fly.io en el código actualizadas.
+- Confirmado funcionando post-fix: Supabase conecta, XP se procesa, level-ups se
+  detectan, anuncios de Kick en vivo van a Discord/Telegram.
+
 **Sesión más reciente — features varios**:
 - **Gráfico XP por semana/mes en perfil**: `XpChart.tsx` (cliente, barras CSS, toggle 7d/30d,
   tooltip hover). Datos agregados server-side desde `xp_events` sin query extra.
@@ -235,9 +252,11 @@ Solo una dirección: Twitch chat menciona Kick, no viceversa.
 
 Plataforma funcionalmente muy completa (ver Historial). `tsc --noEmit` limpio en
 `app/` y `worker/` (hay ~60 errores preexistentes en `app/` no relacionados a este
-trabajo, documentados como deuda técnica fuera de alcance). Worker corriendo en Fly.io
-con todos los módulos activos (Discord, Telegram, YouTube, Twitch, Kick, Recruitment,
-WeeklyDigest).
+trabajo, documentados como deuda técnica fuera de alcance). Worker corriendo en
+**Google Cloud Free Tier** (e2-micro us-central1, PM2 + systemd) con todos los módulos
+activos: Discord, Telegram, YouTube, Twitch, Kick, Recruitment, WeeklyDigest.
+Supabase conecta correctamente (fix globalThis.WebSocket). XP, level-ups, streaks y
+anuncios de stream funcionando.
 
 ## Pendientes (no bloqueantes)
 
@@ -246,9 +265,10 @@ WeeklyDigest).
   notificaciones in-app + Realtime, no push del navegador/móvil.
 - Antes de un onboarding masivo: probar a mano los flujos críticos end-to-end (login,
   conectar redes, reclamar misión, subir de nivel, entrar a un sorteo, perfil en mobile).
-- **Worker deploy pendiente**: correr `fly deploy --app worker-marbled-acorn-591` desde
-  `worker/` para activar: onboarding embed Discord, level-up channel, bot commands,
-  anuncios de Kick en vivo, YouTube→chat, cross-promo Twitch→Kick.
+- **handleVerifyButton Discord[50001]**: el bot no puede asignar el rol verificado porque
+  no tiene permiso "Manage Roles" O su rol está por debajo del rol que intenta asignar.
+  Fix: en Discord → Server Settings → Roles → mover el rol del bot SalchiNeta por encima
+  del rol Verificado, y verificar que el bot tenga el permiso Manage Roles.
 - **Setup manual pendiente para que funcione el OAuth de Kick de usuarios** (código ya
   pusheado, falta configuración externa):
   1. Correr `013_referral_links.sql` en el SQL Editor de Supabase.
