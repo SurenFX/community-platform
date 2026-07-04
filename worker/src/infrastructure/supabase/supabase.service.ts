@@ -2,6 +2,14 @@ import { Injectable, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
+// Polyfill WebSocket para Node.js < 22 (sin WebSocket nativo).
+// Debe estar al nivel de módulo para que se ejecute antes de createClient.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+if (typeof globalThis.WebSocket === 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  ;(globalThis as any).WebSocket = require('ws')
+}
+
 @Injectable()
 export class SupabaseService implements OnModuleInit {
   private client: SupabaseClient
