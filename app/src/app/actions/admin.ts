@@ -564,3 +564,46 @@ export async function trackReferralClick(id: string): Promise<void> {
       .eq('id', id)
   }
 }
+
+// ── Friend Streamers ────────────────────────────────────────────────────────
+
+export async function createFriendStreamer(data: {
+  name: string
+  kick_slug: string
+  is_active: boolean
+}): Promise<{ error?: string }> {
+  'use server'
+  const { error: authErr, admin } = await getAdminClient()
+  if (authErr || !admin) return { error: authErr ?? 'Error' }
+
+  const { error } = await admin.from('friend_streamers').insert(data)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/amigos')
+  return {}
+}
+
+export async function updateFriendStreamer(id: string, data: {
+  name: string
+  kick_slug: string
+  is_active: boolean
+}): Promise<{ error?: string }> {
+  'use server'
+  const { error: authErr, admin } = await getAdminClient()
+  if (authErr || !admin) return { error: authErr ?? 'Error' }
+
+  const { error } = await admin.from('friend_streamers').update(data).eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/amigos')
+  return {}
+}
+
+export async function deleteFriendStreamer(id: string): Promise<{ error?: string }> {
+  'use server'
+  const { error: authErr, admin } = await getAdminClient()
+  if (authErr || !admin) return { error: authErr ?? 'Error' }
+
+  const { error } = await admin.from('friend_streamers').delete().eq('id', id)
+  if (error) return { error: error.message }
+  revalidatePath('/admin/amigos')
+  return {}
+}

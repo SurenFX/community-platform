@@ -26,8 +26,12 @@ export class KickApiService implements OnModuleInit {
   private appTokenExpiry = 0
   private broadcasterId: string | null = null
 
-  // Estado en memoria para detectar transicion offline -> online
+  // Estado en memoria para detectar transicion offline -> online (streamer principal)
   private wasLive = false
+
+  // Cache de broadcaster_user_id y estado live para streamers amigos
+  private friendBroadcasterIds = new Map<string, string>()
+  private friendWasLive        = new Map<string, boolean>()
 
   constructor(
     private config:     ConfigService,
@@ -292,6 +296,95 @@ export class KickApiService implements OnModuleInit {
       }
     } catch (err) {
       this.logger.warn(`ensureChatSubscription error: ${err}`)
+    }
+  }
+
+  // -- Helpers para streamers amigos --
+
+  private async getStreamInfoForSlug(slug: string): Promise<StreamInfo> {
+    const empty: StreamInfo = { isLive: false, title: '', game: '', viewers: 0, startedAt: null }
+    try {
+      const token = await this.getAppToken()
+      if (!token) return empty
+
+      // Resolver broadcaster_user_id (cacheado en memoria por slug)
+      let broadcasterId = this.friendBroadcasterIds.get(slug)
+      if (!broadcasterId) {
+        const res = await fetch(`${KICK_API_BASE}/channels?slug=${encodeURIComponent(slug)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) return empty
+        const data = await res.json()
+        const id = data?.data?.[0]?.broadcaster_user_id
+        if (!id) return empty
+        broadcasterId = String(id)
+        this.friendBroadcasterIds.set(slug, broadcasterId)
+      }
+
+      const res = await fetch(`${KICK_API_BASE}/livestreams?broadcaster_user_id=${broadcasterId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return empty
+      const data = await res.json()
+      const stream = data?.data?.[0]
+      if (!stream) return empty
+
+      return {
+        isLive:    true,
+        title:     stream.stream_title ?? '',
+        game:      stream.category?.name ?? '',
+        viewers:   stream.viewer_count ?? 0,
+        startedAt: stream.started_at ?? null,
+      }
+    } catch (err) {
+      this.logger.warn(`getStreamInfoForSlug(${slug}) error: ${err}`)
+      return empty
+    }
+  }
+
+  // -- Chequeo de streamers amigos -- cada 5 minutos --
+  @Cron('*/5 * * * *')
+  async checkFriendStreamers() {
+    const discordChannelId = this.config.get<string>('DISCORD_FRIENDS_CHANNEL_ID')
+    if (!discordChannelId || !this.clientId) return
+
+    const { data: friends } = await this.supabase.db
+      .from('friend_streamers')
+      .select('name, kick_slug')
+      .eq('is_active', true)
+
+    if (!friends?.length) return
+
+    for (const friend of friends as any[]) {
+      const { name, kick_slug: slug } = friend
+      const stream  = await this.getStreamInfoForSlug(slug)
+      const wasLive = this.friendWasLive.get(slug) ?? false
+
+      if (stream.isLive && !wasLive) {
+        const isFirst = await this.redis.setNX(`friend:live:${slug}`, '1', 2 * 60 * 60)
+        if (isFirst) {
+          const embed = new EmbedBuilder()
+            .setColor(0x53FC18)
+            .setTitle(`🎮 ${name} está en vivo en Kick!`)
+            .setDescription(stream.title || 'Stream en vivo')
+            .addFields(
+              { name: 'Categoría', value: stream.game || 'Sin categoría', inline: true },
+              { name: 'Viewers',   value: String(stream.viewers),          inline: true },
+            )
+            .setURL(`https://kick.com/${slug}`)
+            .setFooter({ text: 'Amigo de la comunidad SalchiNeta' })
+            .setTimestamp()
+
+          await this.discordBot.announce(discordChannelId, embed)
+          this.logger.log(`Anuncio de amigo "${name}" (${slug}) enviado a Discord`)
+        }
+      }
+
+      if (!stream.isLive && wasLive) {
+        await this.redis.del(`friend:live:${slug}`)
+      }
+
+      this.friendWasLive.set(slug, stream.isLive)
     }
   }
 

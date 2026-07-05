@@ -248,6 +248,17 @@ Solo una dirección: Twitch chat menciona Kick, no viceversa.
   al recipient. Notificaciones `GIFT_SENT`/`GIFT_RECEIVED` para ambos. `GiftCoinsForm.tsx`
   (botón + formulario inline) en `/dashboard/coins`. Historial de coins muestra gifts.
 
+- **Página pública `/referidos`**: `app/src/app/referidos/page.tsx` — no requiere login.
+  Banner CTA arriba (explica la comunidad, botón "Registrarse gratis →"), cards de juegos abajo.
+  Misma data que `/dashboard/referidos` pero accesible sin auth.
+
+- **Anuncios de streams amigos (Kick)**: migración `015_friend_streamers.sql` (tabla
+  `friend_streamers`: `name`, `kick_slug`, `is_active`). Worker: nuevo cron `*/5 * * * *`
+  `checkFriendStreamers()` en `kick-api.service.ts` — consulta la API pública de Kick por cada
+  amigo activo, detecta transición offline→online, postea embed en `DISCORD_FRIENDS_CHANNEL_ID`
+  (dedup Redis `friend:live:{slug}` TTL 2h). Admin `/admin/amigos` para CRUD de la lista.
+  Nueva env var: `DISCORD_FRIENDS_CHANNEL_ID=1523122468477468825`.
+
 ## Estado actual
 
 Plataforma funcionalmente muy completa (ver Historial). `tsc --noEmit` limpio en

@@ -425,7 +425,10 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
     embed: EmbedBuilder,
     previousMessageId?: string | null,
   ): Promise<string | null> {
-    if (!this.client?.isReady()) return null
+    if (!this.client?.isReady()) {
+      this.logger.warn(`sendReplaceable: cliente no listo (isReady=false) para canal ${channelId}`)
+      return null
+    }
     try {
       const channel = await this.client.channels.fetch(channelId)
       if (!channel || !(channel instanceof TextChannel)) {
