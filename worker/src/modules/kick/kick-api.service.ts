@@ -375,7 +375,7 @@ export class KickApiService implements OnModuleInit {
             .setFooter({ text: 'Amigo de la comunidad SalchiNeta' })
             .setTimestamp()
 
-          await this.discordBot.announce(discordChannelId, embed)
+          await this.discordBot.announce(discordChannelId, embed, '@everyone')
           this.logger.log(`Anuncio de amigo "${name}" (${slug}) enviado a Discord`)
         }
       }
