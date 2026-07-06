@@ -167,7 +167,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
               .setColor(0x53FC18)
               .setTitle(`👋 ¡Bienvenido/a ${member.user.displayName}!`)
               .setDescription(
-                `Hola <@${member.user.id}>! Somos la comunidad de **SalchiNeta** 🎮\n\n` +
+                `Hola <@${member.user.id}>! Somos la comunidad de la **SalchiNeta** 🎮\n\n` +
                 `▸ Verificate en <#${this.config.get('DISCORD_ONBOARDING_CHANNEL_ID') ?? 'verificar'}> para acceder al servidor\n` +
                 `▸ Ganá **XP y SalchiCoins** participando en Discord, Twitch, Kick y YouTube\n` +
                 `▸ Subí de nivel, desbloqueá badges y competí en el ranking\n\n` +
