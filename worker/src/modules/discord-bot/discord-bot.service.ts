@@ -146,6 +146,43 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
       const configuredGuildId = this.config.get<string>('DISCORD_GUILD_ID')
       if (configuredGuildId && member.guild.id !== configuredGuildId) return
 
+      // Asignar rol de miembro automáticamente
+      const memberRoleId = this.config.get<string>('DISCORD_MEMBER_ROLE_ID')
+      if (memberRoleId) {
+        try {
+          await member.roles.add(memberRoleId)
+        } catch (err) {
+          this.logger.warn(`GuildMemberAdd: no se pudo asignar rol ${memberRoleId}: ${err}`)
+        }
+      }
+
+      // Mensaje de bienvenida
+      const welcomeChannelId = this.config.get<string>('DISCORD_WELCOME_CHANNEL_ID')
+      if (welcomeChannelId) {
+        try {
+          const channel = await this.client.channels.fetch(welcomeChannelId)
+          if (channel instanceof TextChannel) {
+            const hubUrl = this.config.get<string>('HUB_URL') ?? ''
+            const embed = new EmbedBuilder()
+              .setColor(0x53FC18)
+              .setTitle(`👋 ¡Bienvenido/a ${member.user.displayName}!`)
+              .setDescription(
+                `Hola <@${member.user.id}>! Somos la comunidad de **SalchiNeta** 🎮\n\n` +
+                `▸ Verificate en <#${this.config.get('DISCORD_ONBOARDING_CHANNEL_ID') ?? 'verificar'}> para acceder al servidor\n` +
+                `▸ Ganá **XP y SalchiCoins** participando en Discord, Twitch, Kick y YouTube\n` +
+                `▸ Subí de nivel, desbloqueá badges y competí en el ranking\n\n` +
+                `[Registrate en el hub](${hubUrl}/login) para empezar a ganar recompensas 🏆`
+              )
+              .setThumbnail(member.user.displayAvatarURL())
+              .setFooter({ text: 'SalchiNeta Community' })
+              .setTimestamp()
+            await channel.send({ embeds: [embed] })
+          }
+        } catch (err) {
+          this.logger.warn(`GuildMemberAdd: error enviando bienvenida: ${err}`)
+        }
+      }
+
       const dedupKey = `discord:join:${member.user.id}`
       const isFirst  = await this.redis.setNX(dedupKey, '1', 365 * 24 * 60 * 60)
       if (!isFirst) return
