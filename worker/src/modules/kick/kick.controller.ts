@@ -16,6 +16,7 @@ const KICK_PUBLIC_KEY_URL = 'https://api.kick.com/public/v1/public-key'
 export class KickController {
   private readonly logger = new Logger(KickController.name)
   private publicKeyCache: string | null = null
+  private lastRedesAt = 0
 
   constructor(
     private kickApi:    KickApiService,
@@ -76,6 +77,7 @@ export class KickController {
       switch (eventType) {
         case 'chat.message.sent':
           await this.checkRaffleKeyword(payload)
+          await this.checkChatCommands(payload)
           await this.awardChatXp(payload, messageId)
           break
         case 'channel.followed':
@@ -122,6 +124,19 @@ export class KickController {
       this.logger.warn(`verifySignature error: ${err}`)
       return false
     }
+  }
+
+  private async checkChatCommands(payload: any) {
+    const content = (payload?.content ?? '').trim().toLowerCase()
+    if (content !== '!redes') return
+
+    const now = Date.now()
+    if (now - this.lastRedesAt < 30_000) return // cooldown 30s
+    this.lastRedesAt = now
+
+    await this.kickApi.sendChat(
+      '♦ Discord: https://discord.gg/ZFfMwe3JyW ♦ YouTube: https://www.youtube.com/c/SalchiNFT ♦ Kick: https://kick.com/salchinft ♦ Telegram: https://t.me/+8xZoKks2eAUxNzkx ♦ Twitter: https://twitter.com/SalchiNFT'
+    )
   }
 
   private async checkRaffleKeyword(payload: any) {
