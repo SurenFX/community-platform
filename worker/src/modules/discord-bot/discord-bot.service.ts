@@ -168,10 +168,7 @@ export class DiscordBotService implements OnModuleInit, OnModuleDestroy {
               .setTitle(`👋 ¡Bienvenido/a ${member.user.displayName}!`)
               .setDescription(
                 `Hola <@${member.user.id}>! Somos la comunidad de la **SalchiNeta** 🎮\n\n` +
-                `▸ Verificate en <#${this.config.get('DISCORD_ONBOARDING_CHANNEL_ID') ?? 'verificar'}> para acceder al servidor\n` +
-                `▸ Ganá **XP y SalchiCoins** participando en Discord, Twitch, Kick y YouTube\n` +
-                `▸ Subí de nivel, desbloqueá badges y competí en el ranking\n\n` +
-                `[Registrate en el hub](${hubUrl}/login) para empezar a ganar recompensas 🏆`
+                `Pasate por <#${this.config.get('DISCORD_ONBOARDING_CHANNEL_ID') ?? 'verificar'}> para acceder al servidor.`
               )
               .setThumbnail(member.user.displayAvatarURL())
               .setFooter({ text: 'SalchiNeta Community' })
