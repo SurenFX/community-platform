@@ -16,7 +16,11 @@ const KICK_PUBLIC_KEY_URL = 'https://api.kick.com/public/v1/public-key'
 export class KickController {
   private readonly logger = new Logger(KickController.name)
   private publicKeyCache: string | null = null
-  private lastRedesAt = 0
+
+  // Cache de comandos custom (se refresca cada 60s)
+  private commandsCache: Record<string, string> = {}
+  private commandsCacheAt = 0
+  private commandsCooldowns = new Map<string, number>()
 
   constructor(
     private kickApi:    KickApiService,
@@ -126,17 +130,70 @@ export class KickController {
     }
   }
 
+  private isModerator(payload: any): boolean {
+    const slug   = (this.config.get<string>('KICK_CHANNEL_SLUG') ?? '').toLowerCase()
+    const sender = (payload?.sender?.username ?? '').toLowerCase()
+    if (sender === slug) return true
+    const badges: any[] = payload?.sender?.identity?.badges ?? []
+    return badges.some(b => b.type === 'moderator')
+  }
+
+  private async loadCommands(): Promise<Record<string, string>> {
+    if (Date.now() - this.commandsCacheAt < 60_000) return this.commandsCache
+    const { data } = await this.supabase.db
+      .from('kick_commands')
+      .select('command, response')
+    this.commandsCache = {}
+    for (const row of (data ?? []) as any[]) {
+      this.commandsCache[row.command.toLowerCase()] = row.response
+    }
+    this.commandsCacheAt = Date.now()
+    return this.commandsCache
+  }
+
   private async checkChatCommands(payload: any) {
-    const content = (payload?.content ?? '').trim().toLowerCase()
-    if (content !== '!redes') return
+    const raw     = (payload?.content ?? '').trim()
+    const content = raw.toLowerCase()
 
-    const now = Date.now()
-    if (now - this.lastRedesAt < 30_000) return // cooldown 30s
-    this.lastRedesAt = now
+    // !addcom !cmd respuesta — solo mods/broadcaster
+    if (content.startsWith('!addcom ')) {
+      if (!this.isModerator(payload)) return
+      const rest     = raw.slice('!addcom '.length).trim()
+      const spaceIdx = rest.indexOf(' ')
+      if (spaceIdx < 0) return
+      const cmd      = rest.slice(0, spaceIdx).toLowerCase()
+      const response = rest.slice(spaceIdx + 1).trim()
+      if (!cmd.startsWith('!') || !response) return
+      await this.supabase.db
+        .from('kick_commands')
+        .upsert({ command: cmd, response }, { onConflict: 'command' })
+      this.commandsCacheAt = 0
+      await this.kickApi.sendChat(`Comando ${cmd} guardado!`)
+      return
+    }
 
-    await this.kickApi.sendChat(
-      '♦ Discord: https://discord.gg/ZFfMwe3JyW ♦ YouTube: https://www.youtube.com/c/SalchiNFT ♦ Kick: https://kick.com/salchinft ♦ Telegram: https://t.me/+8xZoKks2eAUxNzkx ♦ Twitter: https://twitter.com/SalchiNFT'
-    )
+    // !delcom !cmd — solo mods/broadcaster
+    if (content.startsWith('!delcom ')) {
+      if (!this.isModerator(payload)) return
+      const cmd = content.slice('!delcom '.length).trim()
+      if (!cmd.startsWith('!')) return
+      await this.supabase.db.from('kick_commands').delete().eq('command', cmd)
+      this.commandsCacheAt = 0
+      await this.kickApi.sendChat(`Comando ${cmd} eliminado!`)
+      return
+    }
+
+    // Buscar comando en DB
+    const commands = await this.loadCommands()
+    const response = commands[content]
+    if (!response) return
+
+    const now      = Date.now()
+    const lastUsed = this.commandsCooldowns.get(content) ?? 0
+    if (now - lastUsed < 30_000) return
+    this.commandsCooldowns.set(content, now)
+
+    await this.kickApi.sendChat(response)
   }
 
   private async checkRaffleKeyword(payload: any) {
