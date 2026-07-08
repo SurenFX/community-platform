@@ -46,13 +46,14 @@ export default function AmigosAdminClient({ friends: initialFriends }: { friends
   }
 
   function handleSubmit() {
-    if (!form.name.trim() || !form.kick_slug.trim()) {
-      setError('Nombre y slug de Kick son obligatorios')
+    if (!form.name.trim() || (!form.kick_slug.trim() && !form.twitch_login.trim())) {
+      setError('El nombre y al menos una plataforma (Kick o Twitch) son obligatorios')
       return
     }
     start(async () => {
       const payload = {
         ...form,
+        kick_slug:    form.kick_slug.trim()    || null,
         twitch_login: form.twitch_login.trim() || null,
       }
       const result = editId
@@ -118,7 +119,7 @@ export default function AmigosAdminClient({ friends: initialFriends }: { friends
 
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1">
-                  Slug de Kick *
+                  Slug de Kick
                 </label>
                 <input
                   className={inputClass}

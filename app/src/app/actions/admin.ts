@@ -569,7 +569,7 @@ export async function trackReferralClick(id: string): Promise<void> {
 
 export async function createFriendStreamer(data: {
   name: string
-  kick_slug: string
+  kick_slug: string | null
   twitch_login: string | null
   is_active: boolean
 }): Promise<{ error?: string }> {
@@ -584,10 +584,10 @@ export async function createFriendStreamer(data: {
 }
 
 export async function updateFriendStreamer(id: string, data: {
-  name: string
-  kick_slug: string
+  name:         string
+  kick_slug:    string | null
   twitch_login: string | null
-  is_active: boolean
+  is_active:    boolean
 }): Promise<{ error?: string }> {
   'use server'
   const { error: authErr, admin } = await getAdminClient()
