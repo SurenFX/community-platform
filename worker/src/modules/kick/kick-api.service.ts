@@ -29,9 +29,13 @@ export class KickApiService implements OnModuleInit {
   // Estado en memoria para detectar transicion offline -> online (streamer principal)
   private wasLive = false
 
-  // Cache de broadcaster_user_id y estado live para streamers amigos
+  // Cache de broadcaster_user_id y estado live para streamers amigos (Kick)
   private friendBroadcasterIds = new Map<string, string>()
   private friendWasLive        = new Map<string, boolean>()
+
+  // Cache de app token de Twitch
+  private twitchAppToken: string | null = null
+  private twitchAppTokenExpiry = 0
 
   constructor(
     private config:     ConfigService,
@@ -299,6 +303,55 @@ export class KickApiService implements OnModuleInit {
     }
   }
 
+  // -- Twitch Helix API (para amigos streamers) --
+
+  private async getTwitchAppToken(): Promise<string | null> {
+    if (this.twitchAppToken && Date.now() < this.twitchAppTokenExpiry) return this.twitchAppToken
+    const clientId     = this.config.get<string>('TWITCH_CLIENT_ID')
+    const clientSecret = this.config.get<string>('TWITCH_CLIENT_SECRET')
+    if (!clientId || !clientSecret) return null
+    try {
+      const res = await fetch(
+        `https://id.twitch.tv/oauth2/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`,
+        { method: 'POST' },
+      )
+      if (!res.ok) return null
+      const data = await res.json()
+      this.twitchAppToken       = data.access_token
+      this.twitchAppTokenExpiry = Date.now() + (data.expires_in - 300) * 1000
+      return this.twitchAppToken
+    } catch (err) {
+      this.logger.warn(`getTwitchAppToken error: ${err}`)
+      return null
+    }
+  }
+
+  private async getTwitchStreamInfo(login: string): Promise<StreamInfo> {
+    const empty: StreamInfo = { isLive: false, title: '', game: '', viewers: 0, startedAt: null }
+    try {
+      const token    = await this.getTwitchAppToken()
+      const clientId = this.config.get<string>('TWITCH_CLIENT_ID')
+      if (!token || !clientId) return empty
+      const res = await fetch(`https://api.twitch.tv/helix/streams?user_login=${encodeURIComponent(login)}`, {
+        headers: { 'Client-ID': clientId, Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return empty
+      const data   = await res.json()
+      const stream = data?.data?.[0]
+      if (!stream) return empty
+      return {
+        isLive:    true,
+        title:     stream.title ?? '',
+        game:      stream.game_name ?? '',
+        viewers:   stream.viewer_count ?? 0,
+        startedAt: stream.started_at ?? null,
+      }
+    } catch (err) {
+      this.logger.warn(`getTwitchStreamInfo(${login}) error: ${err}`)
+      return empty
+    }
+  }
+
   // -- Helpers para streamers amigos --
 
   private async getStreamInfoForSlug(slug: string): Promise<StreamInfo> {
@@ -346,45 +399,71 @@ export class KickApiService implements OnModuleInit {
   @Cron('*/5 * * * *')
   async checkFriendStreamers() {
     const discordChannelId = this.config.get<string>('DISCORD_FRIENDS_CHANNEL_ID')
-    if (!discordChannelId || !this.clientId) return
+    if (!discordChannelId) return
 
     const { data: friends } = await this.supabase.db
       .from('friend_streamers')
-      .select('name, kick_slug')
+      .select('name, kick_slug, twitch_login')
       .eq('is_active', true)
 
     if (!friends?.length) return
 
     for (const friend of friends as any[]) {
-      const { name, kick_slug: slug } = friend
-      const stream  = await this.getStreamInfoForSlug(slug)
-      const wasLive = this.friendWasLive.get(slug) ?? false
+      const { name, kick_slug: kickSlug, twitch_login: twitchLogin } = friend
 
-      if (stream.isLive && !wasLive) {
-        const isFirst = await this.redis.setNX(`friend:live:${slug}`, '1', 2 * 60 * 60)
-        if (isFirst) {
-          const embed = new EmbedBuilder()
-            .setColor(0x53FC18)
-            .setTitle(`🎮 ${name} está en vivo en Kick!`)
-            .setDescription(stream.title || 'Stream en vivo')
-            .addFields(
-              { name: 'Categoría', value: stream.game || 'Sin categoría', inline: true },
-              { name: 'Viewers',   value: String(stream.viewers),          inline: true },
-            )
-            .setURL(`https://kick.com/${slug}`)
-            .setFooter({ text: 'Amigo de la comunidad SalchiNeta' })
-            .setTimestamp()
+      // -- Kick --
+      if (kickSlug && this.clientId) {
+        const stream  = await this.getStreamInfoForSlug(kickSlug)
+        const wasLive = this.friendWasLive.get(`kick:${kickSlug}`) ?? false
 
-          await this.discordBot.announce(discordChannelId, embed, '@everyone')
-          this.logger.log(`Anuncio de amigo "${name}" (${slug}) enviado a Discord`)
+        if (stream.isLive && !wasLive) {
+          const isFirst = await this.redis.setNX(`friend:live:${kickSlug}`, '1', 2 * 60 * 60)
+          if (isFirst) {
+            const embed = new EmbedBuilder()
+              .setColor(0x53FC18)
+              .setTitle(`🎮 ${name} está en vivo en Kick!`)
+              .setDescription(stream.title || 'Stream en vivo')
+              .addFields(
+                { name: 'Categoría', value: stream.game || 'Sin categoría', inline: true },
+                { name: 'Viewers',   value: String(stream.viewers),          inline: true },
+              )
+              .setURL(`https://kick.com/${kickSlug}`)
+              .setFooter({ text: 'Amigo de la comunidad SalchiNeta' })
+              .setTimestamp()
+            await this.discordBot.announce(discordChannelId, embed, '@everyone')
+            this.logger.log(`Anuncio de amigo "${name}" en Kick enviado`)
+          }
         }
+        if (!stream.isLive && wasLive) await this.redis.del(`friend:live:${kickSlug}`)
+        this.friendWasLive.set(`kick:${kickSlug}`, stream.isLive)
       }
 
-      if (!stream.isLive && wasLive) {
-        await this.redis.del(`friend:live:${slug}`)
-      }
+      // -- Twitch --
+      if (twitchLogin) {
+        const stream  = await this.getTwitchStreamInfo(twitchLogin)
+        const wasLive = this.friendWasLive.get(`twitch:${twitchLogin}`) ?? false
 
-      this.friendWasLive.set(slug, stream.isLive)
+        if (stream.isLive && !wasLive) {
+          const isFirst = await this.redis.setNX(`friend:twitch:live:${twitchLogin}`, '1', 2 * 60 * 60)
+          if (isFirst) {
+            const embed = new EmbedBuilder()
+              .setColor(0x9146FF)
+              .setTitle(`🟣 ${name} está en vivo en Twitch!`)
+              .setDescription(stream.title || 'Stream en vivo')
+              .addFields(
+                { name: 'Categoría', value: stream.game || 'Sin categoría', inline: true },
+                { name: 'Viewers',   value: String(stream.viewers),          inline: true },
+              )
+              .setURL(`https://twitch.tv/${twitchLogin}`)
+              .setFooter({ text: 'Amigo de la comunidad SalchiNeta' })
+              .setTimestamp()
+            await this.discordBot.announce(discordChannelId, embed, '@everyone')
+            this.logger.log(`Anuncio de amigo "${name}" en Twitch enviado`)
+          }
+        }
+        if (!stream.isLive && wasLive) await this.redis.del(`friend:twitch:live:${twitchLogin}`)
+        this.friendWasLive.set(`twitch:${twitchLogin}`, stream.isLive)
+      }
     }
   }
 

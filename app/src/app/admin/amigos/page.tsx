@@ -29,7 +29,7 @@ export default async function AdminAmigosPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Amigos streamers</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Cuando enciendan en Kick, el bot avisa automáticamente en el canal de Discord
+          Cuando enciendan en Kick o Twitch, el bot avisa automáticamente en el canal de Discord
         </p>
       </div>
       <AmigosAdminClient friends={(friends ?? []) as any} />

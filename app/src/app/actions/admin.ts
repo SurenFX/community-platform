@@ -570,6 +570,7 @@ export async function trackReferralClick(id: string): Promise<void> {
 export async function createFriendStreamer(data: {
   name: string
   kick_slug: string
+  twitch_login: string | null
   is_active: boolean
 }): Promise<{ error?: string }> {
   'use server'
@@ -585,6 +586,7 @@ export async function createFriendStreamer(data: {
 export async function updateFriendStreamer(id: string, data: {
   name: string
   kick_slug: string
+  twitch_login: string | null
   is_active: boolean
 }): Promise<{ error?: string }> {
   'use server'
