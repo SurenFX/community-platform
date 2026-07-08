@@ -136,7 +136,7 @@ export default function AmigosAdminClient({ friends: initialFriends }: { friends
 
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1">
-                  Login de Twitch (opcional)
+                  Slug de Twitch (opcional)
                 </label>
                 <input
                   className={inputClass}
@@ -207,14 +207,18 @@ export default function AmigosAdminClient({ friends: initialFriends }: { friends
                 <tr key={friend.id} className="border-b border-border/50 last:border-0 hover:bg-secondary/30 transition-colors">
                   <td className="px-4 py-3 font-medium text-foreground">{friend.name}</td>
                   <td className="px-4 py-3">
-                    <a
-                      href={`https://kick.com/${friend.kick_slug}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#53FC18] hover:underline text-xs"
-                    >
-                      kick.com/{friend.kick_slug}
-                    </a>
+                    {friend.kick_slug ? (
+                      <a
+                        href={`https://kick.com/${friend.kick_slug}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#53FC18] hover:underline text-xs"
+                      >
+                        kick.com/{friend.kick_slug}
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/40">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {friend.twitch_login ? (
