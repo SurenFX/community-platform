@@ -131,11 +131,14 @@ export class KickController {
   }
 
   private isModerator(payload: any): boolean {
-    const slug   = (this.config.get<string>('KICK_CHANNEL_SLUG') ?? '').toLowerCase()
-    const sender = (payload?.sender?.username ?? '').toLowerCase()
-    if (sender === slug) return true
+    const slug           = (this.config.get<string>('KICK_CHANNEL_SLUG') ?? '').toLowerCase()
+    const senderUsername = (payload?.sender?.username ?? '').toLowerCase()
+    const senderSlug     = (payload?.sender?.slug     ?? '').toLowerCase()
+    if (senderUsername === slug || senderSlug === slug) return true
     const badges: any[] = payload?.sender?.identity?.badges ?? []
-    return badges.some(b => b.type === 'moderator')
+    const isMod = badges.some(b => b.type === 'moderator')
+    if (!isMod) this.logger.debug(`isModerator: false (username=${senderUsername}, slug=${senderSlug}, channel=${slug})`)
+    return isMod
   }
 
   private async loadCommands(): Promise<Record<string, string>> {
