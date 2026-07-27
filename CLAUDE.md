@@ -259,6 +259,24 @@ Solo una dirección: Twitch chat menciona Kick, no viceversa.
   (dedup Redis `friend:live:{slug}` TTL 2h). Admin `/admin/amigos` para CRUD de la lista.
   Nueva env var: `DISCORD_FRIENDS_CHANNEL_ID=1523122468477468825`.
 
+**Soporte Twitch en amigos streamers + fixes varios (sesión julio 2026)**:
+- `checkFriendStreamers()` en `kick-api.service.ts` ahora chequea Kick Y Twitch por cada
+  amigo. Usa `getTwitchStreamInfo(login)` con la API de Helix (client_credentials). Redis
+  dedup: `friend:twitch:live:{login}` TTL 2h. Embed Discord color `0x9146FF`.
+- `kick_slug` ahora opcional en `friend_streamers` (migración `018_friend_streamers_optional_kick.sql`).
+  `twitch_login` agregado (migración `017_friend_streamers_twitch.sql`).
+- Admin `/admin/amigos` actualizado: form con Kick (opcional) y Twitch (opcional), validación
+  requiere al menos uno de los dos, tabla muestra links en verde (Kick) y morado (Twitch).
+- Fix `isModerator()` en `kick.controller.ts`: chequea `sender.username` Y `sender.slug`
+  (ambos lowercased) contra `KICK_CHANNEL_SLUG`. Resuelve `!addcom` no funcionando.
+- `TELEGRAM_YOUTUBE_THREAD_ID=6763` agregado a VM .env — arregla YouTube publicando en
+  canal general de Telegram en lugar del hilo correcto.
+- Bot IRC de Twitch (`salchineta`) recuperado: `TWITCH_BOT_TOKEN`, `TWITCH_BOT_USERNAME`,
+  `TWITCH_CHANNEL` agregados al .env de la VM (se habían perdido en migración Fly→GCP).
+  Token generado vía twitchtokengenerator.com con la cuenta salchineta.
+- Fix `resetDailyMissions`/`resetWeeklyMissions` en `scheduler.service.ts`: la subquery
+  de Supabase no es iterable — se reemplazó por dos queries separadas (fetch IDs, luego delete).
+
 ## Estado actual
 
 Plataforma funcionalmente muy completa (ver Historial). `tsc --noEmit` limpio en
@@ -267,7 +285,18 @@ trabajo, documentados como deuda técnica fuera de alcance). Worker corriendo en
 **Google Cloud Free Tier** (e2-micro us-central1, PM2 + systemd) con todos los módulos
 activos: Discord, Telegram, YouTube, Twitch, Kick, Recruitment, WeeklyDigest.
 Supabase conecta correctamente (fix globalThis.WebSocket). XP, level-ups, streaks y
-anuncios de stream funcionando.
+anuncios de stream funcionando. Bot IRC de Twitch (salchineta) conectado a #salchinft.
+
+## Variables de entorno adicionales en VM (agregadas en julio 2026)
+
+Las siguientes vars fueron agregadas al `worker/.env` de la VM durante la migración o
+sesiones posteriores — no estaban en el .env original de Fly.io:
+- `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` — para la API de Helix (checkStreamStatus, checkFriendStreamers)
+- `TWITCH_BOT_TOKEN` — OAuth token de la cuenta salchineta (twitchtokengenerator.com)
+- `TWITCH_BOT_USERNAME=salchineta` — username del bot IRC
+- `TWITCH_CHANNEL=salchinft` — canal de Twitch a joinear
+- `TELEGRAM_YOUTUBE_THREAD_ID=6763` — hilo de Telegram para anuncios de YouTube
+- `DISCORD_FRIENDS_CHANNEL_ID=1523122468477468825` — canal para anuncios de amigos streamers
 
 ## Pendientes (no bloqueantes)
 
