@@ -44,32 +44,6 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     return this.config.get<string>('TWITCH_CHANNEL') ?? ''
   }
 
-  // ── Obtener todos los canales a joinear ───────────────────
-  // Canal principal + amigos streamers activos con Twitch
-  private async getAllChannels(): Promise<string[]> {
-    const main = this.mainChannel
-    const channels: string[] = main ? [main] : []
-
-    try {
-      const { data: friends } = await this.supabase.db
-        .from('friend_streamers')
-        .select('twitch_login')
-        .not('twitch_login', 'is', null)
-        .eq('is_active', true)
-
-      for (const f of friends ?? []) {
-        const login = f.twitch_login?.toLowerCase()
-        if (login && !channels.includes(login)) {
-          channels.push(login)
-        }
-      }
-    } catch (err) {
-      this.logger.warn(`getAllChannels error: ${err}`)
-    }
-
-    return channels
-  }
-
   private async connect() {
     const token    = this.config.get<string>('TWITCH_BOT_TOKEN') ?? ''
     const username = this.config.get<string>('TWITCH_BOT_USERNAME') ?? ''
@@ -102,17 +76,44 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     this.send(`NICK ${username}`)
     this.send('CAP REQ :twitch.tv/commands twitch.tv/tags')
 
-    const channels = await this.getAllChannels()
-    for (const ch of channels) {
-      this.send(`JOIN #${ch}`)
-      this.joinedChannels.add(ch)
+    // Joinear canal principal de inmediato
+    const main = this.mainChannel
+    if (main) {
+      this.send(`JOIN #${main}`)
+      this.joinedChannels.add(main)
     }
 
     this.pingTimer = setInterval(() => {
       this.send('PING :tmi.twitch.tv')
     }, 4 * 60 * 1000)
 
-    this.logger.log(`Twitch IRC bot conectado a: ${channels.map(c => '#' + c).join(', ')}`)
+    this.logger.log(`Twitch IRC bot conectado a: #${main}`)
+
+    // Joinear canales de amigos streamers con delay para asegurar que Supabase esté listo
+    setTimeout(() => this.joinFriendChannels(), 3000)
+  }
+
+  private async joinFriendChannels() {
+    try {
+      if (!this.supabase?.db) return
+
+      const { data: friends } = await this.supabase.db
+        .from('friend_streamers')
+        .select('twitch_login')
+        .not('twitch_login', 'is', null)
+        .eq('is_active', true)
+
+      for (const f of friends ?? []) {
+        const login = f.twitch_login?.toLowerCase()
+        if (login && !this.joinedChannels.has(login)) {
+          this.send(`JOIN #${login}`)
+          this.joinedChannels.add(login)
+          this.logger.log(`IRC: joineado canal amigo #${login}`)
+        }
+      }
+    } catch (err) {
+      this.logger.warn(`joinFriendChannels error: ${err}`)
+    }
   }
 
   private disconnect() {
