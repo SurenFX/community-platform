@@ -277,6 +277,29 @@ Solo una dirección: Twitch chat menciona Kick, no viceversa.
 - Fix `resetDailyMissions`/`resetWeeklyMissions` en `scheduler.service.ts`: la subquery
   de Supabase no es iterable — se reemplazó por dos queries separadas (fetch IDs, luego delete).
 
+**Sorteos de Twitch multi-canal (sesión julio 2026)**:
+- Bot IRC se une a `#salchinft` inmediatamente al conectar. Luego, 3 segundos después
+  (con delay para que Supabase esté listo), llama `joinFriendChannels()` que fetchea todos
+  los `friend_streamers` con `twitch_login IS NOT NULL AND is_active=true` y hace JOIN.
+  Eliminada la raza entre TCP connect callback y `SupabaseService.onModuleInit()`.
+- `twitch_raffles`: columna `channel TEXT NOT NULL DEFAULT 'salchinft'` + índice
+  `(channel, status)`. Migración `019_twitch_raffles_multichannel.sql`.
+- `friend_streamers`: columna `user_id UUID REFERENCES profiles(id)` — se llena
+  automáticamente cuando el streamer conecta su Twitch en configuración.
+- `TwitchRaffle.tsx`: recibe `fixedChannel?` (streamer mode) o `channels?: ChannelOption[]`
+  (admin mode con dropdown). Todas las queries de sorteo filtran por `channel`.
+- Admin `/admin/raffles/twitch`: fetcha amigos con Twitch, pasa array `channels` al
+  componente (dropdown para elegir canal).
+- `/dashboard/sorteo-twitch`: page exclusiva para streamers amigos. Verifica que el usuario
+  tenga Twitch vinculado Y esté en `friend_streamers`; si no, muestra instrucciones.
+  Si sí, renderiza `<TwitchRaffle fixedChannel={login} />` bloqueado a su canal.
+- Sidebar: sección "Streamer" con link "Sorteo Twitch" visible solo si `isFriendStreamer`.
+  `dashboard/layout.tsx` detecta esto con una query adicional a `friend_streamers`.
+- Auth Twitch callback (`/auth/twitch/route.ts`): al conectar, auto-linkea `user_id` en
+  `friend_streamers` si el `twitch_login` coincide y aún no tenía usuario asignado.
+- **Pendiente manual**: correr migración `019_twitch_raffles_multichannel.sql` en Supabase
+  SQL Editor antes de que streamers amigos puedan usar sus sorteos.
+
 ## Estado actual
 
 Plataforma funcionalmente muy completa (ver Historial). `tsc --noEmit` limpio en
