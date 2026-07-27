@@ -16,6 +16,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private pingTimer: ReturnType<typeof setInterval> | null = null
   private activeViewers = new Map<string, number>()
+  private joinedChannels = new Set<string>()
 
   constructor(
     private config:     ConfigService,
@@ -38,24 +39,45 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     this.disconnect()
   }
 
+  // ── Canal principal ───────────────────────────────────────
+  get mainChannel(): string {
+    return this.config.get<string>('TWITCH_CHANNEL') ?? ''
+  }
+
+  // ── Obtener todos los canales a joinear ───────────────────
+  // Canal principal + amigos streamers activos con Twitch
+  private async getAllChannels(): Promise<string[]> {
+    const main = this.mainChannel
+    const channels: string[] = main ? [main] : []
+
+    try {
+      const { data: friends } = await this.supabase.db
+        .from('friend_streamers')
+        .select('twitch_login')
+        .not('twitch_login', 'is', null)
+        .eq('is_active', true)
+
+      for (const f of friends ?? []) {
+        const login = f.twitch_login?.toLowerCase()
+        if (login && !channels.includes(login)) {
+          channels.push(login)
+        }
+      }
+    } catch (err) {
+      this.logger.warn(`getAllChannels error: ${err}`)
+    }
+
+    return channels
+  }
+
   private async connect() {
     const token    = this.config.get<string>('TWITCH_BOT_TOKEN') ?? ''
     const username = this.config.get<string>('TWITCH_BOT_USERNAME') ?? ''
-    const channel  = this.config.get<string>('TWITCH_CHANNEL') ?? ''
 
     this.client = new net.Socket()
 
     this.client.connect(6667, 'irc.chat.twitch.tv', () => {
-      this.send(`PASS ${token}`)
-      this.send(`NICK ${username}`)
-      this.send(`JOIN #${channel}`)
-      this.send('CAP REQ :twitch.tv/commands twitch.tv/tags')
-
-      this.pingTimer = setInterval(() => {
-        this.send('PING :tmi.twitch.tv')
-      }, 4 * 60 * 1000)
-
-      this.logger.log(`Twitch IRC bot conectado al canal #${channel}`)
+      this.onConnected(token, username)
     })
 
     this.client.on('data', (data) => {
@@ -68,10 +90,29 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     })
 
     this.client.on('close', () => {
+      this.joinedChannels.clear()
       this.logger.warn('IRC desconectado -- reconectando en 30s...')
       if (this.pingTimer) clearInterval(this.pingTimer)
       this.reconnectTimer = setTimeout(() => this.connect(), 30000)
     })
+  }
+
+  private async onConnected(token: string, username: string) {
+    this.send(`PASS ${token}`)
+    this.send(`NICK ${username}`)
+    this.send('CAP REQ :twitch.tv/commands twitch.tv/tags')
+
+    const channels = await this.getAllChannels()
+    for (const ch of channels) {
+      this.send(`JOIN #${ch}`)
+      this.joinedChannels.add(ch)
+    }
+
+    this.pingTimer = setInterval(() => {
+      this.send('PING :tmi.twitch.tv')
+    }, 4 * 60 * 1000)
+
+    this.logger.log(`Twitch IRC bot conectado a: ${channels.map(c => '#' + c).join(', ')}`)
   }
 
   private disconnect() {
@@ -84,11 +125,22 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     this.client?.write(`${message}\r\n`)
   }
 
-  // Enviar mensaje al chat del canal
-  sendChat(message: string) {
-    const channel = this.config.get<string>('TWITCH_CHANNEL') ?? ''
-    this.send(`PRIVMSG #${channel} :${message}`)
-    this.logger.log(`Chat -> ${message}`)
+  // ── Unirse a un nuevo canal sin reconectar ────────────────
+  joinChannel(channel: string) {
+    const ch = channel.toLowerCase()
+    if (!this.joinedChannels.has(ch)) {
+      this.send(`JOIN #${ch}`)
+      this.joinedChannels.add(ch)
+      this.logger.log(`IRC: joineando canal nuevo #${ch}`)
+    }
+  }
+
+  // ── Enviar mensaje a un canal específico ─────────────────
+  sendChat(message: string, channel?: string) {
+    const ch = (channel ?? this.mainChannel).toLowerCase()
+    if (!ch) return
+    this.send(`PRIVMSG #${ch} :${message}`)
+    this.logger.log(`[${ch}] Chat -> ${message}`)
   }
 
   private async handleLine(line: string) {
@@ -105,22 +157,27 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     if (!line.includes('PRIVMSG')) return
 
     const usernameMatch = line.match(/:(\w+)!\w+@\w+\.tmi\.twitch\.tv PRIVMSG/)
+    const channelMatch  = line.match(/PRIVMSG #(\w+) :/)
     const messageMatch  = line.match(/PRIVMSG #\w+ :(.+)/)
     if (!usernameMatch || !messageMatch) return
 
     const twitchUsername = usernameMatch[1].toLowerCase()
+    const channelName    = channelMatch?.[1]?.toLowerCase() ?? this.mainChannel
     const messageContent = messageMatch[1].trim()
 
     const botUsername = this.config.get<string>('TWITCH_BOT_USERNAME')?.toLowerCase()
     if (twitchUsername === botUsername) return
 
-    await this.checkRaffleKeyword(twitchUsername, messageContent)
+    // Raffle keyword: aplica a TODOS los canales
+    await this.checkRaffleKeyword(twitchUsername, messageContent, channelName)
 
-    // Saludo especial para Akandamos
-    if (this.isLive && twitchUsername === 'akandamos' && this.isGreeting(messageContent)) {
+    // Saludo especial para Akandamos (solo canal principal)
+    if (channelName === this.mainChannel && this.isLive && twitchUsername === 'akandamos' && this.isGreeting(messageContent)) {
       this.sendChat('Hola Pochito, como va?')
     }
 
+    // XP y viewers activos: solo canal principal
+    if (channelName !== this.mainChannel) return
     if (!this.isLive) return
 
     const { data: socialLink } = await this.supabase.db
@@ -143,8 +200,8 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
       metadata: { twitch_username: twitchUsername, content: messageContent.slice(0, 200) },
     })
 
-    const channel = this.config.get<string>('TWITCH_CHANNEL') ?? 'stream'
-    const isFirstGreeter = await this.redis.setNX(`twitch:first_greeter:${channel}`, '1', 12 * 60 * 60)
+    const ch = this.mainChannel
+    const isFirstGreeter = await this.redis.setNX(`twitch:first_greeter:${ch}`, '1', 12 * 60 * 60)
     if (isFirstGreeter) {
       try {
         await this.supabase.db
@@ -244,12 +301,13 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async checkRaffleKeyword(twitchUsername: string, message: string) {
+  private async checkRaffleKeyword(twitchUsername: string, message: string, channel: string) {
     try {
       const { data: raffle } = await this.supabase.db
         .from('twitch_raffles')
         .select('id, keyword')
         .eq('status', 'active')
+        .eq('channel', channel)
         .single()
 
       if (!raffle) return
@@ -271,7 +329,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         })
 
       if (!error) {
-        this.logger.log(`Raffle entry: ${twitchUsername} -> ${raffle.id}`)
+        this.logger.log(`Raffle entry [${channel}]: ${twitchUsername} -> ${raffle.id}`)
       }
     } catch (err) {}
   }
@@ -286,12 +344,12 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     return /\b(hola+|holis|que tal|buenas?|buenos? dias?|buenas tardes|buenas noches|saludos|hey+)\b/.test(normalized)
   }
 
-  async announceRaffleStart(keyword: string) {
-    this.sendChat(`Sorteo! Escribi "${keyword}" en el chat para participar.`)
+  async announceRaffleStart(keyword: string, channel?: string) {
+    this.sendChat(`Sorteo! Escribi "${keyword}" en el chat para participar.`, channel)
   }
 
-  async announceRaffleWinner(winner: string) {
-    this.sendChat(`@${winner} es el ganador del sorteo! Felicitaciones!`)
+  async announceRaffleWinner(winner: string, channel?: string) {
+    this.sendChat(`@${winner} es el ganador del sorteo! Felicitaciones!`, channel)
   }
 
   @Cron('*/2 * * * *')
@@ -304,7 +362,7 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         this.isLive = true
         this.activeViewers.clear()
 
-        const ch = this.config.get<string>('TWITCH_CHANNEL') ?? 'stream'
+        const ch = this.mainChannel
         await this.redis.del(`twitch:first_greeter:${ch}`)
 
         await this.supabase.db.from('stream_sessions').insert({ title: info.title, game: info.game })
@@ -341,8 +399,6 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
         ])
       }
 
-      // Mantener clave de presencia en Redis para cross-platform awareness
-      // TTL 5 min, se refresca cada tick de 2 min mientras el stream este vivo
       if (info.isLive) {
         await this.redis.set('twitch:stream_active', '1', 5 * 60)
       }
@@ -351,8 +407,6 @@ export class TwitchIrcService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  // ── Cross-promo: avisar en Twitch chat que tambien estamos en Kick ────────
-  // Solo se ejecuta cuando AMBAS plataformas estan en vivo, cada 30 minutos
   @Cron('*/30 * * * *')
   async remindKickInChat() {
     if (!this.isLive) return

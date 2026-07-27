@@ -7,7 +7,7 @@ import { signOut } from '@/app/auth/actions'
 import { cn } from '@/lib/utils'
 import {
   Home, Trophy, Sword, Settings, LogOut, Shield, Ticket,
-  CircleDollarSign, ShoppingBag, Swords, Menu, X, Dices, Gamepad2,
+  CircleDollarSign, ShoppingBag, Swords, Menu, X, Dices, Gamepad2, Twitch,
 } from 'lucide-react'
 
 import SidebarXpBar from './SidebarXpBar'
@@ -20,7 +20,8 @@ interface SidebarProps {
     equipped_name_emoji?: string | null
     equipped_title_override?: string | null
   }) | null
-  unreadNotifs?: number
+  unreadNotifs?:    number
+  isFriendStreamer?: boolean
 }
 
 const BORDER_COLOR_HEX: Record<string, string> = {
@@ -47,7 +48,7 @@ const navItems = [
   { href: '/dashboard/configuracion', label: 'Configuracion', icon: Settings                      },
 ]
 
-export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
+export default function Sidebar({ profile, unreadNotifs = 0, isFriendStreamer = false }: SidebarProps) {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -104,6 +105,23 @@ export default function Sidebar({ profile, unreadNotifs = 0 }: SidebarProps) {
             </Link>
           )
         })}
+
+        {isFriendStreamer && (
+          <>
+            <div className="pt-3 pb-1">
+              <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider px-3">
+                Streamer
+              </p>
+            </div>
+            <Link href="/dashboard/sorteo-twitch"
+              onClick={() => setMobileOpen(false)}
+              className={cn('nav-item', pathname.startsWith('/dashboard/sorteo-twitch') ? 'active' : 'text-muted-foreground')}
+            >
+              <Twitch className="w-4 h-4 shrink-0 text-[#9146FF]" />
+              Sorteo Twitch
+            </Link>
+          </>
+        )}
 
         {profile?.is_admin && (
           <>

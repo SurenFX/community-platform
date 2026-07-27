@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Trophy, Shuffle, Users, Loader2, Twitch, Play, Square } from 'lucide-react'
+import { ArrowLeft, Trophy, Shuffle, Users, Loader2, Twitch, Play, Square, ChevronDown } from 'lucide-react'
 import { announceRaffleStart, announceRaffleWinner } from '@/app/actions/raffle'
 import Link from 'next/link'
 
@@ -17,32 +17,55 @@ interface ActiveRaffle {
   id:      string
   keyword: string
   status:  string
+  channel: string
+}
+
+interface ChannelOption {
+  login: string
+  label: string
 }
 
 type Stage = 'setup' | 'live' | 'spinning' | 'winner'
 
-export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { backHref?: string }) {
-  const [keyword,      setKeyword]      = useState('')
-  const [raffle,       setRaffle]       = useState<ActiveRaffle | null>(null)
-  const [entries,      setEntries]      = useState<Entry[]>([])
-  const [stage,        setStage]        = useState<Stage>('setup')
-  const [winner,       setWinner]       = useState<Entry | null>(null)
-  const [spinningName, setSpinningName] = useState('')
-  const [loading,      setLoading]      = useState(false)
-  const [error,        setError]        = useState<string | null>(null)
+interface Props {
+  backHref?:       string
+  // Si se pasa channel, el componente opera SOLO en ese canal (modo streamer)
+  fixedChannel?:   string
+  // Lista de canales disponibles para selector (modo admin)
+  channels?:       ChannelOption[]
+}
+
+export default function TwitchRaffle({
+  backHref     = '/dashboard/raffles',
+  fixedChannel,
+  channels     = [],
+}: Props) {
+  const [keyword,       setKeyword]       = useState('')
+  const [raffle,        setRaffle]        = useState<ActiveRaffle | null>(null)
+  const [entries,       setEntries]       = useState<Entry[]>([])
+  const [stage,         setStage]         = useState<Stage>('setup')
+  const [winner,        setWinner]        = useState<Entry | null>(null)
+  const [spinningName,  setSpinningName]  = useState('')
+  const [loading,       setLoading]       = useState(false)
+  const [error,         setError]         = useState<string | null>(null)
+  const [channel,       setChannel]       = useState(fixedChannel ?? channels[0]?.login ?? 'salchinft')
+  const [showChannels,  setShowChannels]  = useState(false)
   const spinRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const supabase = createClient()
 
-  // Cargar sorteo activo al montar
-  useEffect(() => {
-    loadActiveRaffle()
-  }, [])
+  const isFixed = !!fixedChannel
+  const channelLabel = channels.find(c => c.login === channel)?.label ?? channel
 
-  // Realtime: escuchar nuevas entradas
+  // Cargar sorteo activo para el canal seleccionado
+  useEffect(() => {
+    loadActiveRaffle(channel)
+  }, [channel])
+
+  // Realtime: escuchar nuevas entradas del sorteo activo
   useEffect(() => {
     if (!raffle) return
 
-    const channel = supabase
+    const sub = supabase
       .channel(`raffle:${raffle.id}`)
       .on(
         'postgres_changes',
@@ -55,7 +78,6 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
         (payload) => {
           const entry = payload.new as Entry
           setEntries(prev => {
-            // Evitar duplicados en el frontend
             if (prev.find(e => e.twitch_username === entry.twitch_username)) return prev
             return [entry, ...prev]
           })
@@ -63,14 +85,19 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    return () => { supabase.removeChannel(sub) }
   }, [raffle?.id])
 
-  async function loadActiveRaffle() {
+  async function loadActiveRaffle(ch: string) {
+    setRaffle(null)
+    setEntries([])
+    setStage('setup')
+
     const { data } = await (supabase
       .from('twitch_raffles')
       .select('*')
       .eq('status', 'active')
+      .eq('channel', ch)
       .single() as any) as { data: ActiveRaffle | null }
 
     if (data) {
@@ -99,16 +126,17 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
       setLoading(true)
       setError(null)
 
-      // Cerrar cualquier sorteo anterior que no esté cerrado
+      // Cancelar sorteo anterior de este canal
       await supabase
         .from('twitch_raffles')
         .update({ status: 'cancelled' } as unknown as never)
+        .eq('channel', channel)
         .in('status', ['active', 'drawn', 'stopped'])
 
-      // Crear nuevo sorteo
+      // Crear nuevo sorteo para este canal
       const { data, error: err } = await supabase
         .from('twitch_raffles')
-        .insert([{ keyword: keyword.trim(), status: 'active' }] as unknown as never)
+        .insert([{ keyword: keyword.trim(), status: 'active', channel }] as unknown as never)
         .select()
         .single() as any
 
@@ -118,8 +146,7 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
       setEntries([])
       setStage('live')
 
-      // Anunciar en el chat de Twitch via server action
-      await announceRaffleStart(keyword.trim())
+      await announceRaffleStart(keyword.trim(), channel)
 
     } catch (err: any) {
       setError(err.message)
@@ -162,16 +189,15 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
         setWinner(picked)
         setSpinningName(picked.twitch_username)
 
-        // Guardar ganador en DB y anunciar en chat
         if (raffle) {
           supabase.from('twitch_raffles').update({
-            status:               'drawn',
+            status:                 'drawn',
             winner_twitch_username: picked.twitch_username,
-            winner_id:            picked.user_id,
-            drawn_at:             new Date().toISOString(),
+            winner_id:              picked.user_id,
+            drawn_at:               new Date().toISOString(),
           } as unknown as never).eq('id', raffle.id)
 
-          announceRaffleWinner(picked.twitch_username).catch(() => {})
+          announceRaffleWinner(picked.twitch_username, channel).catch(() => {})
         }
 
         setTimeout(() => setStage('winner'), 400)
@@ -185,7 +211,6 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
 
   async function resetToSetup() {
     if (spinRef.current) clearTimeout(spinRef.current)
-    // Cerrar el sorteo actual en la DB si existe
     if (raffle) {
       await supabase
         .from('twitch_raffles')
@@ -197,6 +222,13 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
     setEntries([])
     setWinner(null)
     setKeyword('')
+  }
+
+  function selectChannel(login: string) {
+    setChannel(login)
+    setShowChannels(false)
+    setKeyword('')
+    setError(null)
   }
 
   const timeAgo = (date: string) => {
@@ -213,7 +245,7 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
         <Link href={backHref} className="p-2 rounded-lg hover:bg-secondary transition-colors">
           <ArrowLeft className="w-5 h-5 text-muted-foreground" />
         </Link>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Twitch className="w-6 h-6 text-[#9146FF]" />
             Sorteo en Twitch
@@ -222,6 +254,44 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
             Los viewers escriben la keyword en el chat para participar
           </p>
         </div>
+
+        {/* Selector de canal (solo cuando hay múltiples opciones y no está fijado) */}
+        {!isFixed && channels.length > 1 && (
+          <div className="relative">
+            <button
+              onClick={() => setShowChannels(v => !v)}
+              className="flex items-center gap-2 px-3 py-2 bg-secondary border border-border rounded-lg text-sm text-foreground hover:bg-secondary/80 transition-colors"
+            >
+              <Twitch className="w-3.5 h-3.5 text-[#9146FF]" />
+              <span className="font-medium">#{channelLabel}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+            </button>
+
+            {showChannels && (
+              <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-xl shadow-xl z-50 min-w-48 py-1 overflow-hidden">
+                {channels.map(c => (
+                  <button
+                    key={c.login}
+                    onClick={() => selectChannel(c.login)}
+                    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-secondary transition-colors flex items-center gap-2 ${channel === c.login ? 'text-[#9146FF] font-medium' : 'text-foreground'}`}
+                  >
+                    <Twitch className="w-3.5 h-3.5 shrink-0" />
+                    #{c.label}
+                    {channel === c.login && <span className="ml-auto text-xs text-[#9146FF]">activo</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Canal fijo (modo streamer) */}
+        {isFixed && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#9146FF]/10 border border-[#9146FF]/30 rounded-lg text-sm text-[#9146FF] font-medium">
+            <Twitch className="w-3.5 h-3.5" />
+            #{channel}
+          </div>
+        )}
       </div>
 
       {error && (
@@ -236,7 +306,7 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
           <div>
             <h2 className="text-base font-semibold text-foreground mb-1">Configurar sorteo</h2>
             <p className="text-sm text-muted-foreground">
-              Los viewers registrados que escriban la keyword en el chat quedarán en la lista.
+              Los viewers que escriban la keyword en el chat de <span className="text-foreground font-medium">#{channel}</span> quedarán en la lista.
             </p>
           </div>
 
@@ -271,13 +341,12 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
       {stage === 'live' && raffle && (
         <div className="space-y-4">
 
-          {/* Status bar */}
           <div className="bg-[#9146FF]/10 border border-[#9146FF]/30 rounded-2xl p-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="w-3 h-3 rounded-full bg-[#9146FF] animate-pulse" />
               <div>
                 <p className="text-sm font-bold text-foreground">
-                  Sorteo activo — keyword: <span className="text-[#9146FF]">{raffle.keyword}</span>
+                  Sorteo activo en <span className="text-[#9146FF]">#{channel}</span> — keyword: <span className="text-[#9146FF]">{raffle.keyword}</span>
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Decile a tu chat que escriban <strong>{raffle.keyword}</strong> para participar
@@ -293,7 +362,6 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
             </button>
           </div>
 
-          {/* Stats */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-card border border-border rounded-xl p-5 text-center">
               <p className="text-3xl font-black text-foreground">{entries.length}</p>
@@ -309,15 +377,10 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
             </div>
           </div>
 
-          {/* Lista de participantes */}
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-              <p className="text-sm font-semibold text-foreground">
-                Participantes en vivo
-              </p>
-              <span className="text-xs text-muted-foreground">
-                Se actualiza automáticamente
-              </span>
+              <p className="text-sm font-semibold text-foreground">Participantes en vivo</p>
+              <span className="text-xs text-muted-foreground">Se actualiza automáticamente</span>
             </div>
 
             {entries.length === 0 ? (
@@ -335,20 +398,15 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
                       <div className="w-8 h-8 rounded-full bg-[#9146FF]/20 flex items-center justify-center">
                         <Twitch className="w-4 h-4 text-[#9146FF]" />
                       </div>
-                      <p className="text-sm font-medium text-foreground">
-                        {entry.twitch_username}
-                      </p>
+                      <p className="text-sm font-medium text-foreground">{entry.twitch_username}</p>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {timeAgo(entry.entered_at)}
-                    </span>
+                    <span className="text-xs text-muted-foreground">{timeAgo(entry.entered_at)}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Botón sortear */}
           <button
             onClick={startSpin}
             disabled={entries.length === 0}
@@ -365,9 +423,7 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
         <div className="bg-card border border-[#9146FF]/30 rounded-2xl p-12 text-center space-y-6">
           <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest">Sorteando...</p>
           <div className="w-20 h-20 rounded-full border-4 border-[#9146FF]/30 border-t-[#9146FF] animate-spin mx-auto" />
-          <p className="text-3xl font-black text-foreground animate-pulse min-h-[2.5rem]">
-            {spinningName}
-          </p>
+          <p className="text-3xl font-black text-foreground animate-pulse min-h-[2.5rem]">{spinningName}</p>
           <div className="flex items-center justify-center gap-1">
             {[...Array(8)].map((_, i) => (
               <div key={i} className="w-2 bg-[#9146FF] rounded-full animate-bounce"
@@ -387,7 +443,7 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
               <Trophy className="w-8 h-8 text-yellow-400" />
             </div>
             <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-4">
-              🎉 ¡Ganador del sorteo!
+              🎉 ¡Ganador del sorteo en #{channel}!
             </p>
             <div className="flex items-center justify-center gap-3 mb-2">
               <div className="w-16 h-16 rounded-full bg-[#9146FF]/20 border-4 border-[#9146FF]/30 flex items-center justify-center">
@@ -395,7 +451,9 @@ export default function TwitchRaffle({ backHref = '/dashboard/raffles' }: { back
               </div>
               <div className="text-left">
                 <p className="text-3xl font-black text-foreground">{winner.twitch_username}</p>
-                <p className="text-sm text-muted-foreground">participante #{entries.findIndex(e => e.id === winner.id) + 1} de {entries.length}</p>
+                <p className="text-sm text-muted-foreground">
+                  participante #{entries.findIndex(e => e.id === winner.id) + 1} de {entries.length}
+                </p>
               </div>
             </div>
           </div>

@@ -16,20 +16,20 @@ export class TwitchController {
   @Post('raffle/start')
   async raffleStart(
     @Headers('x-worker-secret') secret: string,
-    @Body() body: { keyword: string },
+    @Body() body: { keyword: string; channel?: string },
   ) {
     this.verify(secret)
-    await this.irc.announceRaffleStart(body.keyword)
+    await this.irc.announceRaffleStart(body.keyword, body.channel)
     return { ok: true }
   }
 
   @Post('raffle/winner')
   async raffleWinner(
     @Headers('x-worker-secret') secret: string,
-    @Body() body: { winner: string },
+    @Body() body: { winner: string; channel?: string },
   ) {
     this.verify(secret)
-    await this.irc.announceRaffleWinner(body.winner)
+    await this.irc.announceRaffleWinner(body.winner, body.channel)
     return { ok: true }
   }
 }

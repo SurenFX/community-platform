@@ -1,24 +1,24 @@
 'use server'
 
-export async function announceRaffleStart(keyword: string) {
+export async function announceRaffleStart(keyword: string, channel?: string) {
   const workerUrl = process.env.NEXT_PUBLIC_WORKER_URL ?? 'http://localhost:3001'
   const secret    = process.env.WORKER_SECRET ?? ''
 
   await fetch(`${workerUrl}/twitch/raffle/start`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json', 'x-worker-secret': secret },
-    body:    JSON.stringify({ keyword }),
+    body:    JSON.stringify({ keyword, channel }),
   }).catch(err => console.error('announceRaffleStart error:', err))
 }
 
-export async function announceRaffleWinner(winner: string) {
+export async function announceRaffleWinner(winner: string, channel?: string) {
   const workerUrl = process.env.NEXT_PUBLIC_WORKER_URL ?? 'http://localhost:3001'
   const secret    = process.env.WORKER_SECRET ?? ''
 
   await fetch(`${workerUrl}/twitch/raffle/winner`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json', 'x-worker-secret': secret },
-    body:    JSON.stringify({ winner }),
+    body:    JSON.stringify({ winner, channel }),
   }).catch(err => console.error('announceRaffleWinner error:', err))
 }
 

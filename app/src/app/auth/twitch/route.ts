@@ -88,6 +88,13 @@ export async function GET(request: NextRequest) {
         is_verified: true,
       }, { onConflict: 'user_id,platform' })
 
+    // Si el twitch_login coincide con un amigo streamer, vincular el user_id
+    await adminClient
+      .from('friend_streamers')
+      .update({ user_id: user.id })
+      .eq('twitch_login', twitchUser.login)
+      .is('user_id', null)  // Solo si no tiene usuario asignado aún
+
     return NextResponse.redirect(`${origin}/dashboard/configuracion?connected=twitch`)
 
   } catch (err) {

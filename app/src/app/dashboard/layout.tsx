@@ -16,7 +16,7 @@ export default async function DashboardLayout({
 
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { count: unreadNotifs }, { data: activeBoosts }] = await Promise.all([
+  const [{ data: profile }, { count: unreadNotifs }, { data: activeBoosts }, { data: twitchLink }] = await Promise.all([
     supabase.from('profiles').select('*, user_reputation(*)').eq('id', user.id).single(),
     supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('is_read', false),
     supabase
@@ -25,11 +25,29 @@ export default async function DashboardLayout({
       .eq('user_id', user.id)
       .eq('item_type', 'BOOST')
       .gt('expires_at', new Date().toISOString()),
+    supabase
+      .from('user_social_links')
+      .select('username')
+      .eq('user_id', user.id)
+      .eq('platform', 'TWITCH')
+      .single(),
   ])
+
+  // Verificar si es streamer amigo activo con Twitch
+  let isFriendStreamer = false
+  if (twitchLink?.username) {
+    const { data: fs } = await supabase
+      .from('friend_streamers')
+      .select('id')
+      .eq('twitch_login', twitchLink.username)
+      .eq('is_active', true)
+      .single()
+    isFriendStreamer = !!fs
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
-      <Sidebar profile={profile} unreadNotifs={unreadNotifs ?? 0} />
+      <Sidebar profile={profile} unreadNotifs={unreadNotifs ?? 0} isFriendStreamer={isFriendStreamer} />
       <main className="flex-1 min-w-0 ml-0 md:ml-64 p-4 md:p-8 mt-14 md:mt-0 overflow-x-hidden">
         {children}
       </main>
