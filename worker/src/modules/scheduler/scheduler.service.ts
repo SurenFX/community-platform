@@ -59,15 +59,13 @@ export class SchedulerService {
   async resetDailyMissions() {
     this.logger.log('Cron: reseteando misiones diarias...')
     try {
-      await this.supabase.db
-        .from('user_missions')
-        .delete()
-        .in('mission_id',
-          this.supabase.db
-            .from('missions')
-            .select('id')
-            .eq('type', 'DAILY') as any
-        )
+      const { data: missions } = await this.supabase.db
+        .from('missions')
+        .select('id')
+        .eq('type', 'DAILY')
+      const ids = (missions ?? []).map((m: any) => m.id)
+      if (ids.length === 0) { this.logger.log('✓ No hay misiones diarias'); return }
+      await this.supabase.db.from('user_missions').delete().in('mission_id', ids)
       this.logger.log('✓ Misiones diarias reseteadas')
     } catch (err) {
       this.logger.error(`Error en resetDailyMissions: ${err}`)
@@ -81,15 +79,13 @@ export class SchedulerService {
   async resetWeeklyMissions() {
     this.logger.log('Cron: reseteando misiones semanales...')
     try {
-      await this.supabase.db
-        .from('user_missions')
-        .delete()
-        .in('mission_id',
-          this.supabase.db
-            .from('missions')
-            .select('id')
-            .eq('type', 'WEEKLY') as any
-        )
+      const { data: missions } = await this.supabase.db
+        .from('missions')
+        .select('id')
+        .eq('type', 'WEEKLY')
+      const ids = (missions ?? []).map((m: any) => m.id)
+      if (ids.length === 0) { this.logger.log('✓ No hay misiones semanales'); return }
+      await this.supabase.db.from('user_missions').delete().in('mission_id', ids)
       this.logger.log('✓ Misiones semanales reseteadas')
     } catch (err) {
       this.logger.error(`Error en resetWeeklyMissions: ${err}`)
