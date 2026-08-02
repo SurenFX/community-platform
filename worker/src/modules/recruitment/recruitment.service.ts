@@ -7,13 +7,12 @@ import { TelegramService } from '../telegram/telegram.service'
 import { RedisService } from '../../infrastructure/redis/redis.service'
 
 const MESSAGE =
-  'Si estás buscando unirte a la SalchiNeta, los cupos están cerrados por ahora 😔 ' +
-  'Pero como bien dijo el crack de Manuel, si querés entrar cuando se libere un lugar, estos son los requisitos:\n\n' +
-  '⚔️ 150 bichos diarios y 1.000 de oro (son cantidades MÍNIMAS, ¡siempre es mejor más!)\n' +
-  '🛡️ Si no sos super tank ni tenés super ATK, al menos tener maldición nivel 1 para la cueva del clan\n' +
-  '📺 Participar en los stream (Kick, Twitch, YT), y estar activo en la comunidad (Discord, Telegram). ¡Links en la sección de creadores!\n' +
-  '🏴 Estar en las batallas de clanes y ayudar a conquistar territorios — ¡estamos en guerra!\n\n' +
-  '📋 ¿Te interesa? Dejanos tu nick, level, raza y equipo que llevás en la sección #postulate'
+  'Si estás buscando unirte a la SalchiNeta (SN), los cupos están llenos y poco a poco irán ' +
+  'entrando algunos en función de su actividad en la comunidad (Discord, Telegram, YT, Kick, Twitch).\n\n' +
+  'Para quienes ya son miembros de SN, recuerden ayudar a los demás y colaborar con el clan. ' +
+  'Como mínimo tener 1k de oro donado en promedio y haber donado al menos 1200 materiales en la ' +
+  'fortaleza de clan!! Quien necesite ayuda la pide sin problema.\n\n' +
+  'Saludos y sean felices 🙂'
 
 const REDIS_KEY_DISCORD  = 'recruitment:discord:last_msg_id'
 const REDIS_KEY_TELEGRAM = 'recruitment:telegram:last_msg_id'
