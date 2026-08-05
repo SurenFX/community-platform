@@ -300,6 +300,16 @@ Solo una dirección: Twitch chat menciona Kick, no viceversa.
 - **Pendiente manual**: correr migración `019_twitch_raffles_multichannel.sql` en Supabase
   SQL Editor antes de que streamers amigos puedan usar sus sorteos.
 
+**Comando `/decir` en Telegram (bot habla en el grupo)**: nuevo comando admin-only en
+`telegram.service.ts` para que un admin le escriba al bot por su **chat privado** y el bot
+reposte al grupo. Reusa `isGroupAdmin()` (mismo patrón que `/recordatorio`). Como el grupo
+es un supergrupo con temas/subcanales, el destino es opcional con prefijo `#`:
+`/decir <msg>` va al tema General; `/decir #<alias|id> <msg>` va a un subcanal (aliases
+`#reclutamiento`/`#youtube`/`#digest` mapeados a `TELEGRAM_*_THREAD_ID`, o id numerico del
+tema sacado del link `t.me/c/<grupo>/<numero>/...`). Comando `/canales` lista los alias y
+explica como obtener el id de un tema. El texto se toma de `msg.text` crudo (sin lowercase)
+para preservar mayusculas/tildes; se envia sin `parse_mode` para no romper con `<`/`&`.
+
 ## Estado actual
 
 Plataforma funcionalmente muy completa (ver Historial). `tsc --noEmit` limpio en

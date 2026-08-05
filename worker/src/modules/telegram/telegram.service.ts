@@ -167,6 +167,105 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`Recordatorio guardado por telegram_id=${senderId}: "${reminder}"`)
     })
 
+    // Alias de tema -> env var con el message_thread_id.
+    // Agregar aca los que quieras nombrar. El resto se puede pasar por id numerico.
+    const threadAliases: Record<string, string | undefined> = {
+      reclutamiento: this.config.get<string>('TELEGRAM_RECRUITMENT_THREAD_ID'),
+      youtube:       this.config.get<string>('TELEGRAM_YOUTUBE_THREAD_ID'),
+      digest:        this.config.get<string>('TELEGRAM_DIGEST_THREAD_ID'),
+    }
+
+    this.bot.command('canales', async (ctx: Context) => {
+      const senderId = String((ctx.message as any)?.from?.id)
+      if (!await this.isGroupAdmin(senderId)) {
+        await ctx.reply('No podes usar este comando.')
+        return
+      }
+      const nombrados = Object.entries(threadAliases)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `  #${k}  (tema ${v})`)
+        .join('\n') || '  (ninguno configurado)'
+      await ctx.reply(
+        `Como elegir el subcanal con /decir:\n\n` +
+        `  /decir <mensaje>              -> tema General\n` +
+        `  /decir #<alias> <mensaje>     -> tema con nombre\n` +
+        `  /decir #<numero> <mensaje>    -> tema por id\n\n` +
+        `Alias disponibles:\n${nombrados}\n\n` +
+        `Para un tema sin alias: abri el tema en Telegram, copia el link de ` +
+        `cualquier mensaje (t.me/c/<grupo>/<numero>/...) y usa ese <numero> como id.`
+      )
+    })
+
+    this.bot.command('decir', async (ctx: Context) => {
+      const msg = ctx.message as any
+      if (!msg) return
+
+      const senderId = String(msg.from?.id)
+
+      if (!await this.isGroupAdmin(senderId)) {
+        await ctx.reply('No podes usar este comando.')
+        return
+      }
+
+      const groupId = this.config.get<string>('TELEGRAM_GROUP_ID')
+      if (!groupId) {
+        await ctx.reply('No hay grupo configurado (TELEGRAM_GROUP_ID).')
+        return
+      }
+
+      // Se toma msg.text crudo (no lowercased) para preservar mayusculas/tildes.
+      const text = msg.text ?? ''
+      const rest = text.replace(/^\/decir(@\w+)?\s*/i, '').trim()
+
+      if (!rest) {
+        await ctx.reply(
+          'Uso: /decir <mensaje>  (tema General)\n' +
+          '     /decir #<alias|id> <mensaje>  (subcanal especifico)\n\n' +
+          'Ejemplo: /decir #reclutamiento Se abrieron cupos nuevos!\n' +
+          'Mira /canales para ver los subcanales disponibles.'
+        )
+        return
+      }
+
+      // Destino opcional: primer token con prefijo '#'. Si no, va a General.
+      let threadId: string | undefined
+      let mensaje = rest
+
+      const targetMatch = rest.match(/^#(\S+)\s+([\s\S]+)$/)
+      if (targetMatch) {
+        const target = targetMatch[1]
+        mensaje      = targetMatch[2].trim()
+        const key    = target.toLowerCase()
+
+        if (key === 'general') {
+          threadId = undefined
+        } else if (/^\d+$/.test(target)) {
+          threadId = target
+        } else if (threadAliases[key]) {
+          threadId = threadAliases[key]
+        } else {
+          await ctx.reply(`No conozco el subcanal "#${target}". Mira /canales o usa el id numerico del tema.`)
+          return
+        }
+      }
+
+      if (!mensaje) {
+        await ctx.reply('Falta el mensaje. Uso: /decir #<alias|id> <mensaje>')
+        return
+      }
+
+      try {
+        await this.bot!.telegram.sendMessage(groupId, mensaje, {
+          ...(threadId ? { message_thread_id: Number(threadId) } : {}),
+        })
+        await ctx.reply(threadId ? `Enviado al subcanal (tema ${threadId}).` : 'Enviado al tema General.')
+        this.logger.log(`/decir por telegram_id=${senderId} tema=${threadId ?? 'general'}: "${mensaje.slice(0, 80)}"`)
+      } catch (err) {
+        this.logger.error(`Error en /decir: ${err}`)
+        await ctx.reply('Error al enviar el mensaje. Revisa que el id del tema sea correcto.')
+      }
+    })
+
     this.bot.on('text', async (ctx: Context) => {
       try {
         const msg = ctx.message as any

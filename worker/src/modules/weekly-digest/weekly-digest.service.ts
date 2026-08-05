@@ -19,8 +19,9 @@ export class WeeklyDigestService {
     private telegram:   TelegramService,
   ) {}
 
-  // Cada lunes a las 12:00 UTC
-  @Cron('0 12 * * 1')
+  // Digest semanal desactivado -- ya no se postea automáticamente.
+  // Para reactivarlo, descomentar el @Cron de abajo.
+  // @Cron('0 12 * * 1')
   async sendWeeklyDigest() {
     try {
       this.logger.log('Enviando digest semanal...')

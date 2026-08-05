@@ -20,7 +20,8 @@ export class ReferidosAnnouncementService {
     private redis:      RedisService,
   ) {}
 
-  @Cron('0 */4 * * *')
+  // Una vez por día a las 16:00 hora Argentina
+  @Cron('0 16 * * *', { timeZone: 'America/Argentina/Buenos_Aires' })
   async sendAnnouncement() {
     await this.sendToDiscord()
     await this.sendToTelegram()
