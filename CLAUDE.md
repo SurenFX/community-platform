@@ -310,6 +310,15 @@ tema sacado del link `t.me/c/<grupo>/<numero>/...`). Comando `/canales` lista lo
 explica como obtener el id de un tema. El texto se toma de `msg.text` crudo (sin lowercase)
 para preservar mayusculas/tildes; se envia sin `parse_mode` para no romper con `<`/`&`.
 
+**Fix definitivo `!addcom` en Kick (agosto 2026)**: `isModerator()` en `kick.controller.ts`
+estaba roto porque el webhook de Kick NO tiene `sender.slug` — el campo real es
+`sender.channel_slug` (verificado contra la doc oficial de KickDevDocs). Nuevo orden de
+chequeos: (1) `sender.user_id === broadcaster.user_id` (el payload trae el objeto
+`broadcaster`, comparación infalible), (2) fallback `username`/`channel_slug` vs
+`KICK_CHANNEL_SLUG`, (3) badges `moderator`/`broadcaster`. El log de rechazo pasó de
+`debug` a `warn` (Nest no muestra debug por default en PM2) e incluye ids y badges para
+diagnosticar. Deploy: git pull + build + pm2 restart en la VM.
+
 ## Estado actual
 
 Plataforma funcionalmente muy completa (ver Historial). `tsc --noEmit` limpio en

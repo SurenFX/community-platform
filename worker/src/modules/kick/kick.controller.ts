@@ -131,13 +131,26 @@ export class KickController {
   }
 
   private isModerator(payload: any): boolean {
-    const slug           = (this.config.get<string>('KICK_CHANNEL_SLUG') ?? '').toLowerCase()
-    const senderUsername = (payload?.sender?.username ?? '').toLowerCase()
-    const senderSlug     = (payload?.sender?.slug     ?? '').toLowerCase()
+    // Broadcaster: el payload trae el objeto `broadcaster` — comparar por user_id es infalible
+    const senderId      = payload?.sender?.user_id
+    const broadcasterId = payload?.broadcaster?.user_id
+    if (senderId != null && senderId === broadcasterId) return true
+
+    // Fallback por slug (el campo real es `channel_slug`, no `slug`)
+    const slug           = (this.config.get<string>('KICK_CHANNEL_SLUG')  ?? '').toLowerCase()
+    const senderUsername = (payload?.sender?.username     ?? '').toLowerCase()
+    const senderSlug     = (payload?.sender?.channel_slug ?? '').toLowerCase()
     if (senderUsername === slug || senderSlug === slug) return true
+
+    // Mods: badge type 'moderator' (o 'broadcaster' por si acaso)
     const badges: any[] = payload?.sender?.identity?.badges ?? []
-    const isMod = badges.some(b => b.type === 'moderator')
-    if (!isMod) this.logger.debug(`isModerator: false (username=${senderUsername}, slug=${senderSlug}, channel=${slug})`)
+    const isMod = badges.some(b => b?.type === 'moderator' || b?.type === 'broadcaster')
+    if (!isMod) {
+      this.logger.warn(
+        `isModerator: false (username=${senderUsername}, channel_slug=${senderSlug}, ` +
+        `sender_id=${senderId}, broadcaster_id=${broadcasterId}, badges=${JSON.stringify(badges.map(b => b?.type))})`,
+      )
+    }
     return isMod
   }
 
