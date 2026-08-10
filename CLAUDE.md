@@ -22,7 +22,7 @@ y participan en sorteos en vivo durante los streams.
   `community-platform-s-projects`).
 - **`worker/`** — NestJS. Bots de Discord/Telegram, integraciones con Twitch/YouTube/Kick,
   cron jobs (misiones, temporadas, XP, anuncios), webhooks. Desplegado en **Google Cloud
-  Free Tier** (VM e2-micro, us-central1, IP pública `34.31.240.153`, proyecto `salchineta`).
+  Free Tier** (VM e2-micro, us-central1, IP pública `34.121.74.142`, proyecto `salchineta`).
   Manejado con PM2 (autostart con systemd). Fly.io fue destruido en julio 2026 por cobros.
 - **Supabase** — Postgres + Auth (Discord OAuth) + Realtime. Migraciones en
   `supabase/migrations/`, se aplican a mano desde el SQL Editor de Supabase (no hay
@@ -214,7 +214,7 @@ Solo una dirección: Twitch chat menciona Kick, no viceversa.
 
 **Migración Fly.io → Google Cloud + fix crítico Supabase/crons**:
 - Fly.io destruido en julio 2026 por cobros inesperados. Worker migrado a Google Cloud
-  Free Tier (e2-micro, us-central1, IP `34.31.240.153`, proyecto `salchineta`).
+  Free Tier (e2-micro, us-central1, IP `34.121.74.142`, proyecto `salchineta`).
 - Setup: Node.js 20, PM2 con systemd autostart, git clone, npm install, .env manual.
 - Fix crítico: `@supabase/realtime-js` en Node.js 20 lanza error sincrónico en
   `createClient()` cuando no hay WebSocket nativo, lo cual impedía que NestJS terminara
@@ -318,6 +318,37 @@ chequeos: (1) `sender.user_id === broadcaster.user_id` (el payload trae el objet
 `KICK_CHANNEL_SLUG`, (3) badges `moderator`/`broadcaster`. El log de rechazo pasó de
 `debug` a `warn` (Nest no muestra debug por default en PM2) e incluye ids y badges para
 diagnosticar. Deploy: git pull + build + pm2 restart en la VM.
+**Causa raíz adicional (misma sesión)**: los logs de PM2 mostraban CERO eventos de webhook
+de Kick — la Webhook URL del Developer App de Kick seguía apuntando al dominio muerto de
+Fly.io desde la migración a GCP. Kick manda los eventos a la URL configurada a nivel app
+(kick.com → Settings → Developer), NO a una URL por suscripción. Fix manual: (1) regla de
+firewall GCP `allow-worker-3001` (tcp:3001 ingress), (2) Webhook URL →
+`http://34.121.74.142:3001/kick/webhook`. La doc de Kick solo exige URL públicamente
+accesible, no HTTPS. Ojo: si la IP de la VM cambia, hay que actualizar la URL en Kick.
+**Más hallazgos de la misma sesión**: (a) la IP vieja documentada (34.31.240.153) ya no
+era la de la VM — siempre verificar con `curl ifconfig.me`; (b) con el puerto :3001 en la
+URL Kick NO entregaba los eventos (aun con firewall abierto y endpoint verificado
+alcanzable) — solo empezó a entregar con puerto 80: regla firewall `allow-worker-80` +
+redirect en la VM `sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT
+--to-ports 3001` + Webhook URL final `http://34.121.74.142/kick/webhook`. OJO: la regla
+de iptables NO persiste reboots (ver Pendientes); (c) tras un mes de entregas fallidas
+conviene borrar y recrear las suscripciones (DELETE /public/v1/events/subscriptions?id=X
+con app token; el worker las recrea al reiniciar y loguea "Suscripcion a eventos de Kick
+creada"); (d) el refresh token del bot en `kick_bot_tokens` estaba vencido/revocado
+(`invalid_grant` → `sendChat failed: 401`) — se renueva rehaciendo el OAuth
+authorization_code+PKCE a mano (PowerShell genera verifier/challenge, autorizar en el
+navegador con la cuenta del bot, redirect `http://localhost:1337/` registrado en el dev
+app, y UPDATE de la fila id=1 en el SQL Editor de Supabase). **Mejor aún**: se agregó al
+worker un flujo OAuth propio para esto — `GET /kick/bot-auth/start?secret=WORKER_SECRET`
+(logueado en Kick con la cuenta del bot) → autorizar → el callback
+`GET /kick/bot-auth/callback` guarda los tokens en `kick_bot_tokens` automáticamente.
+Requiere env var `KICK_BOT_REDIRECT_URI` en el .env de la VM. OJO: el form de Kick exige
+HTTPS en las redirect URLs pero acepta `http://localhost` — como la VM no tiene TLS, se
+usa `KICK_BOT_REDIRECT_URI=http://localhost:1337/` (registrada en el dev app): tras
+autorizar, el navegador cae en `localhost:1337/?code=..&state=..` (error esperado) y hay
+que reemplazar a mano `localhost:1337/` por `<IP VM>/kick/bot-auth/callback` en la barra
+de direcciones conservando el query string. El intercambio code→token funciona igual
+porque el redirect_uri solo tiene que coincidir con el del authorize.
 
 ## Estado actual
 
@@ -341,6 +372,11 @@ sesiones posteriores — no estaban en el .env original de Fly.io:
 - `DISCORD_FRIENDS_CHANNEL_ID=1523122468477468825` — canal para anuncios de amigos streamers
 
 ## Pendientes (no bloqueantes)
+
+- **Persistir el redirect de puerto 80→3001 en la VM**: la regla de iptables se pierde al
+  reiniciar la VM. Fix: `sudo apt install iptables-persistent` y `sudo netfilter-persistent save`
+  (o mover el worker a puerto 80 con setcap). Si la VM se reinicia y Kick deja de llegar,
+  esto es lo primero a revisar — junto con la IP (efímera) en la Webhook URL de Kick.
 
 - Cosméticos visibles en el avatar del sidebar (actualmente sí en perfil/leaderboard).
 - Push notifications (level-up, misión completada, nuevo desafío) — hoy solo hay

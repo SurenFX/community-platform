@@ -1,9 +1,9 @@
 import {
-  Controller, Post, Body, Headers, Req, HttpCode,
+  Controller, Post, Get, Body, Query, Headers, Req, Res, HttpCode,
   UnauthorizedException, Logger,
 } from '@nestjs/common'
 import type { RawBodyRequest } from '@nestjs/common'
-import type { Request } from 'express'
+import type { Request, Response } from 'express'
 import { ConfigService } from '@nestjs/config'
 import * as crypto from 'crypto'
 import { KickApiService } from './kick-api.service'
@@ -53,6 +53,86 @@ export class KickController {
     this.verifyWorkerSecret(secret)
     await this.kickApi.sendChat(`@${body.winner} es el ganador del sorteo! Felicitaciones!`)
     return { ok: true }
+  }
+
+  // --- OAuth del bot: renovar el token de kick_bot_tokens sin PowerShell/SQL ---
+  // 1) Visitar /kick/bot-auth/start?secret=WORKER_SECRET logueado en Kick con la cuenta del bot
+  // 2) Autorizar -> Kick redirige al callback -> el worker guarda los tokens en la DB
+  private botAuthPending: { state: string; verifier: string; expires: number } | null = null
+
+  private get botRedirectUri(): string {
+    return this.config.get<string>('KICK_BOT_REDIRECT_URI') ?? ''
+  }
+
+  @Get('bot-auth/start')
+  botAuthStart(@Query('secret') secret: string, @Res() res: Response) {
+    this.verifyWorkerSecret(secret)
+    if (!this.botRedirectUri) {
+      res.status(500).send('Falta KICK_BOT_REDIRECT_URI en el .env')
+      return
+    }
+    const verifier  = crypto.randomBytes(32).toString('base64url')
+    const challenge = crypto.createHash('sha256').update(verifier).digest('base64url')
+    const state     = crypto.randomBytes(16).toString('hex')
+    this.botAuthPending = { state, verifier, expires: Date.now() + 10 * 60_000 }
+
+    const params = new URLSearchParams({
+      client_id:             this.config.get<string>('KICK_CLIENT_ID') ?? '',
+      response_type:         'code',
+      redirect_uri:          this.botRedirectUri,
+      scope:                 'user:read channel:read chat:write events:subscribe',
+      code_challenge:        challenge,
+      code_challenge_method: 'S256',
+      state,
+    })
+    res.redirect(`https://id.kick.com/oauth/authorize?${params.toString()}`)
+  }
+
+  @Get('bot-auth/callback')
+  async botAuthCallback(@Query('code') code: string, @Query('state') state: string): Promise<string> {
+    const pending = this.botAuthPending
+    this.botAuthPending = null
+    if (!code || !pending || pending.state !== state || Date.now() > pending.expires) {
+      return 'Estado invalido o expirado. Volve a /kick/bot-auth/start?secret=...'
+    }
+
+    const res = await fetch('https://id.kick.com/oauth/token', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type:    'authorization_code',
+        client_id:     this.config.get<string>('KICK_CLIENT_ID')     ?? '',
+        client_secret: this.config.get<string>('KICK_CLIENT_SECRET') ?? '',
+        redirect_uri:  this.botRedirectUri,
+        code_verifier: pending.verifier,
+        code,
+      }),
+    })
+
+    if (!res.ok) {
+      const body = await res.text()
+      this.logger.warn(`botAuthCallback: intercambio fallo ${res.status} ${body}`)
+      return `Error ${res.status} intercambiando el code: ${body}`
+    }
+
+    const json = await res.json()
+    const { error } = await this.supabase.db
+      .from('kick_bot_tokens')
+      .upsert({
+        id:            1,
+        access_token:  json.access_token,
+        refresh_token: json.refresh_token,
+        expires_at:    new Date(Date.now() + json.expires_in * 1000).toISOString(),
+        updated_at:    new Date().toISOString(),
+      }, { onConflict: 'id' })
+
+    if (error) {
+      this.logger.warn(`botAuthCallback: error guardando tokens: ${error.message}`)
+      return `Token obtenido pero fallo el guardado: ${error.message}`
+    }
+
+    this.logger.log('Token del bot de Kick renovado via /kick/bot-auth')
+    return 'Listo! Token del bot renovado y guardado. Ya podes cerrar esta pestania.'
   }
 
   @Post('webhook')
