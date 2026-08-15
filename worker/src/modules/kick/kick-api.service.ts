@@ -408,8 +408,24 @@ export class KickApiService implements OnModuleInit {
 
     if (!friends?.length) return
 
+    // Dedup por corrida: si hay filas duplicadas del mismo canal (aun con distinta
+    // capitalizacion), solo se procesa una vez
+    const seen = new Set<string>()
+
     for (const friend of friends as any[]) {
-      const { name, kick_slug: kickSlug, twitch_login: twitchLogin } = friend
+      const name = friend.name
+      let kickSlug:    string | null = friend.kick_slug?.toLowerCase()    ?? null
+      let twitchLogin: string | null = friend.twitch_login?.toLowerCase() ?? null
+
+      if (kickSlug) {
+        if (seen.has(`kick:${kickSlug}`)) kickSlug = null
+        else seen.add(`kick:${kickSlug}`)
+      }
+      if (twitchLogin) {
+        if (seen.has(`twitch:${twitchLogin}`)) twitchLogin = null
+        else seen.add(`twitch:${twitchLogin}`)
+      }
+      if (!kickSlug && !twitchLogin) continue
 
       // -- Kick --
       if (kickSlug && this.clientId) {
