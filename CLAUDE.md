@@ -350,6 +350,18 @@ que reemplazar a mano `localhost:1337/` por `<IP VM>/kick/bot-auth/callback` en 
 de direcciones conservando el query string. El intercambio code→token funciona igual
 porque el redirect_uri solo tiene que coincidir con el del authorize.
 
+**Sortea — nuevo producto (agosto 2026)**: nace `sortea/` en el repo — SaaS de sorteos
+para streamers (Kick/Twitch), separado del hub. Decisiones: nombre "Sortea" (dominio
+aspiracional sortea.gg), proyecto Next.js 15 propio (deploy como proyecto Vercel separado,
+Root Directory=`sortea`, puerto dev 3100), misma DB de Supabase con tablas prefijo
+`sortea_` + RLS por streamer, mismo worker de GCP (se generalizará por tenant). MVP:
+solo sorteos. Hecho: scaffold + landing con lista de espera + migración draft
+`020_sortea_tenants.sql` (**NO aplicada** — para cuando arranque la beta) + README con
+roadmap de 5 etapas. Contexto de la decisión: el hub de XP casi no se usa (falta
+incentivo/premios), pero las herramientas de streamer (sorteos, comandos, anuncios) sí —
+se valida primero con los streamers amigos ya cargados antes de invertir en multi-tenant
+completo y billing.
+
 ## Estado actual
 
 Plataforma funcionalmente muy completa (ver Historial). `tsc --noEmit` limpio en
