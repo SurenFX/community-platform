@@ -360,7 +360,15 @@ solo sorteos. Hecho: scaffold + landing con lista de espera + migración draft
 roadmap de 5 etapas. Contexto de la decisión: el hub de XP casi no se usa (falta
 incentivo/premios), pero las herramientas de streamer (sorteos, comandos, anuncios) sí —
 se valida primero con los streamers amigos ya cargados antes de invertir en multi-tenant
-completo y billing.
+completo y billing. **Decisión posterior (misma fecha)**: el hub queda RELEGADO — no se
+desarrolla más sobre él; todo el esfuerzo va a Sortea.
+**Sortea etapa 2 (auth) hecha**: magic link por email (Supabase Auth, sin providers
+externos), middleware de sesión que protege `/panel`, rutas `/auth/kick` (PKCE, scopes
+user:read channel:read chat:write events:subscribe) y `/auth/twitch` adaptadas del hub
+pero guardando identidad+tokens en `sortea_streamers` (upsert por user_id), y `/panel`
+con estado de conexiones y placeholder de sorteos. Build verificado. Setup manual
+pendiente documentado en `sortea/README.md` (migración 020, redirect URIs en dev apps,
+.env.local, redirect URLs del magic link en Supabase Auth).
 
 ## Estado actual
 

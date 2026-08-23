@@ -8,7 +8,26 @@ lanzar sorteos por palabra clave desde un panel, sin configurar bots ni APIs.
 
 ## Estado
 
-MVP en construcción. Hoy: landing + migración draft de tenants (`supabase/migrations/020_sortea_tenants.sql`, **no aplicada**).
+MVP en construcción. Hoy: landing + auth completa (magic link + conectar Kick/Twitch
+guardando tokens por streamer en `sortea_streamers`) + panel con estado de conexiones.
+Falta la etapa 3 (panel de sorteos + generalizar el worker).
+
+### Setup manual pendiente antes de probar auth
+
+1. Aplicar `supabase/migrations/020_sortea_tenants.sql` en el SQL Editor de Supabase.
+2. Registrar redirect URIs en los dev apps:
+   - Kick: `http://localhost:3100/auth/kick` (dev) y `https://<dominio>/auth/kick` (prod)
+   - Twitch: `http://localhost:3100/auth/twitch` y `https://<dominio>/auth/twitch`
+3. Crear `sortea/.env.local` con:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=...        (mismo del hub)
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=...   (mismo del hub)
+   SUPABASE_SERVICE_ROLE_KEY=...       (mismo del hub)
+   KICK_CLIENT_ID=... / KICK_CLIENT_SECRET=...
+   TWITCH_CLIENT_ID=... / TWITCH_CLIENT_SECRET=...
+   ```
+4. En Supabase → Auth → URL Configuration: agregar `http://localhost:3100/auth/callback`
+   (y el de prod) a las Redirect URLs permitidas para el magic link.
 
 ## Roadmap por etapas
 
