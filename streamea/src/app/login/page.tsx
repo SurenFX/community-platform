@@ -30,7 +30,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen flex-col items-center justify-center px-6">
       <a href="/" className="mb-8 flex items-center gap-2">
         <Gift className="h-8 w-8 text-brand" />
-        <span className="text-2xl font-bold">Sortea</span>
+        <span className="text-2xl font-bold">Streamea</span>
       </a>
 
       <div className="w-full max-w-sm rounded-2xl border border-surface-border bg-surface-raised p-8">
@@ -45,7 +45,7 @@ export default function LoginPage() {
           </div>
         ) : (
           <>
-            <h1 className="text-lg font-semibold">Entrar a Sortea</h1>
+            <h1 className="text-lg font-semibold">Entrar a Streamea</h1>
             <p className="mt-1 text-sm text-zinc-400">
               Te mandamos un link mágico por email. Sin contraseñas.
             </p>

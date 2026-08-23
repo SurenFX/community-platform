@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { createSupabaseServer } from '@/lib/supabase/server'
 import { createSupabaseAdmin } from '@/lib/supabase/admin'
 
-// Callback del OAuth de Kick: guarda identidad + tokens en sortea_streamers
+// Callback del OAuth de Kick: guarda identidad + tokens en st_streamers
 export async function GET(request: NextRequest) {
   const { origin, searchParams } = new URL(request.url)
   const code  = searchParams.get('code')
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     })
     const tokenData = await tokenRes.json()
     if (!tokenData.access_token) {
-      console.error('Sortea Kick token error:', tokenData)
+      console.error('Streamea Kick token error:', tokenData)
       return NextResponse.redirect(`${origin}/panel?error=kick_token`)
     }
 
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     const userData = await userRes.json()
     const kickUser = userData?.data?.[0]
     if (!kickUser?.user_id) {
-      console.error('Sortea Kick user error:', userData)
+      console.error('Streamea Kick user error:', userData)
       return NextResponse.redirect(`${origin}/panel?error=kick_api`)
     }
 
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date(Date.now() + (tokenData.expires_in ?? 3600) * 1000).toISOString()
 
     const { data: existing } = await admin
-      .from('sortea_streamers')
+      .from('st_streamers')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle()
@@ -85,9 +85,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (existing) {
-      await admin.from('sortea_streamers').update(fields).eq('id', existing.id)
+      await admin.from('st_streamers').update(fields).eq('id', existing.id)
     } else {
-      await admin.from('sortea_streamers').insert({
+      await admin.from('st_streamers').insert({
         user_id:      user.id,
         display_name: kickUser.name ?? `kick_${kickUser.user_id}`,
         ...fields,
@@ -96,7 +96,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(`${origin}/panel?connected=kick`)
   } catch (err) {
-    console.error('Sortea Kick auth error:', err)
+    console.error('Streamea Kick auth error:', err)
     return NextResponse.redirect(`${origin}/panel?error=unknown`)
   }
 }

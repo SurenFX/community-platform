@@ -369,6 +369,13 @@ pero guardando identidad+tokens en `sortea_streamers` (upsert por user_id), y `/
 con estado de conexiones y placeholder de sorteos. Build verificado. Setup manual
 pendiente documentado en `sortea/README.md` (migración 020, redirect URIs en dev apps,
 .env.local, redirect URLs del magic link en Supabase Auth).
+**Rename Sortea → Streamea (misma fecha, definitivo)**: el usuario decidió que el
+producto será una suite (no solo sorteos). Se evaluó "StreamTools" pero todos los
+dominios buenos están tomados; **streamea.gg está libre** (verificado por DNS, falta
+comprarlo). Carpeta final `streamea/`, migración `020_streamea_tenants.sql`, tablas
+`st_*`, textos de UI → Streamea. Deploy: proyecto Vercel separado con Root
+Directory=`streamea`. El hub queda deployado (relegado) porque el admin de sorteos
+propio todavía vive ahí — se retira cuando Streamea etapa 3 lo reemplace.
 
 ## Estado actual
 

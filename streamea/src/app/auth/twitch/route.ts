@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { createSupabaseServer } from '@/lib/supabase/server'
 import { createSupabaseAdmin } from '@/lib/supabase/admin'
 
-// Callback del OAuth de Twitch: guarda identidad + tokens en sortea_streamers
+// Callback del OAuth de Twitch: guarda identidad + tokens en st_streamers
 export async function GET(request: NextRequest) {
   const { origin, searchParams } = new URL(request.url)
   const code  = searchParams.get('code')
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     })
     const tokenData = await tokenRes.json()
     if (!tokenData.access_token) {
-      console.error('Sortea Twitch token error:', tokenData)
+      console.error('Streamea Twitch token error:', tokenData)
       return NextResponse.redirect(`${origin}/panel?error=twitch_token`)
     }
 
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date(Date.now() + (tokenData.expires_in ?? 3600) * 1000).toISOString()
 
     const { data: existing } = await admin
-      .from('sortea_streamers')
+      .from('st_streamers')
       .select('id')
       .eq('user_id', user.id)
       .maybeSingle()
@@ -74,9 +74,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (existing) {
-      await admin.from('sortea_streamers').update(fields).eq('id', existing.id)
+      await admin.from('st_streamers').update(fields).eq('id', existing.id)
     } else {
-      await admin.from('sortea_streamers').insert({
+      await admin.from('st_streamers').insert({
         user_id:      user.id,
         display_name: twitchUser.display_name ?? twitchUser.login,
         ...fields,
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(`${origin}/panel?connected=twitch`)
   } catch (err) {
-    console.error('Sortea Twitch auth error:', err)
+    console.error('Streamea Twitch auth error:', err)
     return NextResponse.redirect(`${origin}/panel?error=unknown`)
   }
 }

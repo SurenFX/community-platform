@@ -23,7 +23,7 @@ export default async function Panel({
 
   // RLS: el streamer solo ve su propia fila
   const { data: streamer } = await supabase
-    .from('sortea_streamers')
+    .from('st_streamers')
     .select('display_name, kick_slug, twitch_login')
     .eq('user_id', user.id)
     .maybeSingle()
@@ -36,7 +36,7 @@ export default async function Panel({
       <header className="mb-10 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Gift className="h-7 w-7 text-brand" />
-          <span className="text-xl font-bold">Sortea</span>
+          <span className="text-xl font-bold">Streamea</span>
         </div>
         <form action={signOut}>
           <button className="flex items-center gap-1.5 text-sm text-zinc-400 transition hover:text-zinc-200">
@@ -46,7 +46,7 @@ export default async function Panel({
       </header>
 
       <h1 className="text-2xl font-bold">
-        {streamer ? `Hola, ${streamer.display_name}` : 'Bienvenido a Sortea'}
+        {streamer ? `Hola, ${streamer.display_name}` : 'Bienvenido a Streamea'}
       </h1>
       <p className="mt-2 text-zinc-400">
         {kickConnected || twitchConnected
