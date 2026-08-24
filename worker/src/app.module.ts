@@ -16,6 +16,7 @@ import { KickModule } from './modules/kick/kick.module'
 import { RecruitmentModule } from './modules/recruitment/recruitment.module'
 import { ReferidosAnnouncementModule } from './modules/referidos-announcement/referidos-announcement.module'
 import { WeeklyDigestModule } from './modules/weekly-digest/weekly-digest.module'
+import { StreameaModule } from './modules/streamea/streamea.module'
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { WeeklyDigestModule } from './modules/weekly-digest/weekly-digest.module
     RecruitmentModule,
     ReferidosAnnouncementModule,
     WeeklyDigestModule,
+    StreameaModule,
   ],
 })
 export class AppModule {}

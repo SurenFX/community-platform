@@ -384,6 +384,45 @@ comprarlo). Carpeta final `streamea/`, migración `020_streamea_tenants.sql`, ta
 Directory=`streamea`. El hub queda deployado (relegado) porque el admin de sorteos
 propio todavía vive ahí — se retira cuando Streamea etapa 3 lo reemplace.
 
+**Streamea etapa 3 — multi-tenant (agosto 2026)**: nuevo módulo
+`worker/src/modules/streamea/` totalmente independiente del hub:
+- `StreameaKickService`: la lista de canales sale de `st_streamers` (NO de
+  `KICK_CHANNEL_SLUG`). Cron cada 10 min (`syncTenants`) que refresca el mapa
+  `broadcaster_user_id -> tenant` y crea las suscripciones de webhook que falten para
+  cada streamer. `sendChat(broadcasterId, msg)` usa el token global del bot
+  (`kick_bot_tokens`, cuenta streameabot) e intenta `type:'bot'` con fallback a
+  `type:'user'`.
+- `StreameaController` (`POST /streamea/webhook`): Kick manda todos los eventos de la
+  app a una sola URL, así que se rutea por `payload.broadcaster.user_id`. Maneja
+  `!addcom`/`!delcom` (solo broadcaster/mods, contra `st_commands` por streamer),
+  comandos custom con cooldown por tenant, y entradas de sorteo en
+  `st_raffle_entries` cuando el streamer tiene un `st_raffles` activo.
+- Migración `021_streamea_commands.sql`: tabla `st_commands` + policies de
+  INSERT/UPDATE/DELETE para que el streamer maneje sus comandos y sorteos desde el
+  panel + columna `bot_is_mod`.
+- Frontend: `/panel` con onboarding (aviso + botón copiar `/mod streameabot`),
+  `/panel/sorteos` (abrir sorteo por keyword, ver participantes, sortear ganador,
+  historial) y `/panel/comandos` (CRUD). Server actions en `panel/actions.ts` usando
+  service role tras validar el dueño.
+- **Pendiente manual**: correr la migración 021, y cambiar la Webhook URL del dev app
+  de Kick a `http://<IP VM>/streamea/webhook`.
+
+**Migración a Supabase nuevo (misma sesión)**: el proyecto viejo de Supabase
+(`lfkleoanvgdekfowxeex`) quedó pausado/borrado y el worker perdió conexión
+(`fetch failed`). Se creó un proyecto nuevo (`oonrnecmhyxofdylzhux`) y se apuntó ahí
+tanto Vercel como el `.env` de la VM. Las tablas del hub NO se migraron (historial de
+XP/perfiles perdido, decisión consciente del usuario); solo se recrearon
+`kick_bot_tokens`, `kick_commands` y `friend_streamers` para que el worker no rompa.
+Ojo: los módulos del hub (XP, misiones, digest) van a tirar errores hasta que se
+apaguen — pendiente de limpieza.
+
+**App de Kick propia de Streamea (misma sesión)**: se creó un dev app nuevo bajo la
+cuenta `streameabot` (client id `01M0TD1G5GDR0PEP4GPPECBN7R`), con scopes user:read,
+channel:read, chat:write, events:subscribe. Se actualizaron `KICK_CLIENT_ID/SECRET` en
+la VM y en Vercel. El `WORKER_SECRET` placeholder se reemplazó por uno aleatorio real.
+El token del bot se obtuvo con el flujo `/kick/bot-auth/start` logueado como
+streameabot (que además es moderador del canal).
+
 ## Estado actual
 
 Plataforma funcionalmente muy completa (ver Historial). `tsc --noEmit` limpio en

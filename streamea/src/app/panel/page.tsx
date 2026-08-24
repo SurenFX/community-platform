@@ -1,15 +1,11 @@
 import { redirect } from 'next/navigation'
-import { Gift, CheckCircle2, Circle, LogOut } from 'lucide-react'
+import { CheckCircle2, Circle, ShieldCheck } from 'lucide-react'
 import { createSupabaseServer } from '@/lib/supabase/server'
+import { CopyButton } from './copy-button'
 
 export const dynamic = 'force-dynamic'
 
-async function signOut() {
-  'use server'
-  const supabase = await createSupabaseServer()
-  await supabase.auth.signOut()
-  redirect('/login')
-}
+const BOT_NAME = 'streameabot'
 
 export default async function Panel({
   searchParams,
@@ -21,7 +17,6 @@ export default async function Panel({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // RLS: el streamer solo ve su propia fila
   const { data: streamer } = await supabase
     .from('st_streamers')
     .select('display_name, kick_slug, twitch_login')
@@ -32,25 +27,13 @@ export default async function Panel({
   const twitchConnected = Boolean(streamer?.twitch_login)
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
-      <header className="mb-10 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Gift className="h-7 w-7 text-brand" />
-          <span className="text-xl font-bold">Streamea</span>
-        </div>
-        <form action={signOut}>
-          <button className="flex items-center gap-1.5 text-sm text-zinc-400 transition hover:text-zinc-200">
-            <LogOut className="h-4 w-4" /> Salir
-          </button>
-        </form>
-      </header>
-
+    <main>
       <h1 className="text-2xl font-bold">
         {streamer ? `Hola, ${streamer.display_name}` : 'Bienvenido a Streamea'}
       </h1>
       <p className="mt-2 text-zinc-400">
         {kickConnected || twitchConnected
-          ? 'Tu canal está conectado. Los sorteos llegan muy pronto.'
+          ? 'Tu canal está conectado. Ya podés usar las herramientas.'
           : 'Conectá tu canal para empezar. Un clic, sin configurar nada.'}
       </p>
 
@@ -66,7 +49,6 @@ export default async function Panel({
       )}
 
       <section className="mt-8 space-y-4">
-        {/* Kick */}
         <div className="flex items-center justify-between rounded-2xl border border-surface-border bg-surface-raised p-5">
           <div className="flex items-center gap-3">
             {kickConnected
@@ -87,7 +69,6 @@ export default async function Panel({
           </a>
         </div>
 
-        {/* Twitch */}
         <div className="flex items-center justify-between rounded-2xl border border-surface-border bg-surface-raised p-5">
           <div className="flex items-center gap-3">
             {twitchConnected
@@ -109,14 +90,27 @@ export default async function Panel({
         </div>
       </section>
 
-      {/* Placeholder etapa 3 */}
-      <section className="mt-10 rounded-2xl border border-dashed border-surface-border p-8 text-center">
-        <Gift className="mx-auto mb-3 h-8 w-8 text-zinc-600" />
-        <h2 className="font-semibold text-zinc-300">Sorteos</h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          Acá vas a lanzar sorteos por palabra clave en tu chat. En construcción.
-        </p>
-      </section>
+      {/* Paso final del onboarding: el bot necesita ser moderador para escribir */}
+      {kickConnected && (
+        <section className="mt-6 rounded-2xl border border-brand/30 bg-brand/5 p-5">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
+            <div className="flex-1">
+              <h2 className="font-semibold">Último paso: hacé moderador al bot</h2>
+              <p className="mt-1 text-sm text-zinc-400">
+                Para que pueda responder en tu chat, escribí este comando en el chat de tu
+                propio canal de Kick:
+              </p>
+              <div className="mt-3 flex items-center gap-2">
+                <code className="flex-1 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-zinc-200">
+                  /mod {BOT_NAME}
+                </code>
+                <CopyButton text={`/mod ${BOT_NAME}`} />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
     </main>
   )
 }

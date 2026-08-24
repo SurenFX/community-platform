@@ -35,6 +35,17 @@ Falta la etapa 3 (panel de sorteos + generalizar el worker por tenant).
    Cuando haya SMTP propio (Resend/Brevo) se puede reactivar + agregar "olvidé mi
    contraseña".
 
+### Etapa 3 (multi-tenant) — pasos manuales
+
+1. Correr `supabase/migrations/021_streamea_commands.sql` en el SQL Editor.
+2. En el dev app de Kick de Streamea: **Webhook URL** →
+   `http://<IP de la VM>/streamea/webhook` (endpoint nuevo, multi-tenant).
+   El endpoint viejo `/kick/webhook` es del hub y queda sin uso.
+3. Deploy del worker en la VM (`git pull && npm run build && pm2 restart worker`).
+4. Cada streamer: conecta Kick desde `/panel` y hace `/mod streameabot` en su chat.
+   El worker sincroniza tenants cada 10 min (o al reiniciar) y crea las suscripciones
+   de eventos por canal automáticamente.
+
 ## Roadmap por etapas
 
 1. **Landing + lista de espera** (hecho).
