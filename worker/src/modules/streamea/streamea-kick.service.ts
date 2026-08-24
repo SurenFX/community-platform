@@ -233,7 +233,13 @@ export class StreameaKickService implements OnModuleInit {
     }
   }
 
-  /** Manda un mensaje al chat de un canal concreto, como el bot de la plataforma. */
+  /**
+   * Manda un mensaje al chat de un canal concreto, como el bot de la plataforma.
+   *
+   * Se usa `type:'user'`: el mensaje sale igual con la identidad de la cuenta del bot
+   * (streameabot). `type:'bot'` devuelve 500 salvo que la cuenta este registrada como
+   * bot oficial en Kick, asi que no se intenta.
+   */
   async sendChat(broadcasterId: string, message: string): Promise<boolean> {
     const token = await this.getBotToken()
     if (!token) return false
@@ -248,31 +254,12 @@ export class StreameaKickService implements OnModuleInit {
         body: JSON.stringify({
           broadcaster_user_id: Number(broadcasterId),
           content: message.slice(0, 500),
-          type: 'bot',
-        }),
-      })
-
-      if (res.ok) return true
-
-      // Si la cuenta no esta registrada como bot del canal, Kick rechaza type:'bot'
-      const body = await res.text()
-      this.logger.warn(`sendChat(bot) fallo: ${res.status} ${body} — reintentando como user`)
-
-      const retry = await fetch(`${KICK_API_BASE}/chat`, {
-        method:  'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization:  `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          broadcaster_user_id: Number(broadcasterId),
-          content: message.slice(0, 500),
           type: 'user',
         }),
       })
 
-      if (!retry.ok) {
-        this.logger.warn(`sendChat(user) fallo: ${retry.status} ${await retry.text()}`)
+      if (!res.ok) {
+        this.logger.warn(`sendChat fallo: ${res.status} ${await res.text()}`)
         return false
       }
       return true

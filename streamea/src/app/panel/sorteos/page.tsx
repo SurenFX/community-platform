@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { Ticket, Trophy, Users, X } from 'lucide-react'
 import { createSupabaseServer } from '@/lib/supabase/server'
 import { startRaffle, closeRaffle, drawWinner, deleteRaffle } from '../actions'
+import { AutoRefresh } from './auto-refresh'
 
 export const dynamic = 'force-dynamic'
 
@@ -74,6 +75,7 @@ export default async function SorteosPage() {
         </form>
       ) : (
         <section className="mt-6 rounded-2xl border border-brand/40 bg-brand/5 p-5">
+          <AutoRefresh seconds={5} />
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-zinc-400">Sorteo abierto — palabra clave</p>
@@ -125,7 +127,7 @@ export default async function SorteosPage() {
           )}
 
           <p className="mt-4 text-xs text-zinc-500">
-            La lista se actualiza al recargar la página.
+            La lista se actualiza sola cada 5 segundos.
           </p>
         </section>
       )}

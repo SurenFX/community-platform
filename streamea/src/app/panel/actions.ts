@@ -19,6 +19,23 @@ async function requireStreamer() {
   return data as { id: string; kick_user_id: string | null; kick_slug: string | null }
 }
 
+/** Pide al worker que el bot diga algo en el chat del streamer. Silencioso si falla. */
+async function botSay(streamerId: string, message: string) {
+  const url    = process.env.WORKER_URL
+  const secret = process.env.WORKER_SECRET
+  if (!url || !secret) return
+
+  try {
+    await fetch(`${url.replace(/\/$/, '')}/streamea/say`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-worker-secret': secret },
+      body:    JSON.stringify({ streamerId, message }),
+    })
+  } catch {
+    /* el sorteo funciona igual sin el anuncio en el chat */
+  }
+}
+
 // --- Sorteos ---
 
 export async function startRaffle(formData: FormData) {
@@ -42,6 +59,7 @@ export async function startRaffle(formData: FormData) {
     status:      'active',
   })
 
+  await botSay(streamer.id, `Sorteo abierto! Escribi "${keyword}" en el chat para participar.`)
   revalidatePath('/panel/sorteos')
 }
 
@@ -84,6 +102,7 @@ export async function drawWinner(formData: FormData) {
     .eq('id', raffleId)
     .eq('streamer_id', streamer.id)
 
+  await botSay(streamer.id, `@${winner} gano el sorteo! Felicitaciones!`)
   revalidatePath('/panel/sorteos')
 }
 

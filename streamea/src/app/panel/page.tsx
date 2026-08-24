@@ -91,22 +91,46 @@ export default async function Panel({
       </section>
 
       {/* Paso final del onboarding: el bot necesita ser moderador para escribir */}
-      {kickConnected && (
+      {(kickConnected || twitchConnected) && (
         <section className="mt-6 rounded-2xl border border-brand/30 bg-brand/5 p-5">
           <div className="flex items-start gap-3">
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
             <div className="flex-1">
               <h2 className="font-semibold">Último paso: hacé moderador al bot</h2>
               <p className="mt-1 text-sm text-zinc-400">
-                Para que pueda responder en tu chat, escribí este comando en el chat de tu
-                propio canal de Kick:
+                Para que pueda responder en tu chat, escribí este comando en el chat de
+                {kickConnected && twitchConnected
+                  ? ' cada canal que conectaste'
+                  : kickConnected ? ' tu canal de Kick' : ' tu canal de Twitch'}:
               </p>
-              <div className="mt-3 flex items-center gap-2">
-                <code className="flex-1 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-zinc-200">
-                  /mod {BOT_NAME}
-                </code>
-                <CopyButton text={`/mod ${BOT_NAME}`} />
-              </div>
+
+              {kickConnected && (
+                <div className="mt-3">
+                  <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-brand-kick">
+                    Kick
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-zinc-200">
+                      /mod {BOT_NAME}
+                    </code>
+                    <CopyButton text={`/mod ${BOT_NAME}`} />
+                  </div>
+                </div>
+              )}
+
+              {twitchConnected && (
+                <div className="mt-3">
+                  <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-brand-twitch">
+                    Twitch
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-zinc-200">
+                      /mod {BOT_NAME}
+                    </code>
+                    <CopyButton text={`/mod ${BOT_NAME}`} />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>

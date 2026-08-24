@@ -404,8 +404,21 @@ propio todavía vive ahí — se retira cuando Streamea etapa 3 lo reemplace.
   `/panel/sorteos` (abrir sorteo por keyword, ver participantes, sortear ganador,
   historial) y `/panel/comandos` (CRUD). Server actions en `panel/actions.ts` usando
   service role tras validar el dueño.
-- **Pendiente manual**: correr la migración 021, y cambiar la Webhook URL del dev app
-  de Kick a `http://<IP VM>/streamea/webhook`.
+- `POST /streamea/say` (protegido con `x-worker-secret`): el panel de Vercel le pide al
+  worker que el bot anuncie el inicio del sorteo y al ganador en el chat del streamer.
+  Requiere `WORKER_URL` y `WORKER_SECRET` como env vars del proyecto de Vercel.
+- `sendChat` usa `type:'user'` (no `'bot'`): con la cuenta streameabot, `type:'bot'`
+  devuelve 500 porque no está registrada como bot oficial de Kick. Con `'user'` el
+  mensaje sale igual con la identidad de streameabot.
+- La página de sorteos se auto-refresca cada 5s (`AutoRefresh`) para ver entrar
+  participantes en vivo.
+- Kick NO permite agregar moderadores por API (su scope de moderación es solo
+  ban/unban), así que el `/mod streameabot` es manual y el panel lo muestra listo para
+  copiar. En Twitch SÍ se puede automatizar (Helix `POST /moderation/moderators` con
+  scope `channel:manage:moderators`) — pendiente para cuando exista el bot de Twitch.
+- **Pendiente manual**: correr la migración 021, cambiar la Webhook URL del dev app
+  de Kick a `http://<IP VM>/streamea/webhook`, y agregar `WORKER_URL`/`WORKER_SECRET`
+  en Vercel.
 
 **Migración a Supabase nuevo (misma sesión)**: el proyecto viejo de Supabase
 (`lfkleoanvgdekfowxeex`) quedó pausado/borrado y el worker perdió conexión

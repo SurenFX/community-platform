@@ -1,6 +1,9 @@
-import { Controller, Post, Req, Headers, HttpCode, Logger } from '@nestjs/common'
+import {
+  Controller, Post, Body, Req, Headers, HttpCode, Logger, UnauthorizedException,
+} from '@nestjs/common'
 import type { RawBodyRequest } from '@nestjs/common'
 import type { Request } from 'express'
+import { ConfigService } from '@nestjs/config'
 import * as crypto from 'crypto'
 import { StreameaKickService, type Tenant } from './streamea-kick.service'
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
@@ -25,7 +28,36 @@ export class StreameaController {
   constructor(
     private kick:     StreameaKickService,
     private supabase: SupabaseService,
+    private config:   ConfigService,
   ) {}
+
+  /**
+   * El panel (Vercel) pide que el bot diga algo en el chat de un streamer.
+   * Se usa para anunciar el inicio de un sorteo y al ganador.
+   */
+  @Post('say')
+  @HttpCode(200)
+  async say(
+    @Headers('x-worker-secret') secret: string,
+    @Body() body: { streamerId: string; message: string },
+  ) {
+    if (!secret || secret !== this.config.get('WORKER_SECRET')) {
+      throw new UnauthorizedException()
+    }
+    if (!body?.streamerId || !body?.message) return { ok: false }
+
+    const { data } = await this.supabase.db
+      .from('st_streamers')
+      .select('kick_user_id')
+      .eq('id', body.streamerId)
+      .maybeSingle()
+
+    const broadcasterId = (data as any)?.kick_user_id
+    if (!broadcasterId) return { ok: false }
+
+    const sent = await this.kick.sendChat(String(broadcasterId), body.message)
+    return { ok: sent }
+  }
 
   @Post('webhook')
   @HttpCode(200)
