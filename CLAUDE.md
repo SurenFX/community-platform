@@ -369,6 +369,13 @@ pero guardando identidad+tokens en `sortea_streamers` (upsert por user_id), y `/
 con estado de conexiones y placeholder de sorteos. Build verificado. Setup manual
 pendiente documentado en `sortea/README.md` (migración 020, redirect URIs en dev apps,
 .env.local, redirect URLs del magic link en Supabase Auth).
+**Streamea: login con contraseña en vez de magic link**: el SMTP gratuito de Supabase
+limita a 2 mails/hora (dio "No pudimos enviar el mail" en la primera prueba real) y el
+usuario prefería no depender del correo. `/login` ahora tiene tabs Entrar/Crear cuenta
+con `signInWithPassword`/`signUp`. Requiere desactivar **Confirm email** en Supabase →
+Authentication → Sign In / Providers → Email. Pendiente: SMTP propio (Resend/Brevo) para
+poder ofrecer "olvidé mi contraseña".
+
 **Rename Sortea → Streamea (misma fecha, definitivo)**: el usuario decidió que el
 producto será una suite (no solo sorteos). Se evaluó "StreamTools" pero todos los
 dominios buenos están tomados; **streamea.gg está libre** (verificado por DNS, falta

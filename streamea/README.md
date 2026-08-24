@@ -27,8 +27,13 @@ Falta la etapa 3 (panel de sorteos + generalizar el worker por tenant).
    KICK_CLIENT_ID=... / KICK_CLIENT_SECRET=...
    TWITCH_CLIENT_ID=... / TWITCH_CLIENT_SECRET=...
    ```
-4. En Supabase → Auth → URL Configuration: agregar `https://<dominio>/auth/callback`
-   a las Redirect URLs permitidas para el magic link.
+4. En Supabase → Auth → URL Configuration: Site URL = `https://<dominio>` y Redirect
+   URLs con `https://<dominio>/**`.
+5. **Login es email + contraseña** (no magic link — el SMTP gratis de Supabase limita a
+   2 mails/hora). Para que el registro entre directo sin confirmar mail:
+   Supabase → Authentication → Sign In / Providers → Email → desactivar **Confirm email**.
+   Cuando haya SMTP propio (Resend/Brevo) se puede reactivar + agregar "olvidé mi
+   contraseña".
 
 ## Roadmap por etapas
 
