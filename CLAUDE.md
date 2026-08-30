@@ -420,6 +420,32 @@ propio todavía vive ahí — se retira cuando Streamea etapa 3 lo reemplace.
   de Kick a `http://<IP VM>/streamea/webhook`, y agregar `WORKER_URL`/`WORKER_SECRET`
   en Vercel.
 
+**Streamea etapa 4 — bot de Twitch multi-tenant (agosto 2026)**:
+- Migración `022_streamea_bot_tokens.sql`: tabla `st_bot_tokens` (PK `platform`) con
+  access/refresh token + `bot_user_id`/`bot_username` de la cuenta bot.
+- **Alta del bot por la web, no por el worker**: Twitch exige HTTPS en los redirect URIs
+  y la VM no tiene TLS, así que el OAuth de la cuenta bot vive en el proyecto de Vercel:
+  `GET /setup/twitch-bot/start?key=<ADMIN_SETUP_KEY>` (scopes chat:read chat:edit,
+  `force_verify=true` para elegir la cuenta correcta) → callback `/setup/twitch-bot`
+  guarda todo en `st_bot_tokens`. Requiere env var `ADMIN_SETUP_KEY` en Vercel y
+  registrar `https://<dominio>/setup/twitch-bot` como Redirect URL en el dev app.
+- `StreameaTwitchService` (worker): IRC crudo por TCP (mismo patrón que el bot del hub),
+  se conecta con el token de `st_bot_tokens` (refresh automático, cron cada 3h porque el
+  token de Twitch dura ~4h) y joinea el canal de cada fila de `st_streamers` con
+  `twitch_login`. Cron `*/10` para joinear canales nuevos sin reconectar. Comandos
+  (`!addcom`/`!delcom`/custom) y entradas de sorteo por canal, contra las mismas tablas
+  `st_commands`/`st_raffles` que Kick. Detección de mod por tags IRC (`badges=`, `mod=1`).
+- **Auto-moderador en Twitch (lo que en Kick no se puede)**: el OAuth del streamer ahora
+  pide `channel:manage:moderators`; `makeBotModerator()` llama
+  `POST helix/moderation/moderators` con el token del streamer (refrescándolo si venció)
+  y el `bot_user_id`. 204 = ok, 422 = ya era mod. Endpoint `POST /streamea/twitch/mod`
+  (con `x-worker-secret`) + botón en `/panel`. Fallback: mostrar `/mod streameabot`.
+- Sorteos: `/panel/sorteos` ahora tiene selector Kick/Twitch (solo si tiene las dos
+  conectadas), y `POST /streamea/say` acepta `platform` para anunciar en el chat correcto.
+- **Pendiente manual**: migración 022, `ADMIN_SETUP_KEY` en Vercel, redirect URL nueva en
+  el dev app de Twitch, correr `/setup/twitch-bot/start` logueado con la cuenta bot, y
+  que los streamers ya conectados **reconecten Twitch** para otorgar el scope nuevo.
+
 **Migración a Supabase nuevo (misma sesión)**: el proyecto viejo de Supabase
 (`lfkleoanvgdekfowxeex`) quedó pausado/borrado y el worker perdió conexión
 (`fetch failed`). Se creó un proyecto nuevo (`oonrnecmhyxofdylzhux`) y se apuntó ahí

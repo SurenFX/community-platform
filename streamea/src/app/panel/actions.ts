@@ -20,7 +20,7 @@ async function requireStreamer() {
 }
 
 /** Pide al worker que el bot diga algo en el chat del streamer. Silencioso si falla. */
-async function botSay(streamerId: string, message: string) {
+async function botSay(streamerId: string, message: string, platform: 'KICK' | 'TWITCH' = 'KICK') {
   const url    = process.env.WORKER_URL
   const secret = process.env.WORKER_SECRET
   if (!url || !secret) return
@@ -29,17 +29,38 @@ async function botSay(streamerId: string, message: string) {
     await fetch(`${url.replace(/\/$/, '')}/streamea/say`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', 'x-worker-secret': secret },
-      body:    JSON.stringify({ streamerId, message }),
+      body:    JSON.stringify({ streamerId, message, platform }),
     })
   } catch {
     /* el sorteo funciona igual sin el anuncio en el chat */
   }
 }
 
+/** Pide al worker que agregue el bot como moderador en Twitch (Helix). */
+export async function makeBotModerator() {
+  const streamer = await requireStreamer()
+  const url      = process.env.WORKER_URL
+  const secret   = process.env.WORKER_SECRET
+  if (!url || !secret) return
+
+  try {
+    await fetch(`${url.replace(/\/$/, '')}/streamea/twitch/mod`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'x-worker-secret': secret },
+      body:    JSON.stringify({ streamerId: streamer.id }),
+    })
+  } catch {
+    /* si falla, el streamer siempre puede usar /mod a mano */
+  }
+
+  revalidatePath('/panel')
+}
+
 // --- Sorteos ---
 
 export async function startRaffle(formData: FormData) {
-  const keyword = String(formData.get('keyword') ?? '').trim()
+  const keyword  = String(formData.get('keyword') ?? '').trim()
+  const platform = String(formData.get('platform') ?? 'KICK') === 'TWITCH' ? 'TWITCH' : 'KICK'
   if (!keyword) return
 
   const streamer = await requireStreamer()
@@ -54,12 +75,16 @@ export async function startRaffle(formData: FormData) {
 
   await admin.from('st_raffles').insert({
     streamer_id: streamer.id,
-    platform:    'KICK',
+    platform,
     keyword,
     status:      'active',
   })
 
-  await botSay(streamer.id, `Sorteo abierto! Escribi "${keyword}" en el chat para participar.`)
+  await botSay(
+    streamer.id,
+    `Sorteo abierto! Escribi "${keyword}" en el chat para participar.`,
+    platform,
+  )
   revalidatePath('/panel/sorteos')
 }
 
@@ -96,13 +121,20 @@ export async function drawWinner(formData: FormData) {
 
   const winner = list[Math.floor(Math.random() * list.length)].username
 
+  const { data: raffle } = await admin
+    .from('st_raffles')
+    .select('platform')
+    .eq('id', raffleId)
+    .maybeSingle()
+
   await admin
     .from('st_raffles')
     .update({ status: 'drawn', winner, closed_at: new Date().toISOString() })
     .eq('id', raffleId)
     .eq('streamer_id', streamer.id)
 
-  await botSay(streamer.id, `@${winner} gano el sorteo! Felicitaciones!`)
+  const platform = (raffle as any)?.platform === 'TWITCH' ? 'TWITCH' : 'KICK'
+  await botSay(streamer.id, `@${winner} gano el sorteo! Felicitaciones!`, platform)
   revalidatePath('/panel/sorteos')
 }
 

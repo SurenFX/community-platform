@@ -2,8 +2,10 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import * as crypto from 'crypto'
 
-// OAuth de Twitch — paso 1. Scopes mínimos: identidad (para vincular el canal).
-// El bot IRC que opera los sorteos usa su propia cuenta, no el token del streamer.
+// OAuth de Twitch — paso 1.
+// `channel:manage:moderators` permite que Streamea agregue su bot como moderador del
+// canal con un clic (en Kick esto no se puede: su API solo tiene ban/unban).
+// El bot que escribe en el chat usa su propia cuenta, no el token del streamer.
 export async function GET(request: NextRequest) {
   const { origin } = new URL(request.url)
 
@@ -21,7 +23,7 @@ export async function GET(request: NextRequest) {
     client_id:     process.env.TWITCH_CLIENT_ID ?? '',
     response_type: 'code',
     redirect_uri:  `${origin}/auth/twitch`,
-    scope:         '',
+    scope:         'channel:manage:moderators',
     state,
   })
 

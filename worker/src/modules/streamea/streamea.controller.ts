@@ -6,6 +6,7 @@ import type { Request } from 'express'
 import { ConfigService } from '@nestjs/config'
 import * as crypto from 'crypto'
 import { StreameaKickService, type Tenant } from './streamea-kick.service'
+import { StreameaTwitchService } from './streamea-twitch.service'
 import { SupabaseService } from '../../infrastructure/supabase/supabase.service'
 
 const KICK_PUBLIC_KEY_URL = 'https://api.kick.com/public/v1/public-key'
@@ -27,9 +28,28 @@ export class StreameaController {
 
   constructor(
     private kick:     StreameaKickService,
+    private twitch:   StreameaTwitchService,
     private supabase: SupabaseService,
     private config:   ConfigService,
   ) {}
+
+  private verifySecret(secret: string) {
+    if (!secret || secret !== this.config.get('WORKER_SECRET')) {
+      throw new UnauthorizedException()
+    }
+  }
+
+  /** El panel pide que el bot se agregue como moderador en el canal de Twitch. */
+  @Post('twitch/mod')
+  @HttpCode(200)
+  async twitchMod(
+    @Headers('x-worker-secret') secret: string,
+    @Body() body: { streamerId: string },
+  ) {
+    this.verifySecret(secret)
+    if (!body?.streamerId) return { ok: false, message: 'Falta streamerId' }
+    return this.twitch.makeBotModerator(body.streamerId)
+  }
 
   /**
    * El panel (Vercel) pide que el bot diga algo en el chat de un streamer.
@@ -39,23 +59,28 @@ export class StreameaController {
   @HttpCode(200)
   async say(
     @Headers('x-worker-secret') secret: string,
-    @Body() body: { streamerId: string; message: string },
+    @Body() body: { streamerId: string; message: string; platform?: 'KICK' | 'TWITCH' },
   ) {
-    if (!secret || secret !== this.config.get('WORKER_SECRET')) {
-      throw new UnauthorizedException()
-    }
+    this.verifySecret(secret)
     if (!body?.streamerId || !body?.message) return { ok: false }
 
     const { data } = await this.supabase.db
       .from('st_streamers')
-      .select('kick_user_id')
+      .select('kick_user_id, twitch_login')
       .eq('id', body.streamerId)
       .maybeSingle()
 
-    const broadcasterId = (data as any)?.kick_user_id
-    if (!broadcasterId) return { ok: false }
+    const row = data as any
+    if (!row) return { ok: false }
 
-    const sent = await this.kick.sendChat(String(broadcasterId), body.message)
+    if (body.platform === 'TWITCH') {
+      if (!row.twitch_login) return { ok: false }
+      this.twitch.sendChat(String(row.twitch_login), body.message)
+      return { ok: true }
+    }
+
+    if (!row.kick_user_id) return { ok: false }
+    const sent = await this.kick.sendChat(String(row.kick_user_id), body.message)
     return { ok: sent }
   }
 

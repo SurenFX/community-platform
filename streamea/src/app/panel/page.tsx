@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { CheckCircle2, Circle, ShieldCheck } from 'lucide-react'
 import { createSupabaseServer } from '@/lib/supabase/server'
 import { CopyButton } from './copy-button'
+import { makeBotModerator } from './actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -123,12 +124,14 @@ export default async function Panel({
                   <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-brand-twitch">
                     Twitch
                   </p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-zinc-200">
-                      /mod {BOT_NAME}
-                    </code>
-                    <CopyButton text={`/mod ${BOT_NAME}`} />
-                  </div>
+                  <form action={makeBotModerator} className="flex items-center gap-2">
+                    <button className="rounded-xl bg-brand-twitch px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+                      Hacerlo moderador automáticamente
+                    </button>
+                    <span className="text-xs text-zinc-500">
+                      o escribí <code className="text-zinc-400">/mod {BOT_NAME}</code> en tu chat
+                    </span>
+                  </form>
                 </div>
               )}
             </div>

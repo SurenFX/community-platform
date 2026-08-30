@@ -13,16 +13,16 @@ export default async function SorteosPage() {
 
   const { data: streamer } = await supabase
     .from('st_streamers')
-    .select('id, kick_slug')
+    .select('id, kick_slug, twitch_login')
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (!streamer?.kick_slug) {
+  if (!streamer?.kick_slug && !streamer?.twitch_login) {
     return (
       <main>
         <h1 className="text-2xl font-bold">Sorteos</h1>
         <p className="mt-3 rounded-xl border border-surface-border bg-surface-raised p-5 text-zinc-400">
-          Primero conectá tu cuenta de Kick desde{' '}
+          Primero conectá tu cuenta de Kick o Twitch desde{' '}
           <a href="/panel" className="text-brand underline">Inicio</a>.
         </p>
       </main>
@@ -31,7 +31,7 @@ export default async function SorteosPage() {
 
   const { data: raffles } = await supabase
     .from('st_raffles')
-    .select('id, keyword, status, winner, created_at')
+    .select('id, keyword, status, winner, platform, created_at')
     .eq('streamer_id', streamer.id)
     .order('created_at', { ascending: false })
     .limit(10)
@@ -60,14 +60,30 @@ export default async function SorteosPage() {
       {!active ? (
         <form
           action={startRaffle}
-          className="mt-6 flex gap-2 rounded-2xl border border-surface-border bg-surface-raised p-5"
+          className="mt-6 flex flex-wrap gap-2 rounded-2xl border border-surface-border bg-surface-raised p-5"
         >
+          {streamer.kick_slug && streamer.twitch_login ? (
+            <select
+              name="platform"
+              defaultValue="KICK"
+              className="rounded-xl border border-surface-border bg-surface px-3 py-2.5 text-sm outline-none transition focus:border-brand"
+            >
+              <option value="KICK">Kick</option>
+              <option value="TWITCH">Twitch</option>
+            </select>
+          ) : (
+            <input
+              type="hidden"
+              name="platform"
+              value={streamer.kick_slug ? 'KICK' : 'TWITCH'}
+            />
+          )}
           <input
             name="keyword"
             required
             maxLength={40}
             placeholder="Palabra clave (ej: !sorteo)"
-            className="flex-1 rounded-xl border border-surface-border bg-surface px-4 py-2.5 text-sm outline-none transition focus:border-brand"
+            className="min-w-40 flex-1 rounded-xl border border-surface-border bg-surface px-4 py-2.5 text-sm outline-none transition focus:border-brand"
           />
           <button className="flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 font-semibold text-white transition hover:bg-brand-hover">
             <Ticket className="h-4 w-4" /> Abrir sorteo
@@ -78,7 +94,13 @@ export default async function SorteosPage() {
           <AutoRefresh seconds={5} />
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-zinc-400">Sorteo abierto — palabra clave</p>
+              <p className="text-sm text-zinc-400">
+                Sorteo abierto en{' '}
+                <span className={active.platform === 'TWITCH' ? 'text-brand-twitch' : 'text-brand-kick'}>
+                  {active.platform === 'TWITCH' ? 'Twitch' : 'Kick'}
+                </span>{' '}
+                — palabra clave
+              </p>
               <p className="text-2xl font-bold text-brand">{active.keyword}</p>
             </div>
             <div className="flex items-center gap-2 text-zinc-300">
@@ -145,6 +167,7 @@ export default async function SorteosPage() {
                 <div>
                   <p className="text-sm font-medium text-zinc-200">{r.keyword}</p>
                   <p className="text-xs text-zinc-500">
+                    {r.platform === 'TWITCH' ? 'Twitch' : 'Kick'} ·{' '}
                     {new Date(r.created_at).toLocaleDateString('es-AR')}
                     {r.winner ? ` · ganó ${r.winner}` : ' · sin ganador'}
                   </p>
