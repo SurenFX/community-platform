@@ -23,7 +23,9 @@ export async function GET(request: NextRequest) {
     client_id:     process.env.TWITCH_CLIENT_ID ?? '',
     response_type: 'code',
     redirect_uri:  `${origin}/auth/twitch`,
-    scope:         'channel:manage:moderators',
+    // manage:moderators → poder agregar el bot como mod con un clic
+    // channel:bot       → permitir que el bot lea el chat via EventSub
+    scope:         'channel:manage:moderators channel:bot',
     state,
   })
 

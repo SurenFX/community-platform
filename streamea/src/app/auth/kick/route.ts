@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 import { createSupabaseServer } from '@/lib/supabase/server'
 import { createSupabaseAdmin } from '@/lib/supabase/admin'
+import { ensureKickSubscriptions } from '@/lib/kick'
 
 // Callback del OAuth de Kick: guarda identidad + tokens en st_streamers
 export async function GET(request: NextRequest) {
@@ -93,6 +94,9 @@ export async function GET(request: NextRequest) {
         ...fields,
       })
     }
+
+    // Suscribir el canal a los eventos de chat ahora mismo (antes lo hacía un cron del worker)
+    await ensureKickSubscriptions(String(kickUser.user_id))
 
     return NextResponse.redirect(`${origin}/panel?connected=kick`)
   } catch (err) {

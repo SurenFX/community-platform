@@ -3,55 +3,63 @@
 import { revalidatePath } from 'next/cache'
 import { createSupabaseServer } from '@/lib/supabase/server'
 import { createSupabaseAdmin } from '@/lib/supabase/admin'
+import { say, type Platform } from '@/lib/chat'
+import { ensureKickSubscriptions } from '@/lib/kick'
+import { ensureTwitchSubscription, makeBotModerator as helixMakeBotMod } from '@/lib/twitch'
 
-async function requireStreamer() {
+interface Streamer {
+  id:             string
+  kick_user_id:   string | null
+  kick_slug:      string | null
+  twitch_user_id: string | null
+  twitch_login:   string | null
+}
+
+async function requireStreamer(): Promise<Streamer> {
   const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('No hay sesión')
 
   const { data } = await supabase
     .from('st_streamers')
-    .select('id, kick_user_id, kick_slug')
+    .select('id, kick_user_id, kick_slug, twitch_user_id, twitch_login')
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (!data) throw new Error('Conectá tu cuenta de Kick primero')
-  return data as { id: string; kick_user_id: string | null; kick_slug: string | null }
+  if (!data) throw new Error('Conectá tu cuenta primero')
+  return data as Streamer
 }
 
-/** Pide al worker que el bot diga algo en el chat del streamer. Silencioso si falla. */
-async function botSay(streamerId: string, message: string, platform: 'KICK' | 'TWITCH' = 'KICK') {
-  const url    = process.env.WORKER_URL
-  const secret = process.env.WORKER_SECRET
-  if (!url || !secret) return
+/** El bot dice algo en el chat del streamer. Silencioso si falla. */
+async function botSay(streamer: Streamer, message: string, platform: Platform = 'KICK') {
+  const broadcasterId = platform === 'KICK' ? streamer.kick_user_id : streamer.twitch_user_id
+  if (!broadcasterId) return
 
   try {
-    await fetch(`${url.replace(/\/$/, '')}/streamea/say`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'x-worker-secret': secret },
-      body:    JSON.stringify({ streamerId, message, platform }),
-    })
+    await say(platform, broadcasterId, message)
   } catch {
     /* el sorteo funciona igual sin el anuncio en el chat */
   }
 }
 
-/** Pide al worker que agregue el bot como moderador en Twitch (Helix). */
+/** Agrega el bot como moderador en Twitch y activa la lectura del chat. */
 export async function makeBotModerator() {
   const streamer = await requireStreamer()
-  const url      = process.env.WORKER_URL
-  const secret   = process.env.WORKER_SECRET
-  if (!url || !secret) return
+  if (!streamer.twitch_user_id) return
 
-  try {
-    await fetch(`${url.replace(/\/$/, '')}/streamea/twitch/mod`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'x-worker-secret': secret },
-      body:    JSON.stringify({ streamerId: streamer.id }),
-    })
-  } catch {
-    /* si falla, el streamer siempre puede usar /mod a mano */
-  }
+  const result = await helixMakeBotMod(streamer.id, streamer.twitch_user_id)
+  // Con el bot ya moderador, Twitch permite suscribir el chat via EventSub
+  if (result.ok) await ensureTwitchSubscription(streamer.twitch_user_id)
+
+  revalidatePath('/panel')
+}
+
+/** Reintenta activar el bot en los chats conectados (si algo quedó a medias). */
+export async function activateBot() {
+  const streamer = await requireStreamer()
+
+  if (streamer.kick_user_id)   await ensureKickSubscriptions(streamer.kick_user_id)
+  if (streamer.twitch_user_id) await ensureTwitchSubscription(streamer.twitch_user_id)
 
   revalidatePath('/panel')
 }
@@ -81,7 +89,7 @@ export async function startRaffle(formData: FormData) {
   })
 
   await botSay(
-    streamer.id,
+    streamer,
     `Sorteo abierto! Escribi "${keyword}" en el chat para participar.`,
     platform,
   )
@@ -134,7 +142,7 @@ export async function drawWinner(formData: FormData) {
     .eq('streamer_id', streamer.id)
 
   const platform = (raffle as any)?.platform === 'TWITCH' ? 'TWITCH' : 'KICK'
-  await botSay(streamer.id, `@${winner} gano el sorteo! Felicitaciones!`, platform)
+  await botSay(streamer, `@${winner} gano el sorteo! Felicitaciones!`, platform)
   revalidatePath('/panel/sorteos')
 }
 

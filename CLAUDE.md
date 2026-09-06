@@ -1,4 +1,13 @@
-# Community Platform — Bitácora del proyecto
+# Streamea (ex Community Platform) — Bitácora del proyecto
+
+> **SEPTIEMBRE 2026 — EL PROYECTO ES SOLO STREAMEA.** El hub de gamificación
+> (`app/`), el worker de NestJS (`worker/`) y toda la infra de Google Cloud fueron
+> **dados de baja** (GCP cobraba ~USD 3/mes por la IP pública). Streamea ahora corre
+> 100% serverless en Vercel, gratis, sin VM ni procesos permanentes. Todo lo que
+> aparece más abajo sobre el hub, la VM, PM2, bots de Discord/Telegram/YouTube e IRC
+> es **historia**, se conserva solo como contexto de por qué las cosas son como son.
+> Lo vigente arranca en "Streamea etapa 5 — sin servidor".
+
 
 > **Para Claude**: leé este archivo completo al empezar cualquier sesión nueva sobre este
 > proyecto, antes de tocar código. Te da el contexto que normalmente se pierde al cortar
@@ -462,15 +471,51 @@ la VM y en Vercel. El `WORKER_SECRET` placeholder se reemplazó por uno aleatori
 El token del bot se obtuvo con el flujo `/kick/bot-auth/start` logueado como
 streameabot (que además es moderador del canal).
 
-## Estado actual
+**Streamea etapa 5 — sin servidor (septiembre 2026)**: se dio de baja Google Cloud
+porque cobraba de a poco (la IP pública IPv4 cuesta ~USD 3/mes desde 2024, aunque la
+e2-micro sea free tier). Decisión del usuario: dejar obsoleto TODO lo anterior — hub,
+worker, bots de Discord/Telegram/YouTube y la VM. Streamea pasa a correr **100%
+serverless en Vercel**, costo cero:
+- **Twitch ya no usa IRC**: se verificó en la doc que `channel.chat.message` soporta
+  transporte **webhook** en EventSub (requiere `user:read:chat` + `user:bot` del bot y
+  `channel:bot` del broadcaster, o que el bot sea moderador). Enviar mensajes se hace
+  con Helix `POST /chat/messages` (`user:write:chat`). Sin conexión permanente, no hace
+  falta un proceso siempre encendido.
+- `src/lib/kick.ts` y `src/lib/twitch.ts`: tokens de app y de bot con refresh perezoso,
+  envío de chat REST, alta de suscripciones, y verificación de firma (RSA para Kick,
+  HMAC para Twitch).
+- `src/lib/chat.ts`: lógica compartida de comandos y sorteos, agnóstica de plataforma.
+  `findTenant(platform, broadcasterId)` reemplaza el mapa en memoria del worker.
+- `POST /api/kick/webhook` y `POST /api/twitch/webhook`: los eventos entran directo a
+  Vercel (HTTPS gratis → adiós al parche de iptables puerto 80 y a la IP efímera). El de
+  Twitch además responde el `webhook_callback_verification` con el challenge.
+- **Cooldowns en la DB** (`st_cooldowns`, migración 023): en serverless no hay memoria
+  entre invocaciones, así que el cooldown de comandos se persiste.
+- **Sin crons**: las suscripciones se crean al momento de conectar la cuenta (en el
+  callback de OAuth) y con el botón "activar bot", en vez del `syncTenants` cada 10 min.
+  Vercel Hobby solo permite crons diarios, así que este diseño además es mejor.
+- Alta del bot de Kick migrada del worker a la web (`/setup/kick-bot/start`): al tener
+  HTTPS ya no hace falta el rodeo por `localhost:1337`.
+- Los tokens de ambos bots viven en `st_bot_tokens` (la 023 migra la fila de Kick desde
+  la vieja `kick_bot_tokens`).
+- Borrados del repo: `worker/`, `app/`, `docs/`, `_backup_src_20260531/`.
 
-Plataforma funcionalmente muy completa (ver Historial). `tsc --noEmit` limpio en
-`app/` y `worker/` (hay ~60 errores preexistentes en `app/` no relacionados a este
-trabajo, documentados como deuda técnica fuera de alcance). Worker corriendo en
-**Google Cloud Free Tier** (e2-micro us-central1, PM2 + systemd) con todos los módulos
-activos: Discord, Telegram, YouTube, Twitch, Kick, Recruitment, WeeklyDigest.
-Supabase conecta correctamente (fix globalThis.WebSocket). XP, level-ups, streaks y
-anuncios de stream funcionando. Bot IRC de Twitch (salchineta) conectado a #salchinft.
+## Estado actual (septiembre 2026)
+
+**Solo existe Streamea**, en `streamea/`: Next.js 15 en Vercel (proyecto `streamea`,
+dominio `streamea.vercel.app`), Supabase propio (`oonrnecmhyxofdylzhux`), sin VM ni
+worker. Build verde. Costo de infraestructura: **cero**.
+
+Funciona: registro con email+contraseña, conectar Kick y Twitch por OAuth, panel con
+sorteos (keyword, participantes en vivo, sorteo de ganador anunciado en el chat) y
+comandos custom (CRUD web + `!addcom`/`!delcom` desde el chat), todo multi-tenant.
+El bot de la plataforma es `streameabot` en ambas plataformas.
+
+Env vars del proyecto de Vercel: `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `KICK_CLIENT_ID`,
+`KICK_CLIENT_SECRET`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `ADMIN_SETUP_KEY`,
+`TWITCH_EVENTSUB_SECRET`, `NEXT_PUBLIC_SITE_URL`. (`WORKER_URL`/`WORKER_SECRET` ya no
+se usan.)
 
 ## Variables de entorno adicionales en VM (agregadas en julio 2026)
 

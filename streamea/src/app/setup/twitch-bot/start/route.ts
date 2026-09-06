@@ -33,7 +33,8 @@ export async function GET(request: NextRequest) {
     client_id:     process.env.TWITCH_CLIENT_ID ?? '',
     response_type: 'code',
     redirect_uri:  `${origin}/setup/twitch-bot`,
-    scope:         'chat:read chat:edit',
+    // Scopes de EventSub + Helix (ya no IRC): leer chat, escribir chat, actuar como bot
+    scope:         'user:read:chat user:write:chat user:bot',
     force_verify:  'true',   // fuerza elegir cuenta, evita autorizar la equivocada
     state,
   })
