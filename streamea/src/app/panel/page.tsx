@@ -151,7 +151,7 @@ export default async function Panel({
                 Para que pueda responder en Twitch, hacé moderador al bot en tu canal:
               </p>
 
-              
+
 
               {twitchConnected && (
                 <div className="mt-3">
