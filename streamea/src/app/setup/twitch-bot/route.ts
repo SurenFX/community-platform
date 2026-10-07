@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     })
 
     const tokenData = await tokenRes.json()
-    if (!tokenData.access_token) {
+    if (!tokenRes.ok || !tokenData.access_token) {
       console.error('Twitch bot token error:', tokenData)
       return new NextResponse(`Error obteniendo el token: ${JSON.stringify(tokenData)}`, { status: 400 })
     }
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     const userData = await userRes.json()
     const botUser  = userData?.data?.[0]
 
-    if (!botUser) {
+    if (!userRes.ok || !botUser) {
       return new NextResponse('No pudimos leer la cuenta del bot en Twitch.', { status: 400 })
     }
 
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     }
 
     return new NextResponse(
-      `Listo! Bot de Twitch configurado como "${botUser.login}". Reiniciá el worker para que se conecte.`,
+      `Bot de Twitch configurado como "${botUser.login}". Volvé al panel, conectá tu canal y activá la lectura del chat.`,
       { headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
     )
   } catch (err) {

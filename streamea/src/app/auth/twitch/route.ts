@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       }),
     })
     const tokenData = await tokenRes.json()
-    if (!tokenData.access_token) {
+    if (!tokenRes.ok || !tokenData.access_token) {
       console.error('Streamea Twitch token error:', tokenData)
       return NextResponse.redirect(`${origin}/panel?error=twitch_token`)
     }
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     })
     const userData   = await userRes.json()
     const twitchUser = userData.data?.[0]
-    if (!twitchUser) {
+    if (!userRes.ok || !twitchUser) {
       return NextResponse.redirect(`${origin}/panel?error=twitch_api`)
     }
 
@@ -74,13 +74,15 @@ export async function GET(request: NextRequest) {
     }
 
     if (existing) {
-      await admin.from('st_streamers').update(fields).eq('id', existing.id)
+      const { error: saveError } = await admin.from('st_streamers').update(fields).eq('id', existing.id)
+      if (saveError) return NextResponse.redirect(`${origin}/panel?error=twitch_save`)
     } else {
-      await admin.from('st_streamers').insert({
+      const { error: saveError } = await admin.from('st_streamers').insert({
         user_id:      user.id,
         display_name: twitchUser.display_name ?? twitchUser.login,
         ...fields,
       })
+      if (saveError) return NextResponse.redirect(`${origin}/panel?error=twitch_save`)
     }
 
     return NextResponse.redirect(`${origin}/panel?connected=twitch`)

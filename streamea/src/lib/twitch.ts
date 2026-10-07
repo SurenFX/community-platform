@@ -65,7 +65,7 @@ export async function getTwitchBot(): Promise<TwitchBot | null> {
     return { token: row.access_token, userId: row.bot_user_id, username: row.bot_username }
   }
   if (!row.refresh_token) {
-    return { token: row.access_token, userId: row.bot_user_id, username: row.bot_username }
+    return null
   }
 
   const res = await fetch(OAUTH_URL, {
@@ -82,11 +82,12 @@ export async function getTwitchBot(): Promise<TwitchBot | null> {
 
   if (!res.ok) {
     console.warn('Twitch refresh del bot falló:', res.status, '— rehacer /setup/twitch-bot/start')
-    return { token: row.access_token, userId: row.bot_user_id, username: row.bot_username }
+    return null
   }
 
   const json = await res.json()
-  await admin
+  if (!json.access_token || !json.expires_in) return null
+  const { error: saveError } = await admin
     .from('st_bot_tokens')
     .update({
       access_token:  json.access_token,
@@ -96,7 +97,7 @@ export async function getTwitchBot(): Promise<TwitchBot | null> {
     })
     .eq('platform', 'TWITCH')
 
-  return { token: json.access_token, userId: row.bot_user_id, username: row.bot_username }
+  return saveError ? null : { token: json.access_token, userId: row.bot_user_id, username: row.bot_username }
 }
 
 /** Token válido del streamer (para acciones sobre su canal), con refresh. */
@@ -113,7 +114,7 @@ export async function getStreamerTwitchToken(streamerId: string): Promise<string
 
   const expiresAt = row.twitch_expires_at ? new Date(row.twitch_expires_at).getTime() : 0
   if (Date.now() < expiresAt - 5 * 60 * 1000) return row.twitch_access_token
-  if (!row.twitch_refresh_token) return row.twitch_access_token
+  if (!row.twitch_refresh_token) return null
 
   const res = await fetch(OAUTH_URL, {
     method:  'POST',
@@ -130,7 +131,8 @@ export async function getStreamerTwitchToken(streamerId: string): Promise<string
   if (!res.ok) return null
 
   const json = await res.json()
-  await admin
+  if (!json.access_token || !json.expires_in) return null
+  const { error: saveError } = await admin
     .from('st_streamers')
     .update({
       twitch_access_token:  json.access_token,
@@ -140,7 +142,7 @@ export async function getStreamerTwitchToken(streamerId: string): Promise<string
     })
     .eq('id', streamerId)
 
-  return json.access_token
+  return saveError ? null : json.access_token
 }
 
 // --- Chat (sin IRC: Helix REST) ---

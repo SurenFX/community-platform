@@ -5,12 +5,13 @@ const path = require('node:path')
 const vm = require('node:vm')
 const ts = require('typescript')
 
-function sender(response) {
+function sender(response, options = {}) {
   const query = {
     select() { return query }, eq() { return query },
     async maybeSingle() { return { data: {
       access_token: 'test-token', bot_user_id: 'bot', bot_username: 'test-bot',
-      expires_at: new Date(Date.now() + 3600000).toISOString(),
+      expires_at: new Date(Date.now() + (options.expired ? -3600000 : 3600000)).toISOString(),
+      refresh_token: options.refresh ? 'test-refresh' : null,
     } } },
   }
   const source = fs.readFileSync(path.join(__dirname, '../src/lib/twitch.ts'), 'utf8')
@@ -23,9 +24,11 @@ function sender(response) {
     },
     process: { env: { TWITCH_CLIENT_ID: 'test-client' } },
     console: { warn() {}, error() {} }, Date, Buffer, URLSearchParams,
-    fetch: async (url, options) => {
+    fetch: async (url, request) => {
+      if (url === 'https://id.twitch.tv/oauth2/token') return { ok: false, status: 401 }
+      assert.equal(options.expired, undefined, 'no debe enviar con token vencido')
       assert.equal(url, 'https://api.twitch.tv/helix/chat/messages')
-      assert.equal(JSON.parse(options.body).broadcaster_id, 'channel')
+      assert.equal(JSON.parse(request.body).broadcaster_id, 'channel')
       return response
     },
   })
@@ -38,4 +41,9 @@ test('Twitch solo confirma mensajes que la API marcó como enviados', async () =
   assert.equal(await sender({ ok: true, json: async () => ({ data: [] }) })('channel', 'hola'), false)
   assert.equal(await sender({ ok: true, json: async () => { throw new Error('invalid JSON') } })('channel', 'hola'), false)
   assert.equal(await sender({ ok: false, status: 403, text: async () => 'Forbidden' })('channel', 'hola'), false)
+})
+
+test('Twitch no envía con tokens vencidos sin renovación o con renovación rechazada', async () => {
+  assert.equal(await sender({}, { expired: true })('channel', 'hola'), false)
+  assert.equal(await sender({}, { expired: true, refresh: true })('channel', 'hola'), false)
 })
