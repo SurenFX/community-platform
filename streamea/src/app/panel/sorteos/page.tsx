@@ -6,7 +6,8 @@ import { AutoRefresh } from './auto-refresh'
 
 export const dynamic = 'force-dynamic'
 
-export default async function SorteosPage() {
+export default async function SorteosPage({ searchParams }: { searchParams: Promise<{ result?: string }> }) {
+  const { result } = await searchParams
   const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -29,35 +30,52 @@ export default async function SorteosPage() {
     )
   }
 
-  const { data: raffles } = await supabase
+  const { data: raffles, error: loadError } = await supabase
     .from('st_raffles')
     .select('id, keyword, status, winner, platform, created_at')
     .eq('streamer_id', streamer.id)
     .order('created_at', { ascending: false })
     .limit(10)
 
-  const list   = (raffles ?? []) as any[]
+  const list   = (raffles ?? []) as { id: string; keyword: string; status: string; winner: string | null; platform: string; created_at: string }[]
   const active = list.find(r => r.status === 'active')
 
   // Conteo de participantes del sorteo activo
   let entries: { username: string }[] = []
+  let totalEntries = 0
+  let entriesError = false
   if (active) {
-    const { data } = await supabase
+    const { data, count, error } = await supabase
       .from('st_raffle_entries')
-      .select('username')
+      .select('username', { count: 'exact' })
       .eq('raffle_id', active.id)
       .order('entered_at', { ascending: false })
-    entries = (data ?? []) as any[]
+      .limit(60)
+    entries = (data ?? []) as { username: string }[]
+    totalEntries = count ?? 0
+    entriesError = Boolean(error)
   }
 
   return (
     <main>
       <h1 className="text-2xl font-bold">Sorteos</h1>
       <p className="mt-2 text-zinc-400">
-        Elegí una palabra clave. Quien la escriba en tu chat de Kick participa.
+        Elegí una palabra clave sin espacios. Quien la escriba en el chat de la plataforma elegida participa una sola vez.
       </p>
 
-      {!active ? (
+      {result && <p role="status" className="mt-4 rounded-xl border border-surface-border p-4 text-sm">{({
+        opened: 'Sorteo abierto y anunciado en el chat.',
+        opened_quiet: 'Sorteo abierto. No pudimos anunciarlo en el chat; los participantes pueden entrar con la palabra clave.',
+        closed: 'Sorteo cerrado sin elegir ganador.',
+        drawn: 'Ganador guardado y anunciado en el chat.',
+        drawn_quiet: 'Ganador guardado. No pudimos anunciarlo en el chat; podés verlo en el historial.',
+        unavailable: 'El sorteo ya no está abierto, no tiene participantes o no está disponible.',
+        invalid: 'Usá una palabra clave de hasta 40 caracteres, sin espacios, y una plataforma conectada.',
+        failed: 'No pudimos completar la operación. Revisá la conexión e intentá de nuevo.',
+      } as Record<string, string>)[result] ?? 'Revisá el estado del sorteo abajo.'}</p>}
+      {loadError && <p role="alert" className="mt-4 text-red-400">No pudimos cargar los sorteos. Intentá de nuevo más tarde.</p>}
+
+      {!loadError && (!active ? (
         <form
           action={startRaffle}
           className="mt-6 flex flex-wrap gap-2 rounded-2xl border border-surface-border bg-surface-raised p-5"
@@ -105,7 +123,7 @@ export default async function SorteosPage() {
             </div>
             <div className="flex items-center gap-2 text-zinc-300">
               <Users className="h-5 w-5" />
-              <span className="text-2xl font-bold">{entries.length}</span>
+              <span className="text-2xl font-bold">{entriesError ? '—' : totalEntries}</span>
             </div>
           </div>
 
@@ -113,7 +131,7 @@ export default async function SorteosPage() {
             <form action={drawWinner}>
               <input type="hidden" name="raffleId" value={active.id} />
               <button
-                disabled={entries.length === 0}
+                disabled={entriesError || totalEntries === 0}
                 className="flex items-center gap-2 rounded-xl bg-brand px-5 py-2.5 font-semibold text-white transition hover:bg-brand-hover disabled:opacity-40"
               >
                 <Trophy className="h-4 w-4" /> Sortear ganador
@@ -127,6 +145,8 @@ export default async function SorteosPage() {
             </form>
           </div>
 
+          {entriesError && <p role="alert" className="mt-4 text-sm text-red-400">No pudimos cargar los participantes. Esperá a que se actualice la lista antes de sortear.</p>}
+
           {entries.length > 0 && (
             <div className="mt-5">
               <p className="mb-2 text-sm text-zinc-400">Participantes</p>
@@ -139,9 +159,9 @@ export default async function SorteosPage() {
                     {e.username}
                   </span>
                 ))}
-                {entries.length > 60 && (
+                {totalEntries > 60 && (
                   <span className="px-2 py-1 text-xs text-zinc-500">
-                    +{entries.length - 60} más
+                    +{totalEntries - 60} más
                   </span>
                 )}
               </div>
@@ -152,7 +172,7 @@ export default async function SorteosPage() {
             La lista se actualiza sola cada 5 segundos.
           </p>
         </section>
-      )}
+      ))}
 
       {/* Historial */}
       {list.filter(r => r.status !== 'active').length > 0 && (

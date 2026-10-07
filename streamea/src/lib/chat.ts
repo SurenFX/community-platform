@@ -143,20 +143,8 @@ async function checkRaffleEntry(
 ) {
   const admin = createSupabaseAdmin()
 
-  const { data: raffle } = await admin
-    .from('st_raffles')
-    .select('id, keyword')
-    .eq('streamer_id', tenant.id)
-    .eq('platform', platform)
-    .eq('status', 'active')
-    .maybeSingle()
-
-  if (!raffle) return
-  const r = raffle as { id: string; keyword: string }
-  if (content !== r.keyword.toLowerCase().trim()) return
-
-  // El UNIQUE(raffle_id, username) evita duplicados
-  await admin
-    .from('st_raffle_entries')
-    .insert({ raffle_id: r.id, username: username.toLowerCase() })
+  const { error } = await admin.rpc('st_enter_raffle', {
+    p_streamer_id: tenant.id, p_platform: platform, p_username: username, p_content: content,
+  })
+  if (error) console.warn('No se pudo registrar participación:', error.message)
 }

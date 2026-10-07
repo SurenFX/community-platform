@@ -31,15 +31,15 @@ async function requireStreamer(): Promise<Streamer> {
   return data as Streamer
 }
 
-/** El bot dice algo en el chat del streamer. Silencioso si falla. */
+/** El estado del sorteo se conserva aunque falle el anuncio en el chat. */
 async function botSay(streamer: Streamer, message: string, platform: Platform = 'KICK') {
   const broadcasterId = platform === 'KICK' ? streamer.kick_user_id : streamer.twitch_user_id
-  if (!broadcasterId) return
+  if (!broadcasterId) return false
 
   try {
-    await say(platform, broadcasterId, message)
+    return await say(platform, broadcasterId, message)
   } catch {
-    /* el sorteo funciona igual sin el anuncio en el chat */
+    return false
   }
 }
 
@@ -72,34 +72,30 @@ export async function activateBot() {
 
 // --- Sorteos ---
 
+function raffleResult(result: string): never {
+  revalidatePath('/panel/sorteos')
+  redirect(`/panel/sorteos?result=${result}`)
+}
+
 export async function startRaffle(formData: FormData) {
   const keyword  = String(formData.get('keyword') ?? '').trim()
-  const platform = String(formData.get('platform') ?? 'KICK') === 'TWITCH' ? 'TWITCH' : 'KICK'
-  if (!keyword) return
+  const platform = String(formData.get('platform') ?? 'KICK')
+  if (!keyword || keyword.length > 40 || /\s/.test(keyword) || !['KICK', 'TWITCH'].includes(platform)) raffleResult('invalid')
 
   const streamer = await requireStreamer()
   const admin    = createSupabaseAdmin()
 
-  // Cierra cualquier sorteo abierto antes de abrir el nuevo
-  await admin
-    .from('st_raffles')
-    .update({ status: 'closed', closed_at: new Date().toISOString() })
-    .eq('streamer_id', streamer.id)
-    .eq('status', 'active')
-
-  await admin.from('st_raffles').insert({
-    streamer_id: streamer.id,
-    platform,
-    keyword,
-    status:      'active',
+  const { data, error } = await admin.rpc('st_open_raffle', {
+    p_streamer_id: streamer.id, p_platform: platform, p_keyword: keyword,
   })
+  if (error || !data?.length) raffleResult('failed')
 
-  await botSay(
+  const announced = await botSay(
     streamer,
     `Sorteo abierto! Escribi "${keyword}" en el chat para participar.`,
-    platform,
+    platform as Platform,
   )
-  revalidatePath('/panel/sorteos')
+  raffleResult(announced ? 'opened' : 'opened_quiet')
 }
 
 export async function closeRaffle(formData: FormData) {
@@ -109,13 +105,14 @@ export async function closeRaffle(formData: FormData) {
   const streamer = await requireStreamer()
   const admin    = createSupabaseAdmin()
 
-  await admin
+  const { data, error } = await admin
     .from('st_raffles')
     .update({ status: 'closed', closed_at: new Date().toISOString() })
     .eq('id', raffleId)
     .eq('streamer_id', streamer.id)
-
-  revalidatePath('/panel/sorteos')
+    .eq('status', 'active')
+    .select('id').maybeSingle()
+  raffleResult(error || !data ? 'unavailable' : 'closed')
 }
 
 export async function drawWinner(formData: FormData) {
@@ -125,31 +122,15 @@ export async function drawWinner(formData: FormData) {
   const streamer = await requireStreamer()
   const admin    = createSupabaseAdmin()
 
-  const { data: entries } = await admin
-    .from('st_raffle_entries')
-    .select('username')
-    .eq('raffle_id', raffleId)
-
-  const list = (entries ?? []) as { username: string }[]
-  if (list.length === 0) return
-
-  const winner = list[Math.floor(Math.random() * list.length)].username
-
-  const { data: raffle } = await admin
-    .from('st_raffles')
-    .select('platform')
-    .eq('id', raffleId)
-    .maybeSingle()
-
-  await admin
-    .from('st_raffles')
-    .update({ status: 'drawn', winner, closed_at: new Date().toISOString() })
-    .eq('id', raffleId)
-    .eq('streamer_id', streamer.id)
-
-  const platform = (raffle as any)?.platform === 'TWITCH' ? 'TWITCH' : 'KICK'
-  await botSay(streamer, `@${winner} gano el sorteo! Felicitaciones!`, platform)
-  revalidatePath('/panel/sorteos')
+  // El ID del dueño viene de la sesión, nunca del formulario.
+  const { data, error } = await admin.rpc('st_draw_raffle', {
+    p_streamer_id: streamer.id, p_raffle_id: raffleId,
+  })
+  if (error) raffleResult('failed')
+  const result = data?.[0] as { winner: string; platform: Platform } | undefined
+  if (!result) raffleResult('unavailable')
+  const announced = await botSay(streamer, `@${result.winner} gano el sorteo! Felicitaciones!`, result.platform)
+  raffleResult(announced ? 'drawn' : 'drawn_quiet')
 }
 
 export async function deleteRaffle(formData: FormData) {
@@ -164,6 +145,7 @@ export async function deleteRaffle(formData: FormData) {
     .delete()
     .eq('id', raffleId)
     .eq('streamer_id', streamer.id)
+    .neq('status', 'active')
 
   revalidatePath('/panel/sorteos')
 }

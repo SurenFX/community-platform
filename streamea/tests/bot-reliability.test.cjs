@@ -38,6 +38,7 @@ test('comandos: reservas SQL, eventos repetidos, aislamiento y fallos', async t 
 
     const admin = {
       async rpc(name, args) {
+        if (name === 'st_enter_raffle') return { data: false, error: null }
         assert.equal(name, 'st_take_cooldown')
         if (unavailable) return { data: null, error: { message: 'DB no disponible' } }
         const result = await db.query('SELECT st_take_cooldown($1, $2) AS claimed',
