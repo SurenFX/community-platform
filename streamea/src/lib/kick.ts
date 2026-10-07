@@ -101,7 +101,9 @@ export async function getKickBotToken(): Promise<string | null> {
 
 /** Manda un mensaje al chat de un canal, con la identidad de la cuenta bot. */
 export async function sendKickChat(broadcasterId: string, message: string): Promise<boolean> {
-  const token = await getKickBotToken()
+  // El bot oficial habla en el canal vinculado al token del streamer.
+  // Kick ignora broadcaster_user_id con type=bot: nunca usar un token global.
+  const token = await getKickChannelToken(broadcasterId)
   if (!token) return false
 
   const res = await fetch(`${API_BASE}/chat`, {
@@ -113,7 +115,7 @@ export async function sendKickChat(broadcasterId: string, message: string): Prom
     body: JSON.stringify({
       broadcaster_user_id: Number(broadcasterId),
       content: message.slice(0, 500),
-      type:    'user',   // 'bot' devuelve 500 salvo cuenta bot oficial de Kick
+      type:    'bot',
     }),
     cache: 'no-store',
   })
@@ -122,7 +124,36 @@ export async function sendKickChat(broadcasterId: string, message: string): Prom
     console.warn('Kick sendChat:', res.status, await res.text())
     return false
   }
-  return true
+  const result = await res.json()
+  return result?.data?.is_sent === true
+}
+
+async function getKickChannelToken(broadcasterId: string): Promise<string | null> {
+  const admin = createSupabaseAdmin()
+  const { data, error } = await admin.from('st_streamers')
+    .select('id,kick_access_token,kick_refresh_token,kick_expires_at')
+    .eq('kick_user_id', broadcasterId).maybeSingle()
+  if (error || !data?.kick_access_token) return null
+  const expiry = Date.parse(data.kick_expires_at ?? '')
+  if (Number.isFinite(expiry) && Date.now() < expiry - 300000) return data.kick_access_token
+  if (!data.kick_refresh_token) return null
+  const res = await fetch(OAUTH_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'refresh_token',
+      refresh_token: data.kick_refresh_token, client_id: clientId(), client_secret: clientSecret() }),
+    cache: 'no-store',
+  })
+  if (!res.ok) return null
+  const fresh = await res.json()
+  if (!fresh.access_token || !fresh.expires_in) return null
+  const { error: saveError } = await admin.from('st_streamers').update({
+    kick_access_token: fresh.access_token,
+    kick_refresh_token: fresh.refresh_token ?? data.kick_refresh_token,
+    kick_expires_at: new Date(Date.now() + fresh.expires_in * 1000).toISOString(),
+    updated_at: new Date().toISOString(),
+  }).eq('id', data.id)
+  return saveError ? null : fresh.access_token
 }
 
 // --- Suscripciones de eventos ---

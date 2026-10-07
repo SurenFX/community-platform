@@ -130,8 +130,13 @@ export default async function Panel({
         </section>
       )}
 
-      {/* Paso final del onboarding: el bot necesita ser moderador para escribir */}
-      {(kickConnected || twitchConnected) && (
+      {kickConnected && (
+        <p className="mt-6 text-sm text-zinc-400">
+          El bot oficial de Kick responde usando la autorización de tu canal. Si no responde, reconectá tu cuenta y reintentá la conexión del bot.
+        </p>
+      )}
+      {/* Twitch requiere moderación; Kick usa el bot oficial de la aplicación. */}
+      {twitchConnected && (
         <section className="mt-6 rounded-2xl border border-brand/30 bg-brand/5 p-5">
           <div className="flex items-start gap-3">
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
