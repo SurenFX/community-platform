@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { verifyTwitchSignature } from '@/lib/twitch'
 import { findTenant, handleChatMessage } from '@/lib/chat'
 import { isFreshEvent } from '@/lib/cooldown'
+import { createSupabaseAdmin } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -43,6 +44,11 @@ export async function POST(request: NextRequest) {
       const tenant = await findTenant('TWITCH', String(event?.broadcaster_user_id ?? ''))
 
       if (tenant) {
+        const { data: bot, error: botError } = await createSupabaseAdmin().from('st_bot_tokens')
+          .select('bot_user_id').eq('platform', 'TWITCH').maybeSingle()
+        if (botError || String(event?.chatter_user_id ?? '') === bot?.bot_user_id) {
+          return new NextResponse(null, { status: 204 })
+        }
         const badges = (event?.badges ?? []) as { set_id?: string }[]
         const isMod  = event?.chatter_user_id === event?.broadcaster_user_id
           || badges.some(b => b?.set_id === 'moderator' || b?.set_id === 'broadcaster')

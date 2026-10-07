@@ -24,6 +24,9 @@ test('avisos: pausa, límites, aislamiento y reservas simultáneas', async t => 
     const migration = fs.readFileSync(path.join(__dirname, '../../supabase/migrations/025_streamea_announcements.sql'), 'utf8')
     await db.exec(migration)
     await db.exec(migration)
+    const twitchMigration = fs.readFileSync(path.join(__dirname, '../../supabase/migrations/20261007225208_streamea_twitch_announcements.sql'), 'utf8')
+    await db.exec(twitchMigration)
+    await db.exec(twitchMigration)
     await db.query('INSERT INTO st_announcements(streamer_id,message) VALUES ($1,$2),($3,$4)', [alice,'Redes de Alice',bob,'Redes de Bob'])
     await t.test('nacen pausados y no se envían aunque venza el intervalo', async () => {
       await age(); assert.deepEqual(await claim(), [])
@@ -47,6 +50,16 @@ test('avisos: pausa, límites, aislamiento y reservas simultáneas', async t => 
       await age()
       assert.equal((await claim()).length,1)
       assert.deepEqual(await claim(), [])
+    })
+    await t.test('Twitch tiene actividad y reservas separadas de Kick', async () => {
+      await db.query("INSERT INTO st_announcements(streamer_id,platform,message,is_active,last_attempt_at) VALUES ($1,'TWITCH','Aviso Twitch',true,now()-interval '20 minutes')", [alice])
+      await age()
+      for (let i=0;i<8;i++) await claim()
+      assert.equal((await db.query("SELECT message_count FROM st_announcements WHERE platform='TWITCH'")).rows[0].message_count,0)
+      for (let i=0;i<4;i++) assert.deepEqual(await claim(alice,'TWITCH'), [])
+      assert.equal((await claim(alice,'TWITCH'))[0].message,'Aviso Twitch')
+      assert.deepEqual(await claim(alice,'TWITCH'), [])
+      assert.deepEqual(await claim(alice,'DISCORD'), [])
     })
     await t.test('pausar o desactivar el streamer impide nuevos envíos', async () => {
       await age(); await db.exec('UPDATE st_announcements SET is_active=false')
@@ -72,15 +85,18 @@ test('avisos: pausa, límites, aislamiento y reservas simultáneas', async t => 
 })
 
 test('avisos: fallos de reserva o pausa no envían; solo confirma envíos exitosos', async () => {
-  let rpcError=false, enabled=true, sendOk=true, sent=0, confirmed=0
-  const admin={ async rpc(){return {error:rpcError?{message:'fallo'}:null,data:[{id:'notice',message:'redes'}]}},
+  let rpcError=false, enabled=true, sendOk=true, sent=0, confirmed=0, twitchSent=0, platform
+  const admin={ async rpc(name,args){platform=args.p_platform;return {error:rpcError?{message:'fallo'}:null,data:[{id:'notice',message:'redes'}]}},
     from(){ const query={ select(){return query},eq(){return query},async maybeSingle(){return {data:{is_active:enabled}}},
       update(){confirmed++;return query},then(resolve){return Promise.resolve({error:null}).then(resolve)} };return query } }
   const exports={}
   const js=ts.transpileModule(fs.readFileSync(path.join(__dirname,'../src/lib/announcements.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText
-  vm.runInNewContext(js,{exports,Date,console:{warn(){}},require:id=> id==='./kick'?{sendKickChat:async()=>{sent++;return sendOk}}:{createSupabaseAdmin:()=>admin}})
+  vm.runInNewContext(js,{exports,Date,console:{warn(){}},require:id=> id==='./kick'?{sendKickChat:async()=>{sent++;return sendOk}}:id==='./twitch'?{sendTwitchChat:async()=>{twitchSent++;return sendOk}}:{createSupabaseAdmin:()=>admin}})
   rpcError=true;await exports.handleAnnouncement('alice','11');assert.equal(sent,0)
   rpcError=false;enabled=false;await exports.handleAnnouncement('alice','11');assert.equal(sent,0)
   enabled=true;sendOk=false;await exports.handleAnnouncement('alice','11');assert.equal(confirmed,0)
   sendOk=true;await exports.handleAnnouncement('alice','11');assert.equal(confirmed,1)
+  const kickSent=sent
+  await exports.handleAnnouncement('alice','22','TWITCH');assert.equal(platform,'TWITCH');assert.equal(twitchSent,1);assert.equal(sent,kickSent);assert.equal(confirmed,2)
+  sendOk=false;await exports.handleAnnouncement('alice','22','TWITCH');assert.equal(confirmed,2)
 })

@@ -67,10 +67,8 @@ export async function handleChatMessage(opts: {
     .update({ [column]: new Date().toISOString() }).eq('id', tenant.id)
   if (activityError) console.warn('No se pudo registrar actividad del bot:', activityError.message)
 
-  if (platform === 'KICK') {
-    try { await handleAnnouncement(tenant.id, tenant.broadcasterId) }
-    catch (err) { console.warn('Avisos Kick:', err) }
-  }
+  try { await handleAnnouncement(tenant.id, tenant.broadcasterId, platform) }
+  catch (err) { console.warn('Avisos:', err) }
 
   await checkRaffleEntry(platform, tenant, username, content)
 

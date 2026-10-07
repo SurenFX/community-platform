@@ -56,3 +56,5 @@ con el dominio HTTPS vigente y otorgar los permisos de cada plataforma.
 
 Avisos de Kick implementados en /panel/avisos (migración 025): nacen en pausa; intervalo mínimo 5 minutos y 5 mensajes, máximo un aviso por canal por minuto. Se evalúan al recibir actividad, no con un reloj exacto ni en chats vacíos. Guardar cambios pausa el aviso. Discord/Telegram y Twitch quedan para la siguiente etapa. Elegir funciones según límites del
 alojamiento: no asumir costo cero para cualquier uso.
+
+Avisos Twitch (20261007225208_streamea_twitch_announcements): destino por aviso, conectado en el panel; misma pausa y límites de Kick, con actividad y reservas separadas. La cuenta bot Twitch y OAuth del canal son necesarios para uso real. Las respuestas del propio bot no disparan avisos. El panel informa cuando falta configurar la cuenta bot.

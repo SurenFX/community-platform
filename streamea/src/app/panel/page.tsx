@@ -1,12 +1,11 @@
 import { redirect } from 'next/navigation'
 import { CheckCircle2, Circle, ShieldCheck } from 'lucide-react'
 import { createSupabaseServer } from '@/lib/supabase/server'
-import { CopyButton } from './copy-button'
+import { createSupabaseAdmin } from '@/lib/supabase/admin'
+
 import { activateBot, makeBotModerator } from './actions'
 
 export const dynamic = 'force-dynamic'
-
-const BOT_NAME = 'streameabot'
 
 export default async function Panel({
   searchParams,
@@ -26,6 +25,9 @@ export default async function Panel({
 
   const kickConnected   = Boolean(streamer?.kick_slug)
   const twitchConnected = Boolean(streamer?.twitch_login)
+  const { data: twitchBot } = await createSupabaseAdmin().from('st_bot_tokens')
+    .select('bot_username,bot_user_id').eq('platform', 'TWITCH').maybeSingle()
+  const twitchBotReady = Boolean(twitchBot?.bot_user_id && twitchBot?.bot_username)
 
   return (
     <main>
@@ -136,32 +138,20 @@ export default async function Panel({
         </p>
       )}
       {/* Twitch requiere moderación; Kick usa el bot oficial de la aplicación. */}
-      {twitchConnected && (
+      {twitchConnected && !twitchBotReady && <p role="status" className="mt-6 rounded-xl border border-surface-border p-4 text-sm text-zinc-400">
+        Tu canal de Twitch está conectado. La cuenta bot de Streamea todavía debe configurarse para poder responder. Los comandos, sorteos y avisos necesitan ese paso.
+      </p>}
+      {twitchConnected && twitchBotReady && (
         <section className="mt-6 rounded-2xl border border-brand/30 bg-brand/5 p-5">
           <div className="flex items-start gap-3">
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-brand" />
             <div className="flex-1">
               <h2 className="font-semibold">Último paso: hacé moderador al bot</h2>
               <p className="mt-1 text-sm text-zinc-400">
-                Para que pueda responder en tu chat, escribí este comando en el chat de
-                {kickConnected && twitchConnected
-                  ? ' cada canal que conectaste'
-                  : kickConnected ? ' tu canal de Kick' : ' tu canal de Twitch'}:
+                Para que pueda responder en Twitch, hacé moderador al bot en tu canal:
               </p>
 
-              {kickConnected && (
-                <div className="mt-3">
-                  <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-brand-kick">
-                    Kick
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-zinc-200">
-                      /mod {BOT_NAME}
-                    </code>
-                    <CopyButton text={`/mod ${BOT_NAME}`} />
-                  </div>
-                </div>
-              )}
+              
 
               {twitchConnected && (
                 <div className="mt-3">
@@ -173,7 +163,7 @@ export default async function Panel({
                       Hacerlo moderador automáticamente
                     </button>
                     <span className="text-xs text-zinc-500">
-                      o escribí <code className="text-zinc-400">/mod {BOT_NAME}</code> en tu chat
+                      o escribí <code className="text-zinc-400">/mod {twitchBot!.bot_username}</code> en tu chat
                     </span>
                   </form>
                 </div>
