@@ -27,6 +27,8 @@ test('avisos: pausa, límites, aislamiento y reservas simultáneas', async t => 
     const twitchMigration = fs.readFileSync(path.join(__dirname, '../../supabase/migrations/20261007225208_streamea_twitch_announcements.sql'), 'utf8')
     await db.exec(twitchMigration)
     await db.exec(twitchMigration)
+    const socialMigration = fs.readFileSync(path.join(__dirname, '../../supabase/migrations/20261007231816_streamea_social_destinations.sql'), 'utf8')
+    await db.exec(socialMigration); await db.exec(socialMigration)
     await db.query('INSERT INTO st_announcements(streamer_id,message) VALUES ($1,$2),($3,$4)', [alice,'Redes de Alice',bob,'Redes de Bob'])
     await t.test('nacen pausados y no se envían aunque venza el intervalo', async () => {
       await age(); assert.deepEqual(await claim(), [])
@@ -61,6 +63,18 @@ test('avisos: pausa, límites, aislamiento y reservas simultáneas', async t => 
       assert.deepEqual(await claim(alice,'TWITCH'), [])
       assert.deepEqual(await claim(alice,'DISCORD'), [])
     })
+    await t.test('Discord y Telegram requieren destino habilitado y tienen reservas separadas', async () => {
+      for (const platform of ['DISCORD','TELEGRAM']) {
+        await db.query("INSERT INTO st_announcements(streamer_id,platform,message,is_active,message_count,last_attempt_at) VALUES ($1,$2,$2,true,5,now()-interval '20 minutes')", [alice,platform])
+        assert.deepEqual(await claim(alice,platform), [])
+        await db.query('INSERT INTO st_social_destinations(streamer_id,platform,encrypted_config) VALUES ($1,$2,$3)',[alice,platform,'test-only'])
+        assert.equal((await claim(alice,platform))[0].message,platform)
+        assert.deepEqual(await claim(alice,platform), [])
+        await age()
+        await db.query('UPDATE st_social_destinations SET is_active=false WHERE platform=$1',[platform])
+        assert.deepEqual(await claim(alice,platform), [])
+      }
+    })
     await t.test('pausar o desactivar el streamer impide nuevos envíos', async () => {
       await age(); await db.exec('UPDATE st_announcements SET is_active=false')
       assert.deepEqual(await claim(), [])
@@ -76,9 +90,11 @@ test('avisos: pausa, límites, aislamiento y reservas simultáneas', async t => 
       assert.ok((await db.query('SELECT streamer_id FROM st_announcements')).rows.every(r=>r.streamer_id===alice))
       assert.equal((await db.query('UPDATE st_announcements SET message=$1 WHERE streamer_id=$2 RETURNING id',['ajeno',bob])).rows.length,0)
       await assert.rejects(claim(bob), /permission denied/)
+      await assert.rejects(db.query('SELECT encrypted_config FROM st_social_destinations'), /permission denied/)
       await assert.rejects(db.query('INSERT INTO st_announcements(streamer_id,message) VALUES ($1,$2)',[bob,'ajeno']), /row-level security/)
       await db.exec('RESET ROLE; SET ROLE anon')
       await assert.rejects(claim(), /permission denied/)
+      await assert.rejects(db.query('SELECT encrypted_config FROM st_social_destinations'), /permission denied/)
       await db.exec('RESET ROLE')
     })
   } finally { await db.close() }

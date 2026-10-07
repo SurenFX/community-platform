@@ -69,6 +69,10 @@ export async function handleChatMessage(opts: {
 
   try { await handleAnnouncement(tenant.id, tenant.broadcasterId, platform) }
   catch (err) { console.warn('Avisos:', err) }
+  await Promise.all((['DISCORD', 'TELEGRAM'] as const).map(async destination => {
+    try { await handleAnnouncement(tenant.id, tenant.broadcasterId, destination) }
+    catch { console.warn('No se pudo procesar un aviso externo') }
+  }))
 
   await checkRaffleEntry(platform, tenant, username, content)
 

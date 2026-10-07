@@ -1,14 +1,15 @@
 import { redirect } from 'next/navigation'
 import { createSupabaseServer } from '@/lib/supabase/server'
+import { createSupabaseAdmin } from '@/lib/supabase/admin'
 import { saveAnnouncement, toggleAnnouncement } from './actions'
 
 export const dynamic = 'force-dynamic'
 const fieldClass = 'w-full rounded-xl border border-surface-border bg-surface px-4 py-2.5 text-sm outline-none focus:border-brand'
 const buttonClass = 'rounded-xl border border-brand/40 px-4 py-2 text-sm font-semibold text-brand hover:bg-brand/10'
-type Notice = { platform: 'KICK' | 'TWITCH'; id: string; message: string; interval_minutes: number; min_messages: number; is_active: boolean; last_sent_at: string | null }
+type Notice = { platform: 'KICK' | 'TWITCH' | 'DISCORD' | 'TELEGRAM'; id: string; message: string; interval_minutes: number; min_messages: number; is_active: boolean; last_sent_at: string | null }
 
 function Fields({ notice, channels }: { notice?: Notice; channels: { value: string; label: string }[] }) {
-  return <><label className="block text-sm">Destino<select name="platform" required defaultValue={notice?.platform ?? channels[0]?.value} className={`${fieldClass} mt-2`}>{channels.map(channel => <option key={channel.value} value={channel.value}>{channel.label}</option>)}</select></label>
+  return <><label className="block text-sm">Destino<select name="platform" required defaultValue={notice?.platform ?? channels[0]?.value} className={`${fieldClass} mt-2`}>{notice && !channels.some(channel => channel.value === notice.platform) && <option value={notice.platform} disabled>{notice.platform} · no disponible</option>}{channels.map(channel => <option key={channel.value} value={channel.value}>{channel.label}</option>)}</select></label>
     <label className="block text-sm">Texto del aviso
       <textarea name="message" required maxLength={400} rows={3} defaultValue={notice?.message}
         placeholder="Seguime en mis redes: …" className={`${fieldClass} mt-2`} />
@@ -33,11 +34,16 @@ export default async function Avisos({ searchParams }: { searchParams: Promise<{
   if (!streamer?.kick_slug && !streamer?.twitch_login) return <main><h1 className="text-2xl font-bold">Avisos</h1>
     <p className="mt-3 text-zinc-400">Conectá tu canal de Kick o Twitch desde <a href="/panel" className="text-brand underline">Inicio</a> para configurar avisos.</p></main>
   const channels = [{ value: 'KICK', label: 'Kick', connected: Boolean(streamer.kick_slug) }, { value: 'TWITCH', label: 'Twitch', connected: Boolean(streamer.twitch_login) }].filter(channel => channel.connected)
+  const { data: destinations } = await createSupabaseAdmin().from('st_social_destinations')
+    .select('platform,is_active').eq('streamer_id', streamer.id)
+  for (const destination of destinations ?? []) if (destination.is_active) channels.push({
+    value: destination.platform, label: destination.platform === 'DISCORD' ? 'Discord' : 'Telegram', connected: true,
+  })
   const { data, error } = await supabase.from('st_announcements')
     .select('id,platform,message,interval_minutes,min_messages,is_active,last_sent_at').eq('streamer_id', streamer.id).order('created_at')
   const notices = (data ?? []) as Notice[]
   const messages: Record<string, string> = {
-    connect: 'Conectá el canal elegido desde Inicio antes de guardar o activar avisos.',
+    connect: 'Conectá el canal desde Inicio o habilitá Discord/Telegram desde Destinos antes de guardar o activar avisos.',
     saved: 'Aviso guardado en pausa. Podés activarlo cuando estés listo.',
     enabled: 'Aviso activado. El primer envío espera el intervalo y la actividad configurados.',
     paused: 'Aviso pausado.', invalid: 'Revisá el texto, el intervalo (5–1440 minutos) y la cantidad de mensajes (5–100).',
@@ -45,8 +51,8 @@ export default async function Avisos({ searchParams }: { searchParams: Promise<{
   }
   return <main>
     <h1 className="text-2xl font-bold">Avisos</h1>
-    <p className="mt-2 text-zinc-400">Recordatorios para tus chats de Kick y Twitch: redes, próximos directos o información de tu canal.</p>
-    <p className="mt-3 text-sm text-zinc-400">Se envían con el siguiente mensaje del chat cuando se cumplen el intervalo y la actividad mínima. Si el chat está quieto, no se envían. Entre avisos hay al menos un minuto. Guardar o editar deja el aviso en pausa.</p>
+    <p className="mt-2 text-zinc-400">Recordatorios para tus chats y destinos configurados: redes, próximos directos o información de tu canal. <a href="/panel/destinos" className="text-brand underline">Configurar Discord o Telegram</a>.</p>
+    <p className="mt-3 text-sm text-zinc-400">Se envían con el siguiente mensaje del chat cuando se cumplen el intervalo y la actividad mínima. Discord y Telegram cuentan actividad de tus chats de Kick y Twitch. Si el chat está quieto, no se envían. Entre avisos del mismo destino hay al menos un minuto. Guardar o editar deja el aviso en pausa.</p>
     {result && messages[result] && <p role="status" className="mt-4 rounded-xl border border-surface-border p-4 text-sm">{messages[result]}</p>}
     {error ? <p role="alert" className="mt-6 rounded-xl border border-red-500/30 p-4 text-red-400">No pudimos cargar tus avisos. Intentá de nuevo más tarde.</p> : <>
       <form action={saveAnnouncement} className="mt-6 space-y-4 rounded-2xl border border-surface-border bg-surface-raised p-5">
@@ -56,7 +62,7 @@ export default async function Avisos({ searchParams }: { searchParams: Promise<{
       <section className="mt-6 space-y-4" aria-label="Avisos guardados">
         {!notices.length && <p className="rounded-xl border border-dashed border-surface-border p-6 text-sm text-zinc-400">Todavía no tenés avisos. Creá uno arriba; empezará en pausa.</p>}
         {notices.map(notice => <article key={notice.id} className="rounded-2xl border border-surface-border bg-surface-raised p-5">
-          <div className="flex items-center justify-between gap-3"><h2 className="font-semibold">{notice.platform === 'KICK' ? 'Kick' : 'Twitch'} · {notice.is_active ? 'Activo' : 'En pausa'}</h2>
+          <div className="flex items-center justify-between gap-3"><h2 className="font-semibold">{({KICK:'Kick',TWITCH:'Twitch',DISCORD:'Discord',TELEGRAM:'Telegram'})[notice.platform]} · {notice.is_active ? 'Activo' : 'En pausa'}</h2>
             <form action={toggleAnnouncement}><input type="hidden" name="id" value={notice.id} /><input type="hidden" name="enable" value={String(!notice.is_active)} />
               <button className={buttonClass}>{notice.is_active ? 'Pausar' : 'Activar'}</button></form>
           </div>

@@ -58,3 +58,5 @@ Avisos de Kick implementados en /panel/avisos (migración 025): nacen en pausa; 
 alojamiento: no asumir costo cero para cualquier uso.
 
 Avisos Twitch (20261007225208_streamea_twitch_announcements): destino por aviso, conectado en el panel; misma pausa y límites de Kick, con actividad y reservas separadas. La cuenta bot Twitch y OAuth del canal son necesarios para uso real. Las respuestas del propio bot no disparan avisos. El panel informa cuando falta configurar la cuenta bot.
+
+Destinos opcionales: /panel/destinos configura Discord mediante webhook y Telegram mediante token de bot e ID de chat. Avisos usan actividad de Kick/Twitch; no hay cron ni envío en chats quietos. Configuración privada cifrada con AES-256-GCM, ligada al dueño y plataforma. Si se rota SUPABASE_SERVICE_ROLE_KEY hay que volver a guardar los destinos. Cambiar el destino pausa sus avisos. Cliente anon/authenticated no puede leer la tabla de credenciales. Discord evita menciones masivas y exige confirmación wait=true; Telegram exige ok=true y message_id. Datos de destino nunca deben aparecer en logs.

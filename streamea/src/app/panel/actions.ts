@@ -152,23 +152,39 @@ export async function deleteRaffle(formData: FormData) {
 
 // --- Comandos ---
 
+function commandResult(result: string): never {
+  revalidatePath('/panel/comandos')
+  redirect(`/panel/comandos?result=${result}`)
+}
+
 export async function saveCommand(formData: FormData) {
   let command    = String(formData.get('command') ?? '').trim().toLowerCase()
   const response = String(formData.get('response') ?? '').trim()
-  if (!command || !response) return
   if (!command.startsWith('!')) command = `!${command}`
+  const cooldown = Number(formData.get('cooldown_seconds') ?? 30)
+  if (!/^![\p{L}\p{N}_-]{1,29}$/u.test(command) || ['!addcom','!delcom'].includes(command)
+    || !response || [...response].length > 480 || !Number.isInteger(cooldown) || cooldown < 5 || cooldown > 3600) commandResult('invalid')
 
   const streamer = await requireStreamer()
   const admin    = createSupabaseAdmin()
 
-  await admin
+  const { error } = await admin
     .from('st_commands')
     .upsert(
-      { streamer_id: streamer.id, command, response },
+      { streamer_id: streamer.id, command, response, cooldown_seconds: cooldown },
       { onConflict: 'streamer_id,command' }
     )
 
-  revalidatePath('/panel/comandos')
+  commandResult(error ? 'failed' : 'saved')
+}
+
+export async function toggleCommand(formData: FormData) {
+  const streamer = await requireStreamer()
+  const { data, error } = await createSupabaseAdmin().from('st_commands')
+    .update({ is_active: formData.get('enable') === 'true' })
+    .eq('id', String(formData.get('id') ?? '')).eq('streamer_id', streamer.id)
+    .select('id').maybeSingle()
+  commandResult(error || !data ? 'failed' : 'updated')
 }
 
 export async function deleteCommand(formData: FormData) {
@@ -178,11 +194,11 @@ export async function deleteCommand(formData: FormData) {
   const streamer = await requireStreamer()
   const admin    = createSupabaseAdmin()
 
-  await admin
+  const { data, error } = await admin
     .from('st_commands')
     .delete()
     .eq('id', id)
     .eq('streamer_id', streamer.id)
-
-  revalidatePath('/panel/comandos')
+    .select('id').maybeSingle()
+  commandResult(error || !data ? 'failed' : 'deleted')
 }

@@ -17,6 +17,7 @@ const NAV = [
   { href: '/panel/sorteos',   label: 'Sorteos',  icon: Ticket },
   { href: '/panel/comandos',  label: 'Comandos', icon: MessageSquare },
   { href: '/panel/avisos',    label: 'Avisos',   icon: Bell },
+  { href: '/panel/destinos',  label: 'Destinos', icon: MessageSquare },
 ]
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
