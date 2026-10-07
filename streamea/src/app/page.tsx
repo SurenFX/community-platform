@@ -4,17 +4,17 @@ const FEATURES = [
   {
     icon: Zap,
     title: 'Sorteo en segundos',
-    text: 'Elegís una palabra clave, la anunciás y el bot registra a todos los que la escriban en el chat. Cerrás y elegís ganador con un clic.',
+    text: 'Elegís una palabra clave y el bot registra a quienes la escriben en el chat. Elegir ganador cierra el sorteo y guarda el resultado.',
   },
   {
     icon: MessageSquare,
     title: 'Kick y Twitch',
-    text: 'Funciona en los dos chats a la vez. Conectás tus cuentas con un clic — sin tokens, sin configurar APIs, sin OBS.',
+    text: 'Conectás tu canal con la autorización oficial. El panel muestra la actividad recibida y te guía para activar el bot.',
   },
   {
     icon: Shield,
-    title: 'Sin trampas',
-    text: 'Una entrada por persona, registro con timestamp, y el ganador se elige al azar de forma verificable.',
+    title: 'Participación sin duplicados',
+    text: 'Una entrada por cuenta en cada sorteo. El ganador se elige al azar y el resultado queda guardado en tu panel.',
   },
 ]
 
@@ -28,7 +28,7 @@ export default function Landing() {
           <span className="text-3xl font-bold tracking-tight">Streamea</span>
         </div>
         <h1 className="max-w-2xl text-4xl font-extrabold leading-tight sm:text-5xl">
-          Sorteos en vivo para tu stream,{' '}
+          Comandos, sorteos y avisos para tu stream,{' '}
           <span className="text-brand">sin complicarte</span>
         </h1>
         <p className="mt-5 max-w-xl text-lg text-zinc-400">
@@ -70,7 +70,7 @@ export default function Landing() {
             'Conectá tu cuenta de Kick o Twitch (un clic, OAuth oficial).',
             'Escribí la palabra clave y arrancá el sorteo desde tu panel.',
             'Tu chat participa escribiendo la palabra. Todo se registra solo.',
-            'Cerrá el sorteo y elegí ganador al azar. El bot lo anuncia en el chat.',
+            'Elegí ganador para cerrar el sorteo. El panel confirma el resultado y si pudo anunciarlo en el chat.',
           ].map((step, i) => (
             <li key={i} className="flex gap-4">
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">

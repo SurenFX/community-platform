@@ -132,7 +132,7 @@ export default function LoginPage() {
         <p className="mt-4 text-center text-xs text-zinc-500">
           {mode === 'login'
             ? '¿No tenés cuenta? Tocá "Crear cuenta" arriba.'
-            : 'Con crear la cuenta ya entrás — no hace falta confirmar nada.'}
+            : 'Si se solicita confirmar el correo, revisá tu bandeja antes de entrar.'}
         </p>
       </div>
     </main>
