@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifyKickSignature } from '@/lib/kick'
 import { findTenant, handleChatMessage } from '@/lib/chat'
+import { isFreshEvent } from '@/lib/cooldown'
 
 export const runtime = 'nodejs'      // crypto + service role
 export const dynamic = 'force-dynamic'
@@ -24,6 +25,7 @@ export async function POST(request: NextRequest) {
       console.warn('Kick webhook: firma inválida')
       return NextResponse.json({ ok: true })
     }
+    if (!isFreshEvent(timestamp)) return NextResponse.json({ ok: true })
     if (eventType !== 'chat.message.sent') {
       return NextResponse.json({ ok: true })
     }
@@ -38,6 +40,7 @@ export async function POST(request: NextRequest) {
       || badges.some(b => b?.type === 'moderator' || b?.type === 'broadcaster')
 
     await handleChatMessage({
+      messageId,
       platform: 'KICK',
       tenant,
       username: String(payload?.sender?.username ?? ''),

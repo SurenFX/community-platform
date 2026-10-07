@@ -1,5 +1,33 @@
 # Streamea (ex Community Platform) — Bitácora del proyecto
 
+## Estado vigente — 7 de octubre de 2026
+
+- Streamea es una web de herramientas para streamers, al estilo de Nightbot:
+  conectar Kick/Twitch, configurar comandos, sorteos y avisos. Community Hub fue
+  descartado definitivamente. No restaurar XP, monedas, misiones ni gamificación.
+- Discord y Telegram serán destinos opcionales de avisos configurados por cada
+  streamer. No recuperar los recordatorios automáticos de Eldoria/SalchiNeta.
+- La VM antigua seguía encendida pese a lo escrito en septiembre. Hoy se detuvo,
+  se cerraron ambas cuentas de facturación de Google Cloud y se dieron de baja los
+  cinco proyectos. Google programó la eliminación definitiva después del 6/11/2026.
+  Las cuentas de los bots en Discord/Telegram no se eliminaron.
+- La web pública de Streamea está disponible. No se validaron todavía los flujos
+  completos de OAuth, chat y sorteos en producción.
+- Correcciones locales: cooldown atómico, deduplicación de eventos por streamer y
+  plataforma, rechazo de eventos antiguos y panel con última actividad recibida.
+  El botón de activación informa si no pudo configurar alguna conexión.
+- Aplicar `024_streamea_bot_reliability.sql` en Supabase ANTES de desplegar estos
+  cambios. Si falta la función SQL, el bot no envía comandos sin protección.
+  Esta migración y el despliegue aún están pendientes.
+- Validación local: nueve pruebas de regresión con PostgreSQL PGlite, comprobación
+  TypeScript y compilación de producción aprobadas. Las pruebas no usan tokens
+  reales ni envían mensajes a canales. No sustituyen la prueba de producción.
+- Siguiente etapa: validar en un canal real y añadir el panel de avisos con texto,
+  destino, frecuencia/condiciones y activación individual; sin VM permanente.
+
+La documentación que sigue conserva la historia y puede contener configuración
+obsoleta. Este apartado es la referencia para continuar el proyecto.
+
 > **SEPTIEMBRE 2026 — EL PROYECTO ES SOLO STREAMEA.** El hub de gamificación
 > (`app/`), el worker de NestJS (`worker/`) y toda la infra de Google Cloud fueron
 > **dados de baja** (GCP cobraba ~USD 3/mes por la IP pública). Streamea ahora corre
@@ -500,7 +528,7 @@ serverless en Vercel**, costo cero:
   la vieja `kick_bot_tokens`).
 - Borrados del repo: `worker/`, `app/`, `docs/`, `_backup_src_20260531/`.
 
-## Estado actual (septiembre 2026)
+## Estado histórico (septiembre 2026)
 
 **Solo existe Streamea**, en `streamea/`: Next.js 15 en Vercel (proyecto `streamea`,
 dominio `streamea.vercel.app`), Supabase propio (`oonrnecmhyxofdylzhux`), sin VM ni

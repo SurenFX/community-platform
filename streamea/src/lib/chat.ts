@@ -1,6 +1,7 @@
 import { createSupabaseAdmin } from './supabase/admin'
 import { sendKickChat } from './kick'
 import { sendTwitchChat } from './twitch'
+import { takeCooldown } from './cooldown'
 
 export type Platform = 'KICK' | 'TWITCH'
 
@@ -42,6 +43,7 @@ export async function say(
  * Es la misma lógica para Kick y Twitch — solo cambia cómo llega el evento.
  */
 export async function handleChatMessage(opts: {
+  messageId: string
   platform:  Platform
   tenant:    Tenant
   username:  string
@@ -52,6 +54,17 @@ export async function handleChatMessage(opts: {
   const raw     = opts.content.trim()
   const content = raw.toLowerCase()
   if (!content) return
+
+  // Cada entrega se procesa una sola vez, incluso para !addcom y sorteos.
+  if (!opts.messageId || !(await takeCooldown(
+    `event:${platform}:${tenant.id}:${opts.messageId}`, 86400,
+  ))) return
+
+  const activity = createSupabaseAdmin()
+  const column = platform === 'KICK' ? 'kick_last_chat_at' : 'twitch_last_chat_at'
+  const { error: activityError } = await activity.from('st_streamers')
+    .update({ [column]: new Date().toISOString() }).eq('id', tenant.id)
+  if (activityError) console.warn('No se pudo registrar actividad del bot:', activityError.message)
 
   await checkRaffleEntry(platform, tenant, username, content)
 
@@ -80,7 +93,7 @@ export async function handleChatMessage(opts: {
   const key = `${tenant.id}:${platform}:${content}`
   if (!(await takeCooldown(key, cmd.cooldown_seconds ?? 30))) return
 
-  await say(platform, tenant.broadcasterId, cmd.response)
+  if (!(await say(platform, tenant.broadcasterId, cmd.response))) return
   await admin.from('st_commands').update({ uses: (cmd.uses ?? 0) + 1 }).eq('id', cmd.id)
 }
 
@@ -140,27 +153,4 @@ async function checkRaffleEntry(
   await admin
     .from('st_raffle_entries')
     .insert({ raffle_id: r.id, username: username.toLowerCase() })
-}
-
-/**
- * Cooldown con la DB (en serverless no hay estado entre invocaciones).
- * Devuelve true si se puede ejecutar y marca el uso.
- */
-async function takeCooldown(key: string, seconds: number): Promise<boolean> {
-  const admin  = createSupabaseAdmin()
-  const cutoff = new Date(Date.now() - seconds * 1000).toISOString()
-
-  const { data } = await admin
-    .from('st_cooldowns')
-    .select('key, used_at')
-    .eq('key', key)
-    .maybeSingle()
-
-  if (data && (data as { used_at: string }).used_at > cutoff) return false
-
-  await admin
-    .from('st_cooldowns')
-    .upsert({ key, used_at: new Date().toISOString() }, { onConflict: 'key' })
-
-  return true
 }

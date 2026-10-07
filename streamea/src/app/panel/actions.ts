@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { createSupabaseServer } from '@/lib/supabase/server'
 import { createSupabaseAdmin } from '@/lib/supabase/admin'
 import { say, type Platform } from '@/lib/chat'
@@ -57,11 +58,16 @@ export async function makeBotModerator() {
 /** Reintenta activar el bot en los chats conectados (si algo quedó a medias). */
 export async function activateBot() {
   const streamer = await requireStreamer()
-
-  if (streamer.kick_user_id)   await ensureKickSubscriptions(streamer.kick_user_id)
-  if (streamer.twitch_user_id) await ensureTwitchSubscription(streamer.twitch_user_id)
-
+  const results: boolean[] = []
+  try {
+    if (streamer.kick_user_id) results.push(await ensureKickSubscriptions(streamer.kick_user_id))
+    if (streamer.twitch_user_id) results.push(await ensureTwitchSubscription(streamer.twitch_user_id))
+  } catch (err) {
+    console.warn('No se pudo activar el bot:', err)
+    results.push(false)
+  }
   revalidatePath('/panel')
+  redirect(`/panel?bot=${results.length > 0 && results.every(Boolean) ? 'subscribed' : 'failed'}`)
 }
 
 // --- Sorteos ---

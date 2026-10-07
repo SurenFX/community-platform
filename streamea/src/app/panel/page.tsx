@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { CheckCircle2, Circle, ShieldCheck } from 'lucide-react'
 import { createSupabaseServer } from '@/lib/supabase/server'
 import { CopyButton } from './copy-button'
-import { makeBotModerator } from './actions'
+import { activateBot, makeBotModerator } from './actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,16 +11,16 @@ const BOT_NAME = 'streameabot'
 export default async function Panel({
   searchParams,
 }: {
-  searchParams: Promise<{ connected?: string; error?: string }>
+  searchParams: Promise<{ connected?: string; error?: string; bot?: string }>
 }) {
-  const { connected, error } = await searchParams
+  const { connected, error, bot } = await searchParams
   const supabase = await createSupabaseServer()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const { data: streamer } = await supabase
     .from('st_streamers')
-    .select('display_name, kick_slug, twitch_login')
+    .select('display_name, kick_slug, twitch_login, kick_last_chat_at, twitch_last_chat_at')
     .eq('user_id', user.id)
     .maybeSingle()
 
@@ -34,7 +34,7 @@ export default async function Panel({
       </h1>
       <p className="mt-2 text-zinc-400">
         {kickConnected || twitchConnected
-          ? 'Tu canal está conectado. Ya podés usar las herramientas.'
+          ? 'Tu cuenta está conectada. Comprobá abajo que el bot reciba mensajes de tu chat.'
           : 'Conectá tu canal para empezar. Un clic, sin configurar nada.'}
       </p>
 
@@ -46,6 +46,16 @@ export default async function Panel({
       {error && (
         <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           Hubo un problema conectando la cuenta ({error}). Probá de nuevo.
+        </p>
+      )}
+
+      {bot && (
+        <p role="status" className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+          bot === 'subscribed' ? 'border-brand/30 bg-brand/5 text-zinc-200' : 'border-red-500/30 bg-red-500/10 text-red-400'
+        }`}>
+          {bot === 'subscribed'
+            ? 'La lectura del chat está configurada. Escribí un mensaje en tu canal y actualizá esta página para confirmar que llega.'
+            : 'No pudimos activar el bot en todos los canales. Revisá los permisos de moderador o reconectá tu cuenta y probá otra vez.'}
         </p>
       )}
 
@@ -90,6 +100,35 @@ export default async function Panel({
           </a>
         </div>
       </section>
+
+      {(kickConnected || twitchConnected) && (
+        <section className="mt-6 rounded-2xl border border-surface-border bg-surface-raised p-5">
+          <h2 className="font-semibold">Actividad del bot</h2>
+          <p className="mt-1 text-sm text-zinc-400">
+            Conectar una cuenta no confirma que el bot esté funcionando. Aquí se muestra el último mensaje recibido de cada chat.
+          </p>
+          <div className="mt-4 space-y-3 text-sm">
+            {[
+              { name: 'Kick', connected: kickConnected, lastChat: streamer?.kick_last_chat_at },
+              { name: 'Twitch', connected: twitchConnected, lastChat: streamer?.twitch_last_chat_at },
+            ].filter(channel => channel.connected).map(channel => (
+              <p key={channel.name}>
+                <span className="font-semibold">{channel.name}: </span>
+                {channel.lastChat
+                  ? <>último mensaje recibido <time dateTime={channel.lastChat}>{new Intl.DateTimeFormat('es-UY', {
+                      dateStyle: 'short', timeStyle: 'short', timeZone: 'UTC',
+                    }).format(new Date(channel.lastChat))}</time> (UTC).</>
+                  : 'Sin actividad confirmada. Escribí un mensaje en tu chat y actualizá esta página.'}
+              </p>
+            ))}
+          </div>
+          <form action={activateBot} className="mt-4">
+            <button className="rounded-xl border border-brand/40 px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand/10">
+              Activar o reintentar conexión del bot
+            </button>
+          </form>
+        </section>
+      )}
 
       {/* Paso final del onboarding: el bot necesita ser moderador para escribir */}
       {(kickConnected || twitchConnected) && (

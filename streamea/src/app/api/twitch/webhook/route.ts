@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifyTwitchSignature } from '@/lib/twitch'
 import { findTenant, handleChatMessage } from '@/lib/chat'
+import { isFreshEvent } from '@/lib/cooldown'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -15,6 +16,9 @@ export async function POST(request: NextRequest) {
 
   if (!verifyTwitchSignature(messageId, timestamp, raw, signature)) {
     return new NextResponse('Firma inválida', { status: 403 })
+  }
+  if (!messageId || !isFreshEvent(timestamp)) {
+    return new NextResponse('Evento vencido o incompleto', { status: 403 })
   }
 
   const body = JSON.parse(raw)
@@ -44,6 +48,7 @@ export async function POST(request: NextRequest) {
           || badges.some(b => b?.set_id === 'moderator' || b?.set_id === 'broadcaster')
 
         await handleChatMessage({
+          messageId,
           platform: 'TWITCH',
           tenant,
           username: String(event?.chatter_user_login ?? ''),
