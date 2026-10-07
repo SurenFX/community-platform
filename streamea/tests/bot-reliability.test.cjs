@@ -65,6 +65,7 @@ test('comandos: reservas SQL, eventos repetidos, aislamiento y fallos', async t 
     const chat = load('chat.ts', {
       './supabase/admin': { createSupabaseAdmin: () => admin },
       './cooldown': cooldown,
+      './announcements': { handleAnnouncement: async () => {} },
       './kick': { sendKickChat: async (id, msg) => { sends.push(['KICK', id, msg]); return true } },
       './twitch': { sendTwitchChat: async (id, msg) => { sends.push(['TWITCH', id, msg]); return true } },
     })

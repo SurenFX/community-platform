@@ -11,20 +11,29 @@
   se cerraron ambas cuentas de facturación de Google Cloud y se dieron de baja los
   cinco proyectos. Google programó la eliminación definitiva después del 6/11/2026.
   Las cuentas de los bots en Discord/Telegram no se eliminaron.
-- La web pública de Streamea está disponible. No se validaron todavía los flujos
-  completos de OAuth, chat y sorteos en producción.
-- Correcciones locales: cooldown atómico, deduplicación de eventos por streamer y
-  plataforma, rechazo de eventos antiguos y panel con última actividad recibida.
-  El botón de activación informa si no pudo configurar alguna conexión.
-- Aplicar `024_streamea_bot_reliability.sql` en Supabase ANTES de desplegar estos
-  cambios. Si falta la función SQL, el bot no envía comandos sin protección.
-  Esta migración y el despliegue aún están pendientes.
-- Validación local: nueve pruebas de regresión con PostgreSQL PGlite, comprobación
-  TypeScript y compilación de producción aprobadas. Las pruebas no usan tokens
-  reales ni envían mensajes a canales. No sustituyen la prueba de producción.
-- Siguiente etapa: validar en un canal real y añadir el panel de avisos con texto,
-  destino, frecuencia/condiciones y activación individual; sin VM permanente.
-
+- Streamea está desplegado en https://streamea.vercel.app. Migración 024 aplicada
+  y permisos de service_role verificados en Supabase.
+- Commit c2ba2b2: cooldown atómico, deduplicación, rechazo de eventos antiguos y
+  panel con última actividad recibida. Commit 1d27fa2: bot oficial de Kick usando
+  token del canal de cada streamer, renovación y fallo cerrado si falla OAuth.
+- Producción usa ahora la aplicación SalchiNeta, propiedad de soy_suren:
+  KICK_CLIENT_ID=01KV6EZ9D3G8Z5HF0RN9BTS6TW. Se recuperó su secreto existente de
+  worker/.env y se guardó en Vercel junto con el ID. No registrar secretos en Git.
+  La app desconocida 01M0R81J4SM63CQ8F8XGRRSRV4 ya no se usa en producción.
+- Kick: bot oficial creado, webhook HTTPS habilitado y OAuth configurado con
+  /auth/kick y /setup/kick-bot. El nombre interno SalchiNeta se conserva: renombrar
+  revoca autorizaciones. El bot oficial usa type=bot y token OAuth del streamer;
+  no requiere el token global de st_bot_tokens ni /mod streameabot en Kick.
+- Vercel confirmó Ready del despliegue TDGqEFGHo9iRsDWCXP4XGUfUcWU5, commit
+  1d27fa2. Reconexión OAuth de soy_suren y activación completadas.
+- Prueba real 7/10/2026: !test enviado en kick.com/soy-suren; @SalchiNeta respondió
+  hola. El panel registró kick_last_chat_at. Captura guardada como
+  outputs/kick-bot-funcionando.png en el chat de Codex. Recepción y respuesta
+  confirmadas. Twitch y sorteos todavía requieren validación real aparte.
+- Validación: diez pruebas aprobadas, TypeScript y build de producción aprobados.
+- Avisos de Kick implementados: /panel/avisos; migración 025 aplicada. Por defecto en pausa, guardar ediciones pausa; envío condicionado al intervalo y actividad, reserva atómica por canal, al menos un minuto entre avisos. 19 pruebas y build aprobados. Pendiente verificación del panel desplegado.
+- Siguiente etapa: ampliar destinos de avisos, frecuencia/condiciones y
+  activación individual; Discord/Telegram opcionales; sin VM permanente.
 La documentación que sigue conserva la historia y puede contener configuración
 obsoleta. Este apartado es la referencia para continuar el proyecto.
 

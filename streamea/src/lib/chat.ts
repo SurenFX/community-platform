@@ -2,6 +2,7 @@ import { createSupabaseAdmin } from './supabase/admin'
 import { sendKickChat } from './kick'
 import { sendTwitchChat } from './twitch'
 import { takeCooldown } from './cooldown'
+import { handleAnnouncement } from './announcements'
 
 export type Platform = 'KICK' | 'TWITCH'
 
@@ -65,6 +66,11 @@ export async function handleChatMessage(opts: {
   const { error: activityError } = await activity.from('st_streamers')
     .update({ [column]: new Date().toISOString() }).eq('id', tenant.id)
   if (activityError) console.warn('No se pudo registrar actividad del bot:', activityError.message)
+
+  if (platform === 'KICK') {
+    try { await handleAnnouncement(tenant.id, tenant.broadcasterId) }
+    catch (err) { console.warn('Avisos Kick:', err) }
+  }
 
   await checkRaffleEntry(platform, tenant, username, content)
 

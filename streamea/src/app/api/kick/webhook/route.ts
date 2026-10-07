@@ -36,6 +36,9 @@ export async function POST(request: NextRequest) {
 
     const senderId = payload?.sender?.user_id
     const badges   = (payload?.sender?.identity?.badges ?? []) as { type?: string }[]
+    if (payload?.sender?.is_bot === true || badges.some(b => b?.type === 'bot')) {
+      return NextResponse.json({ ok: true })
+    }
     const isMod    = senderId === payload?.broadcaster?.user_id
       || badges.some(b => b?.type === 'moderator' || b?.type === 'broadcaster')
 

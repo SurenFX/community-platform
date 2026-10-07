@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { Gift, LogOut, Ticket, MessageSquare, Settings } from 'lucide-react'
+import { Gift, LogOut, Ticket, MessageSquare, Settings, Bell } from 'lucide-react'
 import { createSupabaseServer } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -16,6 +16,7 @@ const NAV = [
   { href: '/panel',           label: 'Inicio',   icon: Settings },
   { href: '/panel/sorteos',   label: 'Sorteos',  icon: Ticket },
   { href: '/panel/comandos',  label: 'Comandos', icon: MessageSquare },
+  { href: '/panel/avisos',    label: 'Avisos',   icon: Bell },
 ]
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
@@ -37,7 +38,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         </form>
       </header>
 
-      <nav className="mb-8 flex gap-2">
+      <nav className="mb-8 flex flex-wrap gap-2">
         {NAV.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}

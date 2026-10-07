@@ -43,7 +43,7 @@ SUPABASE_SERVICE_ROLE_KEY, KICK_CLIENT_ID, KICK_CLIENT_SECRET, TWITCH_CLIENT_ID,
 TWITCH_CLIENT_SECRET, ADMIN_SETUP_KEY, TWITCH_EVENTSUB_SECRET y NEXT_PUBLIC_SITE_URL.
 Guardar valores en configuración local o Vercel; nunca en Git.
 
-Alta del bot: /setup/kick-bot/start y /setup/twitch-bot/start, protegidas por
+Kick usa el bot oficial creado en la aplicación del panel Developer y el token OAuth de cada streamer. No requiere cuenta bot separada ni /setup/kick-bot/start. Alta del bot de Twitch: /setup/twitch-bot/start, protegida por
 ADMIN_SETUP_KEY. Tokens en st_bot_tokens. Registrar las URLs de OAuth/webhooks
 con el dominio HTTPS vigente y otorgar los permisos de cada plataforma.
 
@@ -54,5 +54,5 @@ con el dominio HTTPS vigente y otorgar los permisos de cada plataforma.
 3. Discord y Telegram como destinos opcionales de avisos.
 4. Beta con un grupo pequeño de streamers.
 
-Los avisos aún no están implementados. Elegir funciones según límites del
+Avisos de Kick implementados en /panel/avisos (migración 025): nacen en pausa; intervalo mínimo 5 minutos y 5 mensajes, máximo un aviso por canal por minuto. Se evalúan al recibir actividad, no con un reloj exacto ni en chats vacíos. Guardar cambios pausa el aviso. Discord/Telegram y Twitch quedan para la siguiente etapa. Elegir funciones según límites del
 alojamiento: no asumir costo cero para cualquier uso.

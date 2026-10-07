@@ -1,0 +1,53 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
+import { createSupabaseServer } from '@/lib/supabase/server'
+
+async function owner() {
+  const supabase = await createSupabaseServer()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+  const { data: streamer } = await supabase.from('st_streamers')
+    .select('id,kick_user_id').eq('user_id', user.id).maybeSingle()
+  if (!streamer?.kick_user_id) redirect('/panel/avisos?result=connect')
+  return { supabase, streamer }
+}
+
+function done(result: string): never {
+  revalidatePath('/panel/avisos')
+  redirect(`/panel/avisos?result=${result}`)
+}
+
+export async function saveAnnouncement(form: FormData) {
+  const message = String(form.get('message') ?? '').trim()
+  const interval = Number(form.get('interval_minutes'))
+  const minimum = Number(form.get('min_messages'))
+  if (!message || [...message].length > 400 || !Number.isInteger(interval) || interval < 5 || interval > 1440
+    || !Number.isInteger(minimum) || minimum < 5 || minimum > 100) done('invalid')
+  const { supabase, streamer } = await owner()
+  const id = String(form.get('id') ?? '')
+  const fields = { message, interval_minutes: interval, min_messages: minimum,
+    is_active: false, message_count: 0, last_attempt_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+  if (id) {
+    const { data, error } = await supabase.from('st_announcements').update(fields)
+      .eq('id', id).eq('streamer_id', streamer.id).select('id').maybeSingle()
+    done(error || !data ? 'error' : 'saved')
+  }
+  const { count, error: countError } = await supabase.from('st_announcements')
+    .select('id', { count: 'exact', head: true }).eq('streamer_id', streamer.id)
+  if (countError) done('error')
+  if ((count ?? 0) >= 10) done('limit')
+  const { error } = await supabase.from('st_announcements').insert({ ...fields, streamer_id: streamer.id, platform: 'KICK' })
+  done(error ? 'error' : 'saved')
+}
+
+export async function toggleAnnouncement(form: FormData) {
+  const { supabase, streamer } = await owner()
+  const id = String(form.get('id') ?? '')
+  const enabled = form.get('enable') === 'true'
+  const { data, error } = await supabase.from('st_announcements').update({
+    is_active: enabled, message_count: 0, last_attempt_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+  }).eq('id', id).eq('streamer_id', streamer.id).select('id').maybeSingle()
+  done(error || !data ? 'error' : enabled ? 'enabled' : 'paused')
+}
