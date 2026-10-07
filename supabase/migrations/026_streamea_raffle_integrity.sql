@@ -1,7 +1,7 @@
 BEGIN;
 
 CREATE OR REPLACE FUNCTION public.st_open_raffle(p_streamer_id UUID, p_platform TEXT, p_keyword TEXT)
-RETURNS TABLE(id UUID) LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+RETURNS TABLE(id UUID) LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_temp AS $$
 BEGIN
   IF p_platform IS NULL OR p_platform NOT IN ('KICK','TWITCH') OR p_keyword IS NULL
     OR char_length(p_keyword) NOT BETWEEN 1 AND 40 OR p_keyword ~ '\s' THEN RETURN; END IF;
@@ -18,7 +18,7 @@ END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.st_enter_raffle(p_streamer_id UUID, p_platform TEXT, p_username TEXT, p_content TEXT)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_temp AS $$
 DECLARE v_id UUID; v_inserted UUID;
 BEGIN
   IF p_username IS NULL OR char_length(btrim(p_username)) NOT BETWEEN 1 AND 64 THEN RETURN false; END IF;
@@ -35,7 +35,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.st_draw_raffle(p_streamer_id UUID, p_raffle_id UUID)
 RETURNS TABLE(winner TEXT, platform TEXT)
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = public, pg_temp AS $$
 DECLARE v_platform TEXT; v_winner TEXT;
 BEGIN
   -- El bloqueo también serializa entradas y cierres mientras se elige ganador.
