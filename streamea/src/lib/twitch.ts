@@ -168,6 +168,11 @@ export async function sendTwitchChat(broadcasterId: string, message: string): Pr
     console.warn('Twitch sendChat:', res.status, await res.text())
     return false
   }
+  const result = await res.json().catch(() => null)
+  if (result?.data?.[0]?.is_sent !== true) {
+    console.warn('Twitch no confirmó el envío:', result?.data?.[0]?.drop_reason?.code ?? 'respuesta inválida')
+    return false
+  }
   return true
 }
 
